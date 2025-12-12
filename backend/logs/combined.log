@@ -18133,3 +18133,19 @@
 2025-12-12 19:19:37 [info]: 📚 API Documentation: http://localhost:5000/api-docs {"service":"bidroom-backend"}
 2025-12-12 19:19:37 [info]: 🏥 Health Check: http://localhost:5000/api/health {"service":"bidroom-backend"}
 2025-12-12 19:19:37 [info]: 🌍 Environment: development {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: Environment variables validated successfully {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: Swagger documentation available at /api-docs {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: 🚀 Backend server running on port 5000 {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: 📚 API Documentation: http://localhost:5000/api-docs {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: 🏥 Health Check: http://localhost:5000/api/health {"service":"bidroom-backend"}
+2025-12-12 20:44:58 [info]: 🌍 Environment: development {"service":"bidroom-backend"}
+2025-12-12 20:45:02 [info]: HTTP Request {"service":"bidroom-backend","method":"POST","url":"/login","status":200,"duration":"1640ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:03 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/me","status":200,"duration":"489ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:19 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/unread/count","status":304,"duration":"451ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:19 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/?limit=100","status":304,"duration":"515ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:19 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/?status=completed&limit=1000","status":304,"duration":"516ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:19 [info]: [DEBUG] getUserNotifications - UserID: 3d7f992a-cd19-4413-81ed-4ec557b6caf8, Query Params: {"service":"bidroom-backend","limit":"10"}
+2025-12-12 20:45:19 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/?limit=10","status":304,"duration":"875ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:19 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/?status=open&limit=100","status":304,"duration":"551ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:20 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/admin-dashboard","status":200,"duration":"2048ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}
+2025-12-12 20:45:21 [info]: HTTP Request {"service":"bidroom-backend","method":"GET","url":"/users?limit=1","status":304,"duration":"1900ms","ip":"::ffff:192.168.0.105","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"}

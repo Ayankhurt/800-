@@ -1,0 +1,135 @@
+
+  /admin/ai/contracts:
+    get:
+      tags:
+        - Admin
+        - AI
+      summary: List AI generated contracts
+      responses:
+        '200':
+          description: Contracts retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/ai/analysis:
+    get:
+      tags:
+        - Admin
+        - AI
+      summary: List AI progress analysis
+      responses:
+        '200':
+          description: Analysis retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/marketing/campaigns:
+    get:
+      tags:
+        - Admin
+        - Marketing
+      summary: List email campaigns
+      responses:
+        '200':
+          description: Campaigns retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+    post:
+      tags:
+        - Admin
+        - Marketing
+      summary: Create email campaign
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - subject
+              properties:
+                name:
+                  type: string
+                subject:
+                  type: string
+                content:
+                  type: string
+      responses:
+        '200':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/security/blocked-ips:
+    get:
+      tags:
+        - Admin
+        - Security
+      summary: List blocked IPs
+      responses:
+        '200':
+          description: Blocked IPs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+    post:
+      tags:
+        - Admin
+        - Security
+      summary: Block an IP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip
+              properties:
+                ip:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: IP blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/security/ddos-logs:
+    get:
+      tags:
+        - Admin
+        - Security
+      summary: List DDoS logs
+      responses:
+        '200':
+          description: Logs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/security/failed-logins:
+    get:
+      tags:
+        - Admin
+        - Security
+      summary: List failed logins
+      responses:
+        '200':
+          description: Logs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'

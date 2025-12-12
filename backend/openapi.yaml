@@ -1,0 +1,3517 @@
+openapi: 3.0.0
+info:
+  title: BidRoom API
+  version: 1.0.0
+  description: Complete API documentation for BidRoom backend.
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Development Server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+paths:
+  /admin/dashboard/stats:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/dashboard/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/users:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/users
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/users/{id}:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/users/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+    patch:
+      tags:
+        - admin
+      summary: Auto-generated summary for PATCH /admin/users/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    delete:
+      tags:
+        - admin
+      summary: Auto-generated summary for DELETE /admin/users/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/users/change-role:
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/users/change-role
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/users/{id}/suspend:
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/users/{id}/suspend
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/users/{id}/unsuspend:
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/users/{id}/unsuspend
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/users/verify:
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/users/verify
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/users/{id}/sessions:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/users/{id}/sessions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/projects:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/projects
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/projects/{id}:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/projects/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/jobs:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/jobs
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/bids:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/bids
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/financial/stats:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/financial/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/transactions:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/transactions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/disputes:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/disputes
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/support/tickets:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/support/tickets
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/verifications:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/verifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/moderation/reports:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/moderation/reports
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/analytics:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/analytics
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/settings:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/settings
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/settings
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/audit-logs:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/audit-logs
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/referrals/stats:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/referrals/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/payouts:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/payouts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/payouts/{id}/process:
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/payouts/{id}/process
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/reviews:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/reviews
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/reviews/{id}:
+    delete:
+      tags:
+        - admin
+      summary: Auto-generated summary for DELETE /admin/reviews/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/messages:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/messages
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/announcements:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/announcements
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/announcements
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/announcements/{id}:
+    delete:
+      tags:
+        - admin
+      summary: Auto-generated summary for DELETE /admin/announcements/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/badges:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/badges
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - admin
+      summary: Auto-generated summary for POST /admin/badges
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/appointments:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/appointments
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/login/logs:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/login/logs
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/login/stats:
+    get:
+      tags:
+        - admin
+      summary: Auto-generated summary for GET /admin/login/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /analytics/view:
+    post:
+      tags:
+        - analytics
+      summary: Auto-generated summary for POST /analytics/view
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /analytics/profile:
+    get:
+      tags:
+        - analytics
+      summary: Auto-generated summary for GET /analytics/profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /analytics/performance:
+    get:
+      tags:
+        - analytics
+      summary: Auto-generated summary for GET /analytics/performance
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /applications/:
+    post:
+      tags:
+        - application
+      summary: Auto-generated summary for POST /applications/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /applications/job/{job_id}:
+    get:
+      tags:
+        - application
+      summary: Auto-generated summary for GET /applications/job/{job_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /applications/my-applications:
+    get:
+      tags:
+        - application
+      summary: Auto-generated summary for GET /applications/my-applications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /applications/{id}/status:
+    put:
+      tags:
+        - application
+      summary: Auto-generated summary for PUT /applications/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /applications/{id}/withdraw:
+    put:
+      tags:
+        - application
+      summary: Auto-generated summary for PUT /applications/{id}/withdraw
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /appointments/:
+    get:
+      tags:
+        - appointment
+      summary: Auto-generated summary for GET /appointments/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - appointment
+      summary: Auto-generated summary for POST /appointments/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /appointments/{id}:
+    patch:
+      tags:
+        - appointment
+      summary: Auto-generated summary for PATCH /appointments/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    delete:
+      tags:
+        - appointment
+      summary: Auto-generated summary for DELETE /appointments/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /auth/signup:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/signup
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/login
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/me:
+    get:
+      tags:
+        - auth
+      summary: Auto-generated summary for GET /auth/me
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /auth/update-profile:
+    put:
+      tags:
+        - auth
+      summary: Auto-generated summary for PUT /auth/update-profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/profile:
+    patch:
+      tags:
+        - auth
+      summary: Auto-generated summary for PATCH /auth/profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/change-password:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/change-password
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    put:
+      tags:
+        - auth
+      summary: Auto-generated summary for PUT /auth/change-password
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/forgot-password:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/forgot-password
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/reset-password:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/reset-password
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/refresh-token:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/refresh-token
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/logout
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/sessions:
+    get:
+      tags:
+        - auth
+      summary: Auto-generated summary for GET /auth/sessions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /auth/sessions/{id}:
+    delete:
+      tags:
+        - auth
+      summary: Auto-generated summary for DELETE /auth/sessions/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /auth/verify-email:
+    get:
+      tags:
+        - auth
+      summary: Auto-generated summary for GET /auth/verify-email
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /auth/resend-verification:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/resend-verification
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/verify-otp:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/verify-otp
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /auth/toggle-mfa:
+    post:
+      tags:
+        - auth
+      summary: Auto-generated summary for POST /auth/toggle-mfa
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /badges/:
+    get:
+      tags:
+        - badge
+      summary: Auto-generated summary for GET /badges/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /badges/assign:
+    post:
+      tags:
+        - badge
+      summary: Auto-generated summary for POST /badges/assign
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /badges/user/{user_id}:
+    get:
+      tags:
+        - badge
+      summary: Auto-generated summary for GET /badges/user/{user_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /bids/:
+    post:
+      tags:
+        - bid
+      summary: Auto-generated summary for POST /bids/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /bids/job/{job_id}:
+    get:
+      tags:
+        - bid
+      summary: Auto-generated summary for GET /bids/job/{job_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /bids/my-bids:
+    get:
+      tags:
+        - bid
+      summary: Auto-generated summary for GET /bids/my-bids
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /bids/{id}/status:
+    put:
+      tags:
+        - bid
+      summary: Auto-generated summary for PUT /bids/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /bids/{id}/withdraw:
+    put:
+      tags:
+        - bid
+      summary: Auto-generated summary for PUT /bids/{id}/withdraw
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /communication/conversations:
+    get:
+      tags:
+        - communication
+      summary: Auto-generated summary for GET /communication/conversations
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - communication
+      summary: Auto-generated summary for POST /communication/conversations
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /communication/conversations/{conversation_id}/messages:
+    get:
+      tags:
+        - communication
+      summary: >-
+        Auto-generated summary for GET
+        /communication/conversations/{conversation_id}/messages
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+    post:
+      tags:
+        - communication
+      summary: >-
+        Auto-generated summary for POST
+        /communication/conversations/{conversation_id}/messages
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /communication/conversations/{conversation_id}/read:
+    put:
+      tags:
+        - communication
+      summary: >-
+        Auto-generated summary for PUT
+        /communication/conversations/{conversation_id}/read
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /contractors/search:
+    get:
+      tags:
+        - contractor
+      summary: Auto-generated summary for GET /contractors/search
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /contractors/{id}:
+    get:
+      tags:
+        - contractor
+      summary: Auto-generated summary for GET /contractors/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /contractors/{contractor_id}/portfolio:
+    get:
+      tags:
+        - contractor
+      summary: Auto-generated summary for GET /contractors/{contractor_id}/portfolio
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: contractor_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /contractors/{contractor_id}/certifications:
+    get:
+      tags:
+        - contractor
+      summary: >-
+        Auto-generated summary for GET
+        /contractors/{contractor_id}/certifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: contractor_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /contractors/profile:
+    put:
+      tags:
+        - contractor
+      summary: Auto-generated summary for PUT /contractors/profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /contractors/portfolio:
+    post:
+      tags:
+        - contractor
+      summary: Auto-generated summary for POST /contractors/portfolio
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /contractors/portfolio/{id}:
+    delete:
+      tags:
+        - contractor
+      summary: Auto-generated summary for DELETE /contractors/portfolio/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /contractors/certifications:
+    post:
+      tags:
+        - contractor
+      summary: Auto-generated summary for POST /contractors/certifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /contractors/certifications/{id}:
+    delete:
+      tags:
+        - contractor
+      summary: Auto-generated summary for DELETE /contractors/certifications/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /disputes/:
+    post:
+      tags:
+        - dispute
+      summary: Auto-generated summary for POST /disputes/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - dispute
+      summary: Auto-generated summary for GET /disputes/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /disputes/{id}:
+    get:
+      tags:
+        - dispute
+      summary: Auto-generated summary for GET /disputes/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /disputes/{dispute_id}/responses:
+    post:
+      tags:
+        - dispute
+      summary: Auto-generated summary for POST /disputes/{dispute_id}/responses
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: dispute_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /disputes/{id}/resolve:
+    put:
+      tags:
+        - dispute
+      summary: Auto-generated summary for PUT /disputes/{id}/resolve
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /disputes/{id}/close:
+    put:
+      tags:
+        - dispute
+      summary: Auto-generated summary for PUT /disputes/{id}/close
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /endorsements/:
+    post:
+      tags:
+        - endorsement
+      summary: Auto-generated summary for POST /endorsements/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /endorsements/{contractor_id}:
+    get:
+      tags:
+        - endorsement
+      summary: Auto-generated summary for GET /endorsements/{contractor_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: contractor_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /endorsements/{id}:
+    delete:
+      tags:
+        - endorsement
+      summary: Auto-generated summary for DELETE /endorsements/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/ai/contracts:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/ai/contracts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/ai/analysis:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/ai/analysis
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/marketing/campaigns:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/marketing/campaigns
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for POST /admin/marketing/campaigns
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/security/blocked-ips:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/security/blocked-ips
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for POST /admin/security/blocked-ips
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /admin/security/blocked-ips/{ip}:
+    delete:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for DELETE /admin/security/blocked-ips/{ip}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: ip
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/security/ddos-logs:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/security/ddos-logs
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /admin/security/failed-logins:
+    get:
+      tags:
+        - extendedAdmin
+      summary: Auto-generated summary for GET /admin/security/failed-logins
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /finance/transactions:
+    get:
+      tags:
+        - finance
+      summary: Auto-generated summary for GET /finance/transactions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    post:
+      tags:
+        - finance
+      summary: Auto-generated summary for POST /finance/transactions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /finance/payouts:
+    get:
+      tags:
+        - finance
+      summary: Auto-generated summary for GET /finance/payouts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /finance/payouts/request:
+    post:
+      tags:
+        - finance
+      summary: Auto-generated summary for POST /finance/payouts/request
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /finance/escrow/{project_id}:
+    get:
+      tags:
+        - finance
+      summary: Auto-generated summary for GET /finance/escrow/{project_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /invites/:
+    post:
+      tags:
+        - invite
+      summary: Auto-generated summary for POST /invites/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /invites/my-invites:
+    get:
+      tags:
+        - invite
+      summary: Auto-generated summary for GET /invites/my-invites
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /invites/{id}/respond:
+    put:
+      tags:
+        - invite
+      summary: Auto-generated summary for PUT /invites/{id}/respond
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /invites/job/{job_id}:
+    get:
+      tags:
+        - invite
+      summary: Auto-generated summary for GET /invites/job/{job_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /jobs/:
+    post:
+      tags:
+        - job
+      summary: Auto-generated summary for POST /jobs/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - job
+      summary: Auto-generated summary for GET /jobs/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /jobs/{id}:
+    get:
+      tags:
+        - job
+      summary: Auto-generated summary for GET /jobs/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+    put:
+      tags:
+        - job
+      summary: Auto-generated summary for PUT /jobs/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    delete:
+      tags:
+        - job
+      summary: Auto-generated summary for DELETE /jobs/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /messages/:
+    post:
+      tags:
+        - message
+      summary: Auto-generated summary for POST /messages/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /messages/conversations:
+    get:
+      tags:
+        - message
+      summary: Auto-generated summary for GET /messages/conversations
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /messages/{conversation_id}:
+    get:
+      tags:
+        - message
+      summary: Auto-generated summary for GET /messages/{conversation_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /notifications/:
+    get:
+      tags:
+        - notification
+      summary: Auto-generated summary for GET /notifications/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /notifications/{id}/read:
+    put:
+      tags:
+        - notification
+      summary: Auto-generated summary for PUT /notifications/{id}/read
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /projects/:
+    get:
+      tags:
+        - project
+      summary: Auto-generated summary for GET /projects/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /projects/{id}:
+    get:
+      tags:
+        - project
+      summary: Auto-generated summary for GET /projects/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /projects/{project_id}/milestones:
+    post:
+      tags:
+        - project
+      summary: Auto-generated summary for POST /projects/{project_id}/milestones
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /projects/milestones/{id}/status:
+    put:
+      tags:
+        - project
+      summary: Auto-generated summary for PUT /projects/milestones/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /quotes/:
+    post:
+      tags:
+        - quote
+      summary: Auto-generated summary for POST /quotes/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - quote
+      summary: Auto-generated summary for GET /quotes/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /quotes/{id}/status:
+    put:
+      tags:
+        - quote
+      summary: Auto-generated summary for PUT /quotes/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /referrals/code:
+    get:
+      tags:
+        - referral
+      summary: Auto-generated summary for GET /referrals/code
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /referrals/apply:
+    post:
+      tags:
+        - referral
+      summary: Auto-generated summary for POST /referrals/apply
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /referrals/my-referrals:
+    get:
+      tags:
+        - referral
+      summary: Auto-generated summary for GET /referrals/my-referrals
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /referrals/stats:
+    get:
+      tags:
+        - referral
+      summary: Auto-generated summary for GET /referrals/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /reports/:
+    post:
+      tags:
+        - report
+      summary: Auto-generated summary for POST /reports/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - report
+      summary: Auto-generated summary for GET /reports/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /reports/{id}/status:
+    put:
+      tags:
+        - report
+      summary: Auto-generated summary for PUT /reports/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /reviews/:
+    post:
+      tags:
+        - review
+      summary: Auto-generated summary for POST /reviews/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /reviews/user/{user_id}:
+    get:
+      tags:
+        - review
+      summary: Auto-generated summary for GET /reviews/user/{user_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /saved/:
+    post:
+      tags:
+        - saved
+      summary: Auto-generated summary for POST /saved/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - saved
+      summary: Auto-generated summary for GET /saved/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /saved/{contractor_id}:
+    delete:
+      tags:
+        - saved
+      summary: Auto-generated summary for DELETE /saved/{contractor_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: contractor_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /saved/check/{contractor_id}:
+    get:
+      tags:
+        - saved
+      summary: Auto-generated summary for GET /saved/check/{contractor_id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: contractor_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /settings/:
+    get:
+      tags:
+        - settings
+      summary: Auto-generated summary for GET /settings/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    put:
+      tags:
+        - settings
+      summary: Auto-generated summary for PUT /settings/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /settings/notifications:
+    get:
+      tags:
+        - settings
+      summary: Auto-generated summary for GET /settings/notifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    put:
+      tags:
+        - settings
+      summary: Auto-generated summary for PUT /settings/notifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /settings/privacy:
+    get:
+      tags:
+        - settings
+      summary: Auto-generated summary for GET /settings/privacy
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    put:
+      tags:
+        - settings
+      summary: Auto-generated summary for PUT /settings/privacy
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /stats/user-dashboard:
+    get:
+      tags:
+        - stats
+      summary: Auto-generated summary for GET /stats/user-dashboard
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /stats/admin-dashboard:
+    get:
+      tags:
+        - stats
+      summary: Auto-generated summary for GET /stats/admin-dashboard
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /templates/:
+    post:
+      tags:
+        - template
+      summary: Auto-generated summary for POST /templates/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - template
+      summary: Auto-generated summary for GET /templates/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /templates/{id}:
+    delete:
+      tags:
+        - template
+      summary: Auto-generated summary for DELETE /templates/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /transactions/:
+    post:
+      tags:
+        - transaction
+      summary: Auto-generated summary for POST /transactions/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - transaction
+      summary: Auto-generated summary for GET /transactions/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /transactions/stats:
+    get:
+      tags:
+        - transaction
+      summary: Auto-generated summary for GET /transactions/stats
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /transactions/{id}:
+    get:
+      tags:
+        - transaction
+      summary: Auto-generated summary for GET /transactions/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /transactions/{id}/status:
+    put:
+      tags:
+        - transaction
+      summary: Auto-generated summary for PUT /transactions/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /transactions/{id}/refund:
+    post:
+      tags:
+        - transaction
+      summary: Auto-generated summary for POST /transactions/{id}/refund
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/me:
+    get:
+      tags:
+        - user
+      summary: Auto-generated summary for GET /users/me
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /users/profile:
+    get:
+      tags:
+        - user
+      summary: Auto-generated summary for GET /users/profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+    put:
+      tags:
+        - user
+      summary: Auto-generated summary for PUT /users/profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/contractor-profile:
+    put:
+      tags:
+        - user
+      summary: Auto-generated summary for PUT /users/contractor-profile
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/portfolio:
+    post:
+      tags:
+        - user
+      summary: Auto-generated summary for POST /users/portfolio
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/portfolio/{id}:
+    delete:
+      tags:
+        - user
+      summary: Auto-generated summary for DELETE /users/portfolio/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /users/certifications:
+    post:
+      tags:
+        - user
+      summary: Auto-generated summary for POST /users/certifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/settings:
+    put:
+      tags:
+        - user
+      summary: Auto-generated summary for PUT /users/settings
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /users/notifications:
+    get:
+      tags:
+        - user
+      summary: Auto-generated summary for GET /users/notifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /users/notifications/{id}/read:
+    put:
+      tags:
+        - user
+      summary: Auto-generated summary for PUT /users/notifications/{id}/read
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /verification/request:
+    post:
+      tags:
+        - verification
+      summary: Auto-generated summary for POST /verification/request
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /verification/my-status:
+    get:
+      tags:
+        - verification
+      summary: Auto-generated summary for GET /verification/my-status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /verification/:
+    get:
+      tags:
+        - verification
+      summary: Auto-generated summary for GET /verification/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /verification/{id}:
+    get:
+      tags:
+        - verification
+      summary: Auto-generated summary for GET /verification/{id}
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /verification/{id}/approve:
+    put:
+      tags:
+        - verification
+      summary: Auto-generated summary for PUT /verification/{id}/approve
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /verification/{id}/reject:
+    put:
+      tags:
+        - verification
+      summary: Auto-generated summary for PUT /verification/{id}/reject
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+  /video-consultations/:
+    post:
+      tags:
+        - videoConsultation
+      summary: Auto-generated summary for POST /video-consultations/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+    get:
+      tags:
+        - videoConsultation
+      summary: Auto-generated summary for GET /video-consultations/
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+  /video-consultations/{id}/status:
+    put:
+      tags:
+        - videoConsultation
+      summary: Auto-generated summary for PUT /video-consultations/{id}/status
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exampleField:
+                  type: string
+
+  /ai/generate-contract:
+    post:
+      tags:
+        - ai
+      summary: Generate AI Contract
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bidId:
+                  type: string
+                projectId:
+                  type: string
+                ownerNotes:
+                  type: string
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server Error
+
+  /ai/contracts/{id}:
+    get:
+      tags:
+        - ai
+      summary: Get AI Contract
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+        '404':
+          description: Not found
+        '500':
+          description: Server Error
+
+  /ai/contracts/{id}/finalize:
+    post:
+      tags:
+        - ai
+      summary: Finalize AI Contract
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Finalized successfully
+        '500':
+          description: Server Error
+
+  /ai/milestones/{id}/analyze-progress:
+    post:
+      tags:
+        - ai
+      summary: Analyze Progress Photos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                photoUrls:
+                  type: array
+                  items:
+                    type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Analysis successful
+        '500':
+          description: Server Error
+
+  /ai/projects/{id}/generate-timeline:
+    post:
+      tags:
+        - ai
+      summary: Generate Project Timeline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Timeline generated
+        '500':
+          description: Server Error
+
+  /payments/stripe/connect:
+    post:
+      tags:
+        - payments
+      summary: Create Stripe Connect Account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account created
+        '500':
+          description: Server Error
+
+  /payments/stripe/connect/status:
+    get:
+      tags:
+        - payments
+      summary: Get Stripe Account Status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status retrieved
+        '500':
+          description: Server Error
+
+  /payments/stripe/connect/link:
+    post:
+      tags:
+        - payments
+      summary: Create Onboarding Link
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Link created
+        '500':
+          description: Server Error
+
+  /payments/projects/{id}/escrow/deposit:
+    post:
+      tags:
+        - payments
+      summary: Deposit to Escrow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                paymentMethodId:
+                  type: string
+      responses:
+        '200':
+          description: Deposit successful
+        '500':
+          description: Server Error
+
+  /payments/projects/{id}/escrow/release:
+    post:
+      tags:
+        - payments
+      summary: Release Escrow Funds
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Funds released
+        '500':
+          description: Server Error
+
+  /payments/webhook:
+    post:
+      tags:
+        - payments
+      summary: Stripe Webhook
+      responses:
+        '200':
+          description: Received
+
+  /upload/portfolio:
+    post:
+      tags:
+        - upload
+      summary: Upload Portfolio Image
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload successful
+
+  /upload/progress:
+    post:
+      tags:
+        - upload
+      summary: Upload Progress Photo
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload successful
+
+  /upload/document:
+    post:
+      tags:
+        - upload
+      summary: Upload Document
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload successful
+
+  /admin/moderation/queue:
+    get:
+      tags:
+        - moderation
+      summary: Get Moderation Queue
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queue retrieved
+
+  /admin/moderation/{id}/approve:
+    put:
+      tags:
+        - moderation
+      summary: Approve Report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Approved
+
+  /admin/moderation/{id}/reject:
+    put:
+      tags:
+        - moderation
+      summary: Reject Report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rejected
+
+  /admin/verification/queue:
+    get:
+      tags:
+        - moderation
+      summary: Get Verification Queue
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queue retrieved

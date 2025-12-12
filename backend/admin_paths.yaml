@@ -1,0 +1,424 @@
+  /admin/dashboard/stats:
+    get:
+      tags:
+        - Admin
+        - Stats
+      summary: Get admin dashboard statistics
+      description: Returns aggregated statistics for the admin dashboard
+      responses:
+        '200':
+          description: Stats retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/projects:
+    get:
+      tags:
+        - Admin
+        - Projects
+      summary: List all projects
+      description: Returns a paginated list of all projects
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Projects retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/jobs:
+    get:
+      tags:
+        - Admin
+        - Jobs
+      summary: List all jobs
+      description: Returns a paginated list of all jobs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Jobs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/finance/transactions:
+    get:
+      tags:
+        - Admin
+        - Payments
+      summary: List all transactions
+      description: Returns a paginated list of all financial transactions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/disputes:
+    get:
+      tags:
+        - Admin
+        - Disputes
+      summary: List all disputes
+      description: Returns a paginated list of all disputes
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Disputes retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/support/tickets:
+    get:
+      tags:
+        - Admin
+      summary: List support tickets
+      description: Returns a paginated list of support tickets
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tickets retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/verification/queue:
+    get:
+      tags:
+        - Admin
+      summary: Get verification queue
+      description: Returns pending verification requests
+      responses:
+        '200':
+          description: Queue retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/moderation/queue:
+    get:
+      tags:
+        - Admin
+      summary: Get moderation queue
+      description: Returns pending content moderation items
+      responses:
+        '200':
+          description: Queue retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/analytics:
+    get:
+      tags:
+        - Admin
+        - Stats
+      summary: Get platform analytics
+      description: Returns detailed platform analytics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+      responses:
+        '200':
+          description: Analytics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/settings:
+    get:
+      tags:
+        - Admin
+      summary: Get system settings
+      description: Returns system configuration settings
+      responses:
+        '200':
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+    put:
+      tags:
+        - Admin
+      summary: Update system settings
+      description: Updates system configuration settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/audit-logs:
+    get:
+      tags:
+        - Admin
+      summary: Get audit logs
+      description: Returns system audit logs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Logs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/payouts:
+    get:
+      tags:
+        - Admin
+        - Payments
+      summary: List all payouts
+      description: Returns a paginated list of payouts
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payouts retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/reviews:
+    get:
+      tags:
+        - Admin
+        - Reviews
+      summary: List all reviews
+      description: Returns a paginated list of reviews
+      parameters:
+        - name: rating
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reviews retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/messages:
+    get:
+      tags:
+        - Admin
+        - Messages
+      summary: List all messages
+      description: Returns a paginated list of messages for moderation
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/announcements:
+    get:
+      tags:
+        - Admin
+        - Announcements
+      summary: List announcements
+      description: Returns all announcements
+      responses:
+        '200':
+          description: Announcements retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+    post:
+      tags:
+        - Admin
+        - Announcements
+      summary: Create announcement
+      description: Creates a new announcement
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                target_role:
+                  type: string
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Announcement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/badges:
+    get:
+      tags:
+        - Admin
+        - Badges
+      summary: List badges
+      description: Returns all badges
+      responses:
+        '200':
+          description: Badges retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+    post:
+      tags:
+        - Admin
+        - Badges
+      summary: Create badge
+      description: Creates a new badge
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                icon_url:
+                  type: string
+      responses:
+        '200':
+          description: Badge created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /admin/appointments:
+    get:
+      tags:
+        - Admin
+        - Appointments
+      summary: List appointments
+      description: Returns a paginated list of appointments
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Appointments retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'

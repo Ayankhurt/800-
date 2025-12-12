@@ -1,0 +1,74 @@
+2025-12-12 04:27:02 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:27:02 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 04:28:50 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:28:50 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 04:29:15 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:29:15 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 04:33:57 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:33:57 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 04:42:54 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:42:54 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 04:44:57 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 04:44:57 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'suspended_until' column of 'users' in the schema cache"}}
+2025-12-12 15:06:53 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST116","details":"The result contains 0 rows","hint":null,"message":"Cannot coerce the result to a single JSON object"},"updateData":{"is_active":false,"suspended_until":null}}
+2025-12-12 15:06:53 [error]: Suspend user error: {"service":"bidroom-backend","id":"5b1c2b8e-b93e-44f9-b810-351cd8fd6567","error":{"code":"PGRST116","details":"The result contains 0 rows","hint":null,"message":"Cannot coerce the result to a single JSON object"}}
+2025-12-12 16:48:02 [error]: Get all payouts error: Could not find the 'deleted_at' column of 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-12 16:48:02 [error]: API error: {"service":"bidroom-backend","endpoint":"/users/5b1c2b8e-b93e-44f9-b810-351cd8fd6567/delete","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'deleted_at' column of 'users' in the schema cache"}}
+2025-12-12 16:53:33 [error]: Delete User Soft error: Could not find the 'deleted_at' column of 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-12 16:53:33 [error]: API error: {"service":"bidroom-backend","endpoint":"/users/5b1c2b8e-b93e-44f9-b810-351cd8fd6567/delete","error":{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'deleted_at' column of 'users' in the schema cache"}}
+2025-12-12 18:20:56 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 18:20:56 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 18:20:57 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 18:20:57 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:03:27 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:03:27 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:03:29 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:03:29 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:07:38 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:07:38 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:07:40 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:07:40 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:08:25 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:08:25 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:08:27 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET","ip":"::ffff:192.168.0.105"}
+2025-12-12 19:08:27 [error]: ReferenceError: logger is not defined
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/bidroom/backend/src/controllers/bidController.js:293:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {"service":"bidroom-backend","error":"logger is not defined","url":"/api/v1/bids?limit=1000","method":"GET"}
+2025-12-12 19:12:37 [error]: Get bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:12:37 [error]: Get all bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:12:39 [error]: Get bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:12:39 [error]: Get all bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:15:28 [error]: Get bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:15:28 [error]: Get all bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:15:29 [error]: Get bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}
+2025-12-12 19:15:29 [error]: Get all bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_submitted_by_fkey' in the schema 'public', but no matches were found.","hint":null}

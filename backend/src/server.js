@@ -18,7 +18,7 @@ validateEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const swaggerDocument = JSON.parse(readFileSync(path.join(__dirname, '../swagger-complete.json'), 'utf8'));
+const swaggerDocument = JSON.parse(readFileSync(path.join(__dirname, '../swagger-core.json'), 'utf8'));
 
 const app = express();
 
@@ -139,7 +139,14 @@ app.get("/api/health", (req, res) => {
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "BidRoom API Documentation"
+  customSiteTitle: "BidRoom API Documentation",
+  customJs: [
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js'
+  ],
+  customCssUrl: [
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css'
+  ]
 }));
 logger.info('Swagger documentation available at /api-docs');
 

@@ -18,7 +18,9 @@ validateEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const swaggerDocument = JSON.parse(readFileSync(path.join(__dirname, '../swagger-core.json'), 'utf8'));
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const swaggerDocument = require("./swagger.json");
 
 const app = express();
 

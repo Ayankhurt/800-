@@ -1,6 +1,6 @@
 /**
- * Core Swagger Generator Script
- * Generates Swagger documentation ONLY for Core Features used in Web & App.
+ * FINAL PRECISE Swagger Generator
+ * Generates Swagger for EXACT 105 endpoints used in Core Admin Panel Components
  */
 
 import fs from 'fs';
@@ -10,38 +10,28 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const routesDir = path.join(__dirname, 'src', 'routes');
 const outputFile = path.join(__dirname, 'src', 'swagger.json');
 
-// --- Define Core Routes (Whitelist) ---
-const coreRoutes = [
-    'authRoutes.js',
-    'userRoutes.js',
-    'adminRoutes.js',
-    'extendedAdminRoutes.js',
-    'jobRoutes.js',
-    'projectRoutes.js',
-    'bidRoutes.js',
-    'applicationRoutes.js',
-    'contractorRoutes.js',
-    'paymentRoutes.js',
-    'transactionRoutes.js',
-    'financeRoutes.js',
-    'disputeRoutes.js',
-    'verificationRoutes.js',
-    'reviewRoutes.js',
-    'messageRoutes.js',
-    'communicationRoutes.js',
-    'notificationRoutes.js',
-    'statsRoutes.js',
-    'settingsRoutes.js',
-    'uploadRoutes.js',
-    'moderationRoutes.js',
-    'reportRoutes.js'
-];
+// Read the exact list from core-endpoints.txt
+const coreEndpointsFile = path.join(__dirname, 'core-endpoints.txt');
+const CORE_ENDPOINTS = fs.readFileSync(coreEndpointsFile, 'utf8')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
 
-// --- 1. Define Reusable Schemas (Standardized) ---
+const allowedEndpoints = new Set(CORE_ENDPOINTS);
+
+console.log(`📋 Loaded ${CORE_ENDPOINTS.length} core endpoints from file`);
+
+// Minimal schemas
 const schemas = {
-    // Auth
+    GenericRequest: {
+        type: "object",
+        properties: {
+            data: { type: "object" }
+        }
+    },
     AuthLogin: {
         type: "object",
         required: ["email", "password"],
@@ -49,189 +39,19 @@ const schemas = {
             email: { type: "string", format: "email", example: "admin@example.com" },
             password: { type: "string", format: "password", example: "password123" }
         }
-    },
-    AuthSignup: {
-        type: "object",
-        required: ["email", "password", "first_name", "last_name", "role"],
-        properties: {
-            email: { type: "string", format: "email", example: "newuser@example.com" },
-            password: { type: "string", format: "password", example: "StrongPass123!" },
-            first_name: { type: "string", example: "John" },
-            last_name: { type: "string", example: "Doe" },
-            role: { type: "string", enum: ["client", "contractor", "admin"], example: "client" },
-            phone: { type: "string", example: "+1234567890" }
-        }
-    },
-
-    // Projects
-    ProjectCreate: {
-        type: "object",
-        required: ["title", "description", "budget_min"],
-        properties: {
-            title: { type: "string", example: "Kitchen Renovation" },
-            description: { type: "string", example: "Complete remodel of kitchen including new cabinets and floor." },
-            budget_min: { type: "number", example: 5000 },
-            budget_max: { type: "number", example: 15000 },
-            location: { type: "string", example: "Austin, TX" },
-            deadline: { type: "string", format: "date", example: "2025-12-31" }
-        }
-    },
-    ProjectMilestone: {
-        type: "object",
-        required: ["title", "amount", "due_date"],
-        properties: {
-            title: { type: "string", example: "Phase 1: Demolition" },
-            description: { type: "string", example: "Remove old cabinets" },
-            payment_amount: { type: "number", example: 2000 },
-            due_date: { type: "string", format: "date", example: "2025-06-01" }
-        }
-    },
-
-    // Jobs
-    JobCreate: {
-        type: "object",
-        required: ["title", "description", "trade_type"],
-        properties: {
-            title: { type: "string", example: "Fix Leaky Faucet" },
-            description: { type: "string", example: "Kitchen sink faucet is dripping constantly." },
-            trade_type: { type: "string", example: "plumber" },
-            location: { type: "string", example: "Seattle, WA" },
-            budget_min: { type: "number", example: 100 },
-            budget_max: { type: "number", example: 300 }
-        }
-    },
-
-    // Bids
-    BidPlace: {
-        type: "object",
-        required: ["job_id", "amount", "proposal"],
-        properties: {
-            job_id: { type: "string", format: "uuid", example: "123e4567-e89b-12d3-a456-426614174000" },
-            amount: { type: "number", example: 150 },
-            proposal: { type: "string", example: "I have 5 years experience and can fix this today." },
-            completion_time: { type: "string", example: "2 days" }
-        }
-    },
-
-    // Admin
-    AdminUserUpdate: {
-        type: "object",
-        properties: {
-            role: { type: "string", enum: ["client", "contractor", "admin"] },
-            is_verified: { type: "boolean" },
-            status: { type: "string", enum: ["active", "suspended"] }
-        }
-    },
-    AdminSuspend: {
-        type: "object",
-        required: ["reason"],
-        properties: {
-            reason: { type: "string", example: "Violation of terms" },
-            duration_days: { type: "integer", example: 7 }
-        }
-    },
-
-    // Communication
-    SendMessage: {
-        type: "object",
-        required: ["content"],
-        properties: {
-            content: { type: "string", example: "Hello, when can you start?" },
-            attachments: { type: "array", items: { type: "string" } }
-        }
-    },
-    CreateConversation: {
-        type: "object",
-        required: ["recipient_id"],
-        properties: {
-            recipient_id: { type: "string", format: "uuid" },
-            subject: { type: "string", example: "Regarding Project X" }
-        }
-    },
-
-    // Reviews
-    CreateReview: {
-        type: "object",
-        required: ["rating", "comment", "reviewee_id"],
-        properties: {
-            reviewee_id: { type: "string", format: "uuid" },
-            project_id: { type: "string", format: "uuid" },
-            rating: { type: "number", min: 1, max: 5, example: 5 },
-            comment: { type: "string", example: "Excellent work, highly recommended!" }
-        }
-    },
-
-    // Disputes
-    CreateDispute: {
-        type: "object",
-        required: ["reason", "description", "project_id"],
-        properties: {
-            project_id: { type: "string", format: "uuid" },
-            reason: { type: "string", example: "Work not completed" },
-            description: { type: "string", example: "Contractor stopped showing up." },
-            evidence: { type: "array", items: { type: "string" } }
-        }
-    },
-
-    // Notifications
-    Notification: {
-        type: "object",
-        properties: {
-            id: { type: "string", format: "uuid" },
-            user_id: { type: "string", format: "uuid" },
-            title: { type: "string", example: "New Message" },
-            content: { type: "string", example: "You have a new message from John" },
-            type: { type: "string", enum: ["info", "warning", "success", "error"], example: "info" },
-            is_read: { type: "boolean", example: false },
-            read_at: { type: "string", format: "date-time", nullable: true },
-            created_at: { type: "string", format: "date-time" },
-            updated_at: { type: "string", format: "date-time" }
-        }
-    },
-    SendNotification: {
-        type: "object",
-        required: ["message"],
-        properties: {
-            message: { type: "string", example: "Your account has been verified!" },
-            type: { type: "string", enum: ["info", "warning", "success", "error"], default: "info" }
-        }
-    },
-    BulkNotification: {
-        type: "object",
-        required: ["user_ids", "message"],
-        properties: {
-            user_ids: {
-                type: "array",
-                items: { type: "string", format: "uuid" },
-                example: ["123e4567-e89b-12d3-a456-426614174000", "987fcdeb-51a2-43f1-b456-426614174111"]
-            },
-            message: { type: "string", example: "System maintenance scheduled for tonight" },
-            type: { type: "string", enum: ["info", "warning", "success", "error"], default: "info" },
-            title: { type: "string", example: "Maintenance Alert" }
-        }
-    },
-
-    // Generic
-    StatusUpdate: {
-        type: "object",
-        required: ["status"],
-        properties: {
-            status: { type: "string", example: "approved" },
-            note: { type: "string", example: "All looks good." }
-        }
     }
 };
 
-// --- 2. Base Config ---
 const swaggerBase = {
     "openapi": "3.0.0",
     "info": {
-        "title": "BidRoom Core API",
-        "description": "API documentation for Core Features (Web & Mobile App).",
+        "title": "BidRoom Admin Panel API",
+        "description": `Core API endpoints used in Admin Panel (${CORE_ENDPOINTS.length} endpoints)`,
         "version": "1.0.0"
     },
     "servers": [
-        { "url": "http://192.168.2.10:5000/api/v1", "description": "Local API v1" }
+        { "url": "http://192.168.2.10:5000/api/v1", "description": "Local Development" },
+        { "url": "https://800-backend.vercel.app/api/v1", "description": "Production" }
     ],
     "tags": [],
     "paths": {},
@@ -243,156 +63,118 @@ const swaggerBase = {
     }
 };
 
-// --- 3. Route Configuration ---
 const routePrefixMap = {
     'authRoutes.js': '/auth',
     'userRoutes.js': '/users',
-    'jobRoutes.js': '/jobs',
-    'bidRoutes.js': '/bids',
-    'projectRoutes.js': '/projects',
-    'reviewRoutes.js': '/reviews',
-    'communicationRoutes.js': '/communication',
     'adminRoutes.js': '/admin',
     'extendedAdminRoutes.js': '/admin',
-    'contractorRoutes.js': '/contractors',
+    'jobRoutes.js': '/jobs',
+    'projectRoutes.js': '/projects',
+    'bidRoutes.js': '/bids',
     'disputeRoutes.js': '/disputes',
-    'appointmentRoutes.js': '/appointments',
-    'financeRoutes.js': '/finance',
-    'verificationRoutes.js': '/verification',
-    'settingsRoutes.js': '/settings',
-    'inviteRoutes.js': '/invites',
-    'reportRoutes.js': '/reports',
-    'analyticsRoutes.js': '/analytics',
-    'aiRoutes.js': '/ai',
-    'messageRoutes.js': '/messages',
     'notificationRoutes.js': '/notifications',
-    'transactionRoutes.js': '/transactions',
-    'moderationRoutes.js': '/admin/moderation',
-    'applicationRoutes.js': '/applications',
-    'uploadRoutes.js': '/upload',
+    'messageRoutes.js': '/messages',
     'paymentRoutes.js': '/payments',
-    'statsRoutes.js': '/stats'
+    'statsRoutes.js': '/stats',
+    'verificationRoutes.js': '/verification',
+    'moderationRoutes.js': '/admin/moderation',
+    'financeRoutes.js': '/finance',
+    'transactionRoutes.js': '/transactions',
 };
 
-// --- 4. Schema Mapper Function ---
-function getSpecificSchema(tag, method, path) {
-    const p = path.toLowerCase();
-    if (tag === 'Auth') {
-        if (p.includes('login')) return { $ref: '#/components/schemas/AuthLogin' };
-        if (p.includes('signup') || p.includes('register')) return { $ref: '#/components/schemas/AuthSignup' };
-        if (p.includes('password')) return { type: "object", properties: { password: { type: "string" }, newPassword: { type: "string" } } };
-    }
-    if (tag === 'Projects') {
-        if (p.includes('milestone')) return { $ref: '#/components/schemas/ProjectMilestone' };
-        if (p.includes('status')) return { $ref: '#/components/schemas/StatusUpdate' };
-        if (method === 'post' || method === 'put') return { $ref: '#/components/schemas/ProjectCreate' };
-    }
-    if (tag === 'Jobs') {
-        if (method === 'post' || method === 'put') return { $ref: '#/components/schemas/JobCreate' };
-    }
-    if (tag === 'Bids') {
-        if (p.includes('status')) return { $ref: '#/components/schemas/StatusUpdate' };
-        if (method === 'post' || method === 'put') return { $ref: '#/components/schemas/BidPlace' };
-    }
-    if (tag === 'Admin' || tag === 'Moderation') {
-        if (p.includes('suspend')) return { $ref: '#/components/schemas/AdminSuspend' };
-        if (p.includes('approve') || p.includes('reject')) return { type: "object", properties: { reason: { type: "string" } } };
-        if (method === 'patch' || method === 'put') return { $ref: '#/components/schemas/AdminUserUpdate' };
-    }
-    if (tag === 'Communication' || tag === 'Messages') {
-        if (p.includes('message')) return { $ref: '#/components/schemas/SendMessage' };
-        if (method === 'post') return { $ref: '#/components/schemas/CreateConversation' };
-    }
-    if (tag === 'Reviews') {
-        if (method === 'post') return { $ref: '#/components/schemas/CreateReview' };
-    }
-    if (tag === 'Disputes') {
-        if (method === 'post') return { $ref: '#/components/schemas/CreateDispute' };
-    }
-    if (tag === 'Notifications') {
-        if (p.includes('bulk')) return { $ref: '#/components/schemas/BulkNotification' };
-        if (p.includes('notify') || (method === 'post' && !p.includes('bulk'))) return { $ref: '#/components/schemas/SendNotification' };
-        if (method === 'put' || method === 'patch') return { type: "object", properties: { is_read: { type: "boolean" } } };
-    }
-    return {
-        type: "object",
-        properties: {
-            data: { type: "string", example: "Enter required data" },
-            settings: { type: "object", example: { "key": "value" } }
-        }
-    };
-}
+console.log('🚀 Generating FINAL PRECISE Swagger...\n');
 
-console.log('🚀 Starting Core Swagger Generation...');
+const routeFiles = fs.readdirSync(routesDir).filter(f => f.endsWith('Routes.js'));
+let totalScanned = 0;
+let includedCount = 0;
 
-const allFiles = fs.readdirSync(routesDir).filter(file => file.endsWith('Routes.js'));
-const targetFiles = allFiles.filter(file => coreRoutes.includes(file));
+routeFiles.forEach(file => {
+    const prefix = routePrefixMap[file];
+    if (!prefix) return;
 
-let totalEndpoints = 0;
-
-targetFiles.forEach(file => {
-    const prefix = routePrefixMap[file] || `/${file.replace('Routes.js', '')}`;
     const tagName = file.replace('Routes.js', '').replace('extended', '');
     const cleanTag = tagName.charAt(0).toUpperCase() + tagName.slice(1);
-
-    if (!swaggerBase.tags.find(t => t.name === cleanTag)) {
-        swaggerBase.tags.push({ name: cleanTag });
-    }
 
     const content = fs.readFileSync(path.join(routesDir, file), 'utf8');
     const regex = /router\.(get|post|put|delete|patch)\s*\(\s*["']([^"']+)["']/g;
     let match;
 
     while ((match = regex.exec(content)) !== null) {
-        const method = match[1];
+        const method = match[1].toUpperCase();
         let routePath = match[2];
         if (routePath === '/') routePath = '';
 
         let fullPath = `${prefix}${routePath}`.replace('//', '/');
         if (fullPath === '') fullPath = '/';
+
+        totalScanned++;
+        const endpointKey = `${method} ${fullPath}`;
+
+        if (!allowedEndpoints.has(endpointKey)) {
+            continue; // Skip - not in core list
+        }
+
+        includedCount++;
         const swaggerPath = fullPath.replace(/:(\w+)/g, '{$1}');
 
         if (!swaggerBase.paths[swaggerPath]) {
             swaggerBase.paths[swaggerPath] = {};
         }
 
+        if (!swaggerBase.tags.find(t => t.name === cleanTag)) {
+            swaggerBase.tags.push({ name: cleanTag });
+        }
+
         const operation = {
             "tags": [cleanTag],
-            "summary": `${method.toUpperCase()} ${fullPath}`,
+            "summary": `${method} ${fullPath}`,
             "security": [{ "bearerAuth": [] }],
             "responses": {
-                "200": { "description": "Success", "content": { "application/json": { "schema": { "type": "object", "example": { "success": true } } } } },
+                "200": { "description": "Success" },
                 "400": { "description": "Bad Request" },
-                "401": { "description": "Unauthorized" }
+                "401": { "description": "Unauthorized" },
+                "403": { "description": "Forbidden" },
+                "404": { "description": "Not Found" },
+                "500": { "description": "Internal Server Error" }
             }
         };
 
+        // Add path parameters
         const paramMatches = fullPath.match(/:(\w+)/g);
         if (paramMatches) {
             operation.parameters = paramMatches.map(p => ({
                 name: p.substring(1),
                 in: "path",
                 required: true,
-                schema: { type: "string" }
+                schema: { type: "string" },
+                description: `${p.substring(1)} identifier`
             }));
         }
 
-        if (['post', 'put', 'patch'].includes(method)) {
+        // Add request body for POST/PUT/PATCH
+        if (['POST', 'PUT', 'PATCH'].includes(method)) {
+            const schema = fullPath.includes('/login')
+                ? { $ref: '#/components/schemas/AuthLogin' }
+                : { $ref: '#/components/schemas/GenericRequest' };
+
             operation.requestBody = {
                 "required": true,
                 "content": {
                     "application/json": {
-                        "schema": getSpecificSchema(cleanTag, method, fullPath)
+                        "schema": schema
                     }
                 }
             };
         }
 
-        swaggerBase.paths[swaggerPath][method] = operation;
-        totalEndpoints++;
+        swaggerBase.paths[swaggerPath][method.toLowerCase()] = operation;
     }
 });
 
 fs.writeFileSync(outputFile, JSON.stringify(swaggerBase, null, 2));
-console.log(`\n✅ Generated ${totalEndpoints} CORE endpoints!`);
+
+console.log(`✅ SUCCESS!`);
+console.log(`   Scanned: ${totalScanned} total endpoints`);
+console.log(`   Included: ${includedCount} core endpoints`);
+console.log(`   Excluded: ${totalScanned - includedCount} non-core endpoints`);
 console.log(`📂 Output: ${outputFile}\n`);

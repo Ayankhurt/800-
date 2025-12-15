@@ -50,8 +50,8 @@ const swaggerBase = {
         "version": "1.0.0"
     },
     "servers": [
-        { "url": "http://192.168.2.10:5000/api/v1", "description": "Local Development" },
-        { "url": "https://800-backend.vercel.app/api/v1", "description": "Production" }
+        { "url": "https://800-phi.vercel.app/api/v1", "description": "Production (Vercel)" },
+        { "url": "http://192.168.2.10:5000/api/v1", "description": "Local Development" }
     ],
     "tags": [],
     "paths": {},

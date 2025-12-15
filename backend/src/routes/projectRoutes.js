@@ -6,7 +6,8 @@ import {
     updateProject,
     deleteProject,
     createMilestone,
-    updateMilestoneStatus
+    updateMilestoneStatus,
+    getMilestones
 } from "../controllers/projectController.js";
 import { authenticateUser } from "../middlewares/auth.js";
 
@@ -18,6 +19,8 @@ router.get("/:id", authenticateUser, getProjectById);
 router.put("/:id", authenticateUser, updateProject);
 router.delete("/:id", authenticateUser, deleteProject);
 
+
+router.get("/:project_id/milestones", authenticateUser, getMilestones);
 router.post("/:project_id/milestones", authenticateUser, createMilestone);
 router.put("/milestones/:id/status", authenticateUser, updateMilestoneStatus);
 

@@ -40,14 +40,13 @@ import {
 } from '../ui/select';
 import {
   Search,
-  Download,
-  MoreVertical,
+  RefreshCw,
   CheckCircle2,
   XCircle,
-  RefreshCw,
-  FileText,
   AlertCircle,
   CreditCard,
+  Eye,
+  MoreVertical,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -57,15 +56,9 @@ export default function PayoutManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showHoldDialog, setShowHoldDialog] = useState(false);
-  const [showBankDialog, setShowBankDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
   const [holdReason, setHoldReason] = useState('');
-  const [bankDetails, setBankDetails] = useState({
-    account_number: '',
-    routing_number: '',
-    bank_name: '',
-    account_type: '',
-  });
 
   useEffect(() => {
     loadPayouts();
@@ -129,27 +122,7 @@ export default function PayoutManagement() {
     }
   };
 
-  const handleUpdateBank = async () => {
-    if (!selectedPayout) return;
 
-    try {
-      const response = await adminService.updatePayoutBankDetails(selectedPayout.id, bankDetails);
-      if (response.success) {
-        toast.success('Bank details updated');
-        setShowBankDialog(false);
-        setSelectedPayout(null);
-        setBankDetails({
-          account_number: '',
-          routing_number: '',
-          bank_name: '',
-          account_type: '',
-        });
-        loadPayouts();
-      }
-    } catch (error: any) {
-      toast.error('Failed to update bank details');
-    }
-  };
 
   const handleResend = async (payout: Payout) => {
     try {
@@ -163,22 +136,7 @@ export default function PayoutManagement() {
     }
   };
 
-  const handleGenerate1099 = async (payout: Payout, year: number) => {
-    try {
-      const blob = await adminService.generate1099Form(payout.contractor.id, year);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `1099-${payout.contractor.id}-${year}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('1099 form generated');
-    } catch (error: any) {
-      toast.error('Failed to generate 1099 form');
-    }
-  };
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -323,6 +281,15 @@ export default function PayoutManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedPayout(payout);
+                              setShowDetailDialog(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
                           {payout.status === 'pending' && (
                             <DropdownMenuItem
                               onClick={() => handleApprove(payout)}
@@ -342,23 +309,6 @@ export default function PayoutManagement() {
                               Hold
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedPayout(payout);
-                              if (payout.bank_account) {
-                                setBankDetails({
-                                  account_number: payout.bank_account.account_number || '',
-                                  routing_number: payout.bank_account.routing_number || '',
-                                  bank_name: payout.bank_account.bank_name || '',
-                                  account_type: payout.bank_account.account_type || '',
-                                });
-                              }
-                              setShowBankDialog(true);
-                            }}
-                          >
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Update Bank Details
-                          </DropdownMenuItem>
                           {payout.status === 'failed' && (
                             <DropdownMenuItem
                               onClick={() => handleResend(payout)}
@@ -367,15 +317,7 @@ export default function PayoutManagement() {
                               Resend
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const year = new Date().getFullYear();
-                              handleGenerate1099(payout, year);
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Generate 1099
-                          </DropdownMenuItem>
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -426,78 +368,182 @@ export default function PayoutManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Bank Details Dialog */}
-      <Dialog open={showBankDialog} onOpenChange={setShowBankDialog}>
-        <DialogContent>
+
+
+      {/* Payout Details Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Update Bank Details</DialogTitle>
+            <DialogTitle>Payout Details</DialogTitle>
             <DialogDescription>
-              Update bank account information for this payout
+              Complete information about this payout
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Bank Name</Label>
-              <Input
-                value={bankDetails.bank_name}
-                onChange={(e) =>
-                  setBankDetails({ ...bankDetails, bank_name: e.target.value })
-                }
-              />
+          {selectedPayout && (
+            <div className="space-y-6 py-4">
+              {/* Contractor Info */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg border-b pb-2">Contractor Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Name</p>
+                    <p className="font-medium">{selectedPayout.contractor.full_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium">{selectedPayout.contractor.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Contractor ID</p>
+                    <p className="font-medium text-xs">{selectedPayout.contractor.id}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payout Info */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg border-b pb-2">Payout Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Amount</p>
+                    <p className="font-medium text-xl text-green-600">
+                      {formatCurrency(selectedPayout.amount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <div className="mt-1">{getStatusBadge(selectedPayout.status)}</div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Payout ID</p>
+                    <p className="font-medium text-xs">{selectedPayout.id}</p>
+                  </div>
+                  {selectedPayout.project_id && (
+                    <div>
+                      <p className="text-sm text-gray-500">Project ID</p>
+                      <p className="font-medium text-xs">{selectedPayout.project_id}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bank Account Info */}
+              {selectedPayout.bank_account && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg border-b pb-2">Bank Account</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Bank Name</p>
+                      <p className="font-medium">{selectedPayout.bank_account.bank_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Account Type</p>
+                      <p className="font-medium capitalize">{selectedPayout.bank_account.account_type || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Verified</p>
+                      <div className="flex items-center gap-1">
+                        {selectedPayout.bank_account.verified ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span className="text-green-600">Verified</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <span className="text-red-600">Not Verified</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Dates Info */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg border-b pb-2">Timeline</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Created At</p>
+                    <p className="font-medium">
+                      {selectedPayout.created_at
+                        ? format(new Date(selectedPayout.created_at), 'MMM dd, yyyy HH:mm')
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Scheduled Date</p>
+                    <p className="font-medium">
+                      {selectedPayout.scheduled_date
+                        ? format(new Date(selectedPayout.scheduled_date), 'MMM dd, yyyy')
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Processed At</p>
+                    <p className="font-medium">
+                      {selectedPayout.processed_at
+                        ? format(new Date(selectedPayout.processed_at), 'MMM dd, yyyy HH:mm')
+                        : 'Not yet processed'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Failure Info (if failed) */}
+              {selectedPayout.status === 'failed' && selectedPayout.failure_reason && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg border-b pb-2 text-red-600">Failure Information</h3>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800">Failure Reason</p>
+                        <p className="text-sm text-red-700 mt-1">{selectedPayout.failure_reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Hold Info (if held) */}
+              {selectedPayout.status === 'held' && selectedPayout.hold_reason && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg border-b pb-2 text-orange-600">Hold Information</h3>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-orange-800">Hold Reason</p>
+                        <p className="text-sm text-orange-700 mt-1">{selectedPayout.hold_reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label>Account Number</Label>
-              <Input
-                value={bankDetails.account_number}
-                onChange={(e) =>
-                  setBankDetails({ ...bankDetails, account_number: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Routing Number</Label>
-              <Input
-                value={bankDetails.routing_number}
-                onChange={(e) =>
-                  setBankDetails({ ...bankDetails, routing_number: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Account Type</Label>
-              <Select
-                value={bankDetails.account_type}
-                onValueChange={(value) =>
-                  setBankDetails({ ...bankDetails, account_type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="checking">Checking</SelectItem>
-                  <SelectItem value="savings">Savings</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
-                setShowBankDialog(false);
+                setShowDetailDialog(false);
                 setSelectedPayout(null);
-                setBankDetails({
-                  account_number: '',
-                  routing_number: '',
-                  bank_name: '',
-                  account_type: '',
-                });
               }}
             >
-              Cancel
+              Close
             </Button>
-            <Button onClick={handleUpdateBank}>Update Bank Details</Button>
+            {selectedPayout?.status === 'pending' && (
+              <Button onClick={() => {
+                handleApprove(selectedPayout);
+                setShowDetailDialog(false);
+                setSelectedPayout(null);
+              }}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Approve Payout
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

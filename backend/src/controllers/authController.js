@@ -284,22 +284,14 @@ export const login = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json(formatResponse(false, "Unauthorized", null));
+    // Auth middleware already fetched user from either users or admin_users table
+    const user = req.user;
 
-    const { data: user, error } = await supabase
-      .from("users")
-      .select(`
-        *,
-        contractor_profiles (*)
-      `)
-      .eq("id", userId)
-      .single();
-
-    if (error || !user) {
-      return res.status(404).json(formatResponse(false, "User not found", null));
+    if (!user) {
+      return res.status(401).json(formatResponse(false, "Unauthorized", null));
     }
 
+    // Return user data (already includes all necessary fields)
     return res.json(formatResponse(true, "User profile retrieved", user));
   } catch (err) {
     return res.status(500).json(formatResponse(false, err.message, null));
@@ -554,21 +546,27 @@ export const resendVerification = async (req, res) => {
 
 export const adminCreateUser = async (req, res) => {
   try {
-    const { email, password, first_name, last_name, role, full_name, role_code } = req.body;
+    const { email, password, first_name, last_name, role, full_name, role_code, phone, company_name } = req.body;
 
     let finalFirstName = first_name;
     let finalLastName = last_name;
     const finalRole = role || role_code;
 
-    // Handle full name split if first/last not provided
-    if (full_name && (!finalFirstName || !finalLastName)) {
-      const parts = full_name.trim().split(' ');
+    // Handle full name - prioritize full_name if provided
+    if (full_name && full_name.trim()) {
+      const parts = full_name.trim().split(/\s+/); // Split by any whitespace
       finalFirstName = parts[0];
-      finalLastName = parts.slice(1).join(' ') || 'User';
+      finalLastName = parts.slice(1).join(' ') || parts[0]; // Use first name as last if only one word
     }
 
-    if (!email || !password || !finalFirstName || !finalLastName || !finalRole) {
-      return res.status(400).json(formatResponse(false, "Missing required fields (Name, Email, Password, Role)", null));
+    // Validate required fields
+    if (!email || !password || !finalFirstName || !finalRole) {
+      return res.status(400).json(formatResponse(false, "Missing required fields: email, password, name, and role are required", null));
+    }
+
+    // Ensure last name has a value
+    if (!finalLastName) {
+      finalLastName = finalFirstName; // Use first name as last name if not provided
     }
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -590,7 +588,6 @@ export const adminCreateUser = async (req, res) => {
         first_name: finalFirstName,
         last_name: finalLastName,
         role: finalRole,
-        role_code: finalRole, // ensure role_code is saved
         is_active: true,
         verification_status: 'verified'
       });

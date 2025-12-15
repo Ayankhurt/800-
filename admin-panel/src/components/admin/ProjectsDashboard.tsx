@@ -23,23 +23,8 @@ import {
 } from '../ui/select';
 import { Badge } from '../ui/badge';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { Label } from '../ui/label';
-import {
   Search,
   Eye,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -51,96 +36,87 @@ export default function ProjectsDashboard() {
   const [dashboard, setDashboard] = useState<ProjectsDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    status: 'all',
+  status: 'all',
     owner_id: '',
-    contractor_id: '',
-    trade_type: '',
-    budget_min: '',
-    budget_max: '',
-    start_date_from: undefined as Date | undefined,
-    start_date_to: undefined as Date | undefined,
-    completion_percentage_min: '',
-    completion_percentage_max: '',
+      contractor_id: '',
+        trade_type: '',
   });
 
-  useEffect(() => {
-    loadDashboard();
-    loadProjects();
-  }, [filters]);
+useEffect(() => {
+  loadDashboard();
+  loadProjects();
+}, [filters]);
 
-  const loadDashboard = async () => {
-    try {
-      const response = await adminService.getProjectsDashboard();
-      if (response.success) {
-        setDashboard(response.data);
-      }
-    } catch (error: any) {
-      // Handle error silently
+const loadDashboard = async () => {
+  try {
+    const response = await adminService.getProjectsDashboard();
+    if (response.success) {
+      setDashboard(response.data);
     }
+  } catch (error: any) {
+    // Handle error silently
+  }
+};
+
+const loadProjects = async () => {
+  try {
+    setLoading(true);
+    const params: any = {};
+    if (filters.status && filters.status !== 'all') params.status = filters.status;
+    if (filters.owner_id) params.owner_id = filters.owner_id;
+    if (filters.contractor_id) params.contractor_id = filters.contractor_id;
+    if (filters.trade_type) params.trade_type = filters.trade_type;
+    if (filters.budget_min) params.budget_min = Number(filters.budget_min);
+    if (filters.budget_max) params.budget_max = Number(filters.budget_max);
+    if (filters.start_date_from) params.start_date_from = filters.start_date_from.toISOString();
+    if (filters.start_date_to) params.start_date_to = filters.start_date_to.toISOString();
+    if (filters.completion_percentage_min) params.completion_percentage_min = Number(filters.completion_percentage_min);
+    if (filters.completion_percentage_max) params.completion_percentage_max = Number(filters.completion_percentage_max);
+
+    const response = await adminService.getAllProjects(params);
+    if (response.success) {
+      setProjects(response.data.projects || response.data || []);
+    }
+  } catch (error: any) {
+    toast.error('Failed to load projects');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const filteredProjects = useMemo(() => {
+  let filtered = projects;
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (project) =>
+        project.title?.toLowerCase().includes(query) ||
+        project.description?.toLowerCase().includes(query) ||
+        project.owner?.full_name?.toLowerCase().includes(query) ||
+        project.contractor?.full_name?.toLowerCase().includes(query)
+    );
+  }
+  return filtered;
+}, [projects, searchQuery]);
+
+const handleExport = async () => {
+  try {
+    // Export logic would go here
+    toast.success('Projects exported successfully');
+  } catch (error: any) {
+    toast.error('Failed to export projects');
+  }
+};
+
+const getStatusBadge = (status: string) => {
+  const config: Record<string, { label: string; className: string }> = {
+    setup: { label: 'Setup', className: 'bg-blue-500' },
+    active: { label: 'Active', className: 'bg-green-500' },
+    completed: { label: 'Completed', className: 'bg-gray-500' },
+    disputed: { label: 'Disputed', className: 'bg-red-500' },
+    cancelled: { label: 'Cancelled', className: 'bg-orange-500' },
   };
 
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      const params: any = {};
-      if (filters.status && filters.status !== 'all') params.status = filters.status;
-      if (filters.owner_id) params.owner_id = filters.owner_id;
-      if (filters.contractor_id) params.contractor_id = filters.contractor_id;
-      if (filters.trade_type) params.trade_type = filters.trade_type;
-      if (filters.budget_min) params.budget_min = Number(filters.budget_min);
-      if (filters.budget_max) params.budget_max = Number(filters.budget_max);
-      if (filters.start_date_from) params.start_date_from = filters.start_date_from.toISOString();
-      if (filters.start_date_to) params.start_date_to = filters.start_date_to.toISOString();
-      if (filters.completion_percentage_min) params.completion_percentage_min = Number(filters.completion_percentage_min);
-      if (filters.completion_percentage_max) params.completion_percentage_max = Number(filters.completion_percentage_max);
-
-      const response = await adminService.getAllProjects(params);
-      if (response.success) {
-        setProjects(response.data.projects || response.data || []);
-      }
-    } catch (error: any) {
-      toast.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredProjects = useMemo(() => {
-    let filtered = projects;
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (project) =>
-          project.title?.toLowerCase().includes(query) ||
-          project.description?.toLowerCase().includes(query) ||
-          project.owner?.full_name?.toLowerCase().includes(query) ||
-          project.contractor?.full_name?.toLowerCase().includes(query)
-      );
-    }
-    return filtered;
-  }, [projects, searchQuery]);
-
-  const handleExport = async () => {
-    try {
-      // Export logic would go here
-      toast.success('Projects exported successfully');
-    } catch (error: any) {
-      toast.error('Failed to export projects');
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { label: string; className: string }> = {
-      setup: { label: 'Setup', className: 'bg-blue-500' },
-      active: { label: 'Active', className: 'bg-green-500' },
-      completed: { label: 'Completed', className: 'bg-gray-500' },
-      disputed: { label: 'Disputed', className: 'bg-red-500' },
-      cancelled: { label: 'Cancelled', className: 'bg-orange-500' },
-    };
-    const c = config[status] || { label: status, className: 'bg-gray-500' };
-    return <Badge className={c.className}>{c.label}</Badge>;
-  };
 
   if (loading && !dashboard) {
     return (
@@ -166,114 +142,7 @@ export default function ProjectsDashboard() {
         {/* Export removed - Core features only */}
       </div>
 
-      {/* Overview Stats */}
-      {dashboard && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">Active Projects</p>
-                  <p className="text-xl font-bold mt-1">{dashboard.active_projects_count}</p>
-                </div>
-                <TrendingUp className="h-5 w-5 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">Avg Completion</p>
-                  <p className="text-xl font-bold mt-1">{dashboard.average_completion_time}d</p>
-                </div>
-                <Clock className="h-5 w-5 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">On-Time Rate</p>
-                  <p className="text-xl font-bold mt-1">{dashboard.on_time_completion_rate}%</p>
-                </div>
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">Total Released</p>
-                  <p className="text-xl font-bold mt-1">
-                    ${(dashboard.payment_release_stats.total_released / 1000).toFixed(0)}k
-                  </p>
-                </div>
-                <DollarSign className="h-5 w-5 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">Pending</p>
-                  <p className="text-xl font-bold mt-1">
-                    ${(dashboard.payment_release_stats.total_pending / 1000).toFixed(0)}k
-                  </p>
-                </div>
-                <Clock className="h-5 w-5 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500">Dispute Rate</p>
-                  <p className="text-xl font-bold mt-1">{dashboard.dispute_rate}%</p>
-                </div>
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
-      {/* Projects by Status */}
-      {dashboard && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-5 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{dashboard.projects_by_status.setup}</p>
-                <p className="text-sm text-gray-500">Setup</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{dashboard.projects_by_status.active}</p>
-                <p className="text-sm text-gray-500">Active</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-600">{dashboard.projects_by_status.completed}</p>
-                <p className="text-sm text-gray-500">Completed</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">{dashboard.projects_by_status.disputed}</p>
-                <p className="text-sm text-gray-500">Disputed</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">{dashboard.projects_by_status.cancelled}</p>
-                <p className="text-sm text-gray-500">Cancelled</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Search and Filters */}
       <div className="flex flex-col gap-3">
@@ -317,80 +186,6 @@ export default function ProjectsDashboard() {
             placeholder="Trade Type"
             value={filters.trade_type}
             onChange={(e) => setFilters({ ...filters, trade_type: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="Budget Min"
-            value={filters.budget_min}
-            onChange={(e) => setFilters({ ...filters, budget_min: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="Budget Max"
-            value={filters.budget_max}
-            onChange={(e) => setFilters({ ...filters, budget_max: e.target.value })}
-          />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'justify-start text-left font-normal',
-                  !filters.start_date_from && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.start_date_from
-                  ? format(filters.start_date_from, 'PPP')
-                  : 'Start From'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={filters.start_date_from}
-                onSelect={(date) => setFilters({ ...filters, start_date_from: date })}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'justify-start text-left font-normal',
-                  !filters.start_date_to && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.start_date_to
-                  ? format(filters.start_date_to, 'PPP')
-                  : 'Start To'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={filters.start_date_to}
-                onSelect={(date) => setFilters({ ...filters, start_date_to: date })}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          <Input
-            type="number"
-            placeholder="Completion % Min"
-            value={filters.completion_percentage_min}
-            onChange={(e) => setFilters({ ...filters, completion_percentage_min: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="Completion % Max"
-            value={filters.completion_percentage_max}
-            onChange={(e) => setFilters({ ...filters, completion_percentage_max: e.target.value })}
           />
         </div>
       </div>
@@ -438,17 +233,17 @@ export default function ProjectsDashboard() {
                       {project.contractor?.full_name || project.contractor_id}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      ${project.budget.toLocaleString()}
+                      ${(project.total_amount || project.budget || 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${project.completion_percentage}%` }}
+                            style={{ width: `${project.completion_percentage || 0}%` }}
                           />
                         </div>
-                        <span className="text-sm">{project.completion_percentage}%</span>
+                        <span className="text-sm">{project.completion_percentage || 0}%</span>
                       </div>
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">

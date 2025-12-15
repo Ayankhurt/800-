@@ -23,6 +23,15 @@ export interface AdminDashboardStats {
     time: string;
     status: string;
   }>;
+  supportStats?: {
+    pendingReview: number;
+    openTickets: number;
+    verificationsQueue: number;
+    resolvedToday: number;
+    totalReports: number;
+    resolvedGrowth?: number;
+    ticketsGrowth?: number;
+  };
 }
 
 export const statsService = {

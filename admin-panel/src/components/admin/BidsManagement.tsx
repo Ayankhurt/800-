@@ -36,13 +36,9 @@ import {
   Search,
   MoreVertical,
   Eye,
-  Edit,
   Trash2,
   Flag,
-  Mail,
-  Clock,
   XCircle,
-  CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -55,16 +51,9 @@ export default function BidsManagement() {
   // Bulk selection removed - Core features only
   const [filters, setFilters] = useState<BidFiltersType>({});
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showExtendDialog, setShowExtendDialog] = useState(false);
-  const [showFlagDialog, setShowFlagDialog] = useState(false);
-  const [showContactDialog, setShowContactDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [currentBid, setCurrentBid] = useState<Bid | null>(null);
-  const [editData, setEditData] = useState<any>({});
-  const [newDeadline, setNewDeadline] = useState('');
-  const [flagReason, setFlagReason] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
+
   const [cancelReason, setCancelReason] = useState('');
 
   useEffect(() => {
@@ -121,45 +110,9 @@ export default function BidsManagement() {
     }
   };
 
-  const handleEdit = (bid: Bid) => {
-    setCurrentBid(bid);
-    setEditData({
-      title: bid.title,
-      description: bid.description,
-      budget: bid.budget,
-      deadline: bid.deadline,
-    });
-    setShowEditDialog(true);
-  };
 
-  const handleUpdateBid = async () => {
-    if (!currentBid) return;
-    try {
-      const response = await adminService.updateBid(currentBid.id, editData);
-      if (response.success) {
-        toast.success('Bid updated successfully');
-        setShowEditDialog(false);
-        loadBids();
-      }
-    } catch (error: any) {
-      toast.error('Failed to update bid');
-    }
-  };
 
-  const handleExtendDeadline = async () => {
-    if (!currentBid) return;
-    try {
-      const response = await adminService.extendBidDeadline(currentBid.id, newDeadline);
-      if (response.success) {
-        toast.success('Deadline extended');
-        setShowExtendDialog(false);
-        setNewDeadline('');
-        loadBids();
-      }
-    } catch (error: any) {
-      toast.error('Failed to extend deadline');
-    }
-  };
+
 
   const handleCloseBid = async (bidId: string) => {
     try {
@@ -191,40 +144,9 @@ export default function BidsManagement() {
     }
   };
 
-  const handleFlag = async () => {
-    if (!currentBid || !flagReason.trim()) {
-      toast.error('Please provide a reason');
-      return;
-    }
-    try {
-      const response = await adminService.flagBidActivity(currentBid.id, flagReason);
-      if (response.success) {
-        toast.success('Bid flagged');
-        setShowFlagDialog(false);
-        setFlagReason('');
-        loadBids();
-      }
-    } catch (error: any) {
-      toast.error('Failed to flag bid');
-    }
-  };
 
-  const handleContact = async () => {
-    if (!currentBid || !contactMessage.trim()) {
-      toast.error('Please enter a message');
-      return;
-    }
-    try {
-      const response = await adminService.contactBidCreator(currentBid.id, contactMessage);
-      if (response.success) {
-        toast.success('Message sent');
-        setShowContactDialog(false);
-        setContactMessage('');
-      }
-    } catch (error: any) {
-      toast.error('Failed to send message');
-    }
-  };
+
+
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
@@ -302,10 +224,7 @@ export default function BidsManagement() {
               <TableRow>
                 <TableHead>Bid Title</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Trade Type</TableHead>
-                <TableHead className="hidden lg:table-cell">Budget</TableHead>
-                <TableHead className="hidden lg:table-cell">Deadline</TableHead>
-                <TableHead className="hidden xl:table-cell">Created By</TableHead>
+
                 <TableHead className="hidden xl:table-cell">Submissions</TableHead>
                 <TableHead className="hidden xl:table-cell">Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -314,7 +233,7 @@ export default function BidsManagement() {
             <TableBody>
               {filteredBids.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     No bids found
                   </TableCell>
                 </TableRow>
@@ -330,20 +249,7 @@ export default function BidsManagement() {
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(bid.status)}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {bid.trade_type || '-'}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {bid.budget ? `$${bid.budget.toLocaleString()}` : '-'}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {bid.deadline
-                        ? format(new Date(bid.deadline), 'MMM dd, yyyy')
-                        : '-'}
-                    </TableCell>
-                    <TableCell className="hidden xl:table-cell">
-                      {bid.created_by?.full_name || bid.created_by?.email || '-'}
-                    </TableCell>
+
                     <TableCell className="hidden xl:table-cell">
                       {bid.submissions?.length || 0}
                     </TableCell>
@@ -364,19 +270,7 @@ export default function BidsManagement() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEdit(bid)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentBid(bid);
-                              setShowExtendDialog(true);
-                            }}
-                          >
-                            <Clock className="h-4 w-4 mr-2" />
-                            Extend Deadline
-                          </DropdownMenuItem>
+
                           {bid.status === 'open' && (
                             <DropdownMenuItem onClick={() => handleCloseBid(bid.id)}>
                               <XCircle className="h-4 w-4 mr-2" />
@@ -392,24 +286,6 @@ export default function BidsManagement() {
                             <XCircle className="h-4 w-4 mr-2" />
                             Cancel Bid
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentBid(bid);
-                              setShowFlagDialog(true);
-                            }}
-                          >
-                            <Flag className="h-4 w-4 mr-2" />
-                            Flag Suspicious Activity
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentBid(bid);
-                              setShowContactDialog(true);
-                            }}
-                          >
-                            <Mail className="h-4 w-4 mr-2" />
-                            Contact Creator
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -422,141 +298,9 @@ export default function BidsManagement() {
       </Card>
 
       {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Bid Details</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Title</Label>
-              <Input
-                value={editData.title || ''}
-                onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={editData.description || ''}
-                onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                rows={6}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Budget</Label>
-                <Input
-                  type="number"
-                  value={editData.budget || ''}
-                  onChange={(e) =>
-                    setEditData({ ...editData, budget: e.target.value ? Number(e.target.value) : undefined })
-                  }
-                />
-              </div>
-              <div>
-                <Label>Deadline</Label>
-                <Input
-                  type="datetime-local"
-                  value={editData.deadline ? new Date(editData.deadline).toISOString().slice(0, 16) : ''}
-                  onChange={(e) =>
-                    setEditData({ ...editData, deadline: e.target.value || undefined })
-                  }
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateBid}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Extend Deadline Dialog */}
-      <Dialog open={showExtendDialog} onOpenChange={setShowExtendDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Extend Deadline</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>New Deadline</Label>
-              <Input
-                type="datetime-local"
-                value={newDeadline}
-                onChange={(e) => setNewDeadline(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowExtendDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleExtendDeadline} disabled={!newDeadline}>
-              Extend Deadline
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Flag Dialog */}
-      <Dialog open={showFlagDialog} onOpenChange={setShowFlagDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Flag Suspicious Activity</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Reason *</Label>
-              <Textarea
-                value={flagReason}
-                onChange={(e) => setFlagReason(e.target.value)}
-                rows={4}
-                placeholder="Enter reason for flagging..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFlagDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleFlag} disabled={!flagReason.trim()}>
-              Flag Bid
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Contact Dialog */}
-      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Contact Bid Creator</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Message</Label>
-              <Textarea
-                value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
-                rows={6}
-                placeholder="Enter your message..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowContactDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleContact} disabled={!contactMessage.trim()}>
-              Send Message
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Cancel Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
@@ -618,11 +362,10 @@ function BidDetailView({
         adminService.getBidSubmissions(bidId),
         adminService.getBidTimeline(bidId),
       ]);
-      if (subsRes.success) {
-        setSubmissions(subsRes.data.submissions || subsRes.data || []);
-      }
+      setSubmissions((subsRes.data as any).submissions || subsRes.data || []);
+
       if (timelineRes.success) {
-        setTimeline(timelineRes.data.timeline || timelineRes.data || []);
+        setTimeline((timelineRes.data as any).timeline || timelineRes.data || []);
       }
     } catch (error: any) {
       // Handle error

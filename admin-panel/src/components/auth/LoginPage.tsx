@@ -21,34 +21,46 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent any default behavior
     setError('');
     setLoading(true);
 
     try {
+      console.log('Attempting login with:', email);
       const result = await login(email, password);
+      console.log('Login result:', result);
 
       if (result.mfa_required) {
         setMfaRequired(true);
         setTempToken(result.temp_token || null);
+        setLoading(false);
       } else {
         // Login successful, redirect to dashboard
+        console.log('Login successful, redirecting...');
         router.push('/dashboard');
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      let errorMessage = 'Login failed. Please try again.';
+      console.error('Error response:', err.response);
+
+      let errorMessage = 'Login failed. Please check your credentials.';
 
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.message) {
         errorMessage = err.message;
       } else if (err.response?.data) {
-        errorMessage = JSON.stringify(err.response.data);
+        errorMessage = typeof err.response.data === 'string'
+          ? err.response.data
+          : JSON.stringify(err.response.data);
       }
 
+      console.log('Setting error:', errorMessage);
       setError(errorMessage);
-      setLoading(false);
       setPassword(''); // Clear password field for retry
+    } finally {
+      // Always stop loading
+      setLoading(false);
     }
   };
 

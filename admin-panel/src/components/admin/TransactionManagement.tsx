@@ -40,13 +40,10 @@ import {
 } from '../ui/dropdown-menu';
 import {
   Search,
-  Download,
   MoreVertical,
   Eye,
   RefreshCw,
   XCircle,
-  MessageSquare,
-  AlertTriangle,
   FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -67,12 +64,10 @@ export default function TransactionManagement() {
   });
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [showContactDialog, setShowContactDialog] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [cancelReason, setCancelReason] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
 
   useEffect(() => {
     loadTransactions();
@@ -114,28 +109,7 @@ export default function TransactionManagement() {
     return filtered;
   }, [transactions, searchQuery]);
 
-  const handleExport = async () => {
-    try {
-      const exportParams: any = {};
-      if (filters.type && filters.type !== 'all') exportParams.type = filters.type;
-      if (filters.status && filters.status !== 'all') exportParams.status = filters.status;
-      if (filters.date_from) exportParams.date_from = filters.date_from;
-      if (filters.date_to) exportParams.date_to = filters.date_to;
 
-      const blob = await adminService.exportTransactions(exportParams);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `transactions-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Transactions exported successfully');
-    } catch (error: any) {
-      toast.error('Failed to export transactions');
-    }
-  };
 
   const handleRefund = async () => {
     if (!selectedTransaction || !refundReason.trim()) {
@@ -182,39 +156,7 @@ export default function TransactionManagement() {
     }
   };
 
-  const handleContact = async () => {
-    if (!selectedTransaction || !contactMessage.trim()) {
-      toast.error('Please enter a message');
-      return;
-    }
 
-    try {
-      const response = await adminService.contactTransactionParties(selectedTransaction.id, contactMessage);
-      if (response.success) {
-        toast.success('Message sent');
-        setShowContactDialog(false);
-        setSelectedTransaction(null);
-        setContactMessage('');
-      }
-    } catch (error: any) {
-      toast.error('Failed to send message');
-    }
-  };
-
-  const handleFlagFraud = async (transaction: Transaction) => {
-    const reason = prompt('Enter reason for flagging as fraud:');
-    if (!reason) return;
-
-    try {
-      const response = await adminService.flagTransactionFraud(transaction.id, reason);
-      if (response.success) {
-        toast.success('Transaction flagged for fraud review');
-        loadTransactions();
-      }
-    } catch (error: any) {
-      toast.error('Failed to flag transaction');
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
@@ -284,10 +226,7 @@ export default function TransactionManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+
           <Button variant="outline" onClick={loadTransactions}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -314,7 +253,7 @@ export default function TransactionManagement() {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Type</Label>
               <Select
@@ -353,52 +292,15 @@ export default function TransactionManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Date From</Label>
-              <Input
-                type="date"
-                value={filters.date_from}
-                onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Date To</Label>
-              <Input
-                type="date"
-                value={filters.date_to}
-                onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Amount Min</Label>
-              <Input
-                type="number"
-                placeholder="Min amount"
-                value={filters.amount_min}
-                onChange={(e) => setFilters({ ...filters, amount_min: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Amount Max</Label>
-              <Input
-                type="number"
-                placeholder="Max amount"
-                value={filters.amount_max}
-                onChange={(e) => setFilters({ ...filters, amount_max: e.target.value })}
-              />
-            </div>
           </div>
           <div className="mt-4">
             <Button
               variant="outline"
               onClick={() =>
                 setFilters({
-                  type: '',
-                  status: '',
-                  date_from: '',
-                  date_to: '',
-                  amount_min: '',
-                  amount_max: '',
+                  ...filters,
+                  type: 'all',
+                  status: 'all',
                 })
               }
             >
@@ -449,9 +351,11 @@ export default function TransactionManagement() {
                     </TableCell>
                     <TableCell>{getStatusBadge(tx.status)}</TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {tx.initiated_at
-                        ? format(new Date(tx.initiated_at), 'MMM dd, yyyy')
-                        : '-'}
+                      {(() => {
+                        const dateStr = tx.initiated_at || tx.created_at;
+                        const date = dateStr ? new Date(dateStr) : null;
+                        return date && !isNaN(date.getTime()) ? format(date, 'MMM dd, yyyy') : '-';
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -497,22 +401,6 @@ export default function TransactionManagement() {
                               Cancel
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedTransaction(tx);
-                              setShowContactDialog(true);
-                            }}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Contact Parties
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleFlagFraud(tx)}
-                            className="text-red-600"
-                          >
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Flag Fraud
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -610,45 +498,6 @@ export default function TransactionManagement() {
             </Button>
             <Button onClick={handleCancel} disabled={!cancelReason.trim()}>
               Cancel Transaction
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Contact Dialog */}
-      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Contact Transaction Parties</DialogTitle>
-            <DialogDescription>
-              Send a message to parties involved in this transaction
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="contact-message">Message *</Label>
-              <Textarea
-                id="contact-message"
-                placeholder="Enter message..."
-                value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowContactDialog(false);
-                setSelectedTransaction(null);
-                setContactMessage('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleContact} disabled={!contactMessage.trim()}>
-              Send Message
             </Button>
           </DialogFooter>
         </DialogContent>

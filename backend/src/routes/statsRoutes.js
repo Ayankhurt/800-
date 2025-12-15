@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/user-dashboard', auth, getUserDashboardStats);
 
 // Admin Dashboard Stats - Allow ADMIN_APP as well
-router.get('/admin-dashboard', auth, requireRole(['SUPER', 'ADMIN', 'ADMIN_APP']), getAdminDashboardStats);
+router.get('/admin-dashboard', auth, requireRole(['SUPER', 'ADMIN', 'ADMIN_APP', 'MODERATOR', 'SUPPORT', 'SUPPORT_AGENT', 'FINANCE', 'FINANCE_MANAGER']), getAdminDashboardStats);
 
 export default router;
 

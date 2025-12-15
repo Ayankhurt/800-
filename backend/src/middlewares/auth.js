@@ -42,15 +42,27 @@ export const authenticateUser = async (req, res, next) => {
       return res.status(401).json(formatResponse(false, "Invalid token - Missing user identifier"));
     }
 
-    // Verify user exists in 'users' table
-    const { data: user, error } = await supabase
+    // Verify user exists in 'users' table first
+    let { data: user, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", userId)
       .single();
 
+    // If not found in users table, check admin_users table
     if (error || !user) {
-      return res.status(401).json(formatResponse(false, "User not found"));
+      const { data: adminUser, error: adminError } = await supabase
+        .from("admin_users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (adminError || !adminUser) {
+        return res.status(401).json(formatResponse(false, "User profile not found"));
+      }
+
+      // Use admin user data
+      user = adminUser;
     }
 
     if (!user.is_active) {

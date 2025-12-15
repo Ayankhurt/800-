@@ -3,10 +3,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import SystemConfiguration from './system/SystemConfiguration';
-import LegalComplianceSettings from './system/LegalComplianceSettings';
-import VerificationSettings from './system/VerificationSettings';
-import TrustScoreConfiguration from './system/TrustScoreConfiguration';
-import EmailNotificationSettings from './system/EmailNotificationSettings';
 import DatabaseManagement from './system/DatabaseManagement';
 import SecuritySettings from './system/SecuritySettings';
 
@@ -21,38 +17,13 @@ export default function SystemAdministration() {
       </div>
 
       <Tabs defaultValue="configuration" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="legal">Legal & Compliance</TabsTrigger>
-          <TabsTrigger value="verification">Verification</TabsTrigger>
-          <TabsTrigger value="trust-score">Trust Score</TabsTrigger>
-          <TabsTrigger value="email">Email & Notifications</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
         <TabsContent value="configuration">
           <SystemConfiguration />
-        </TabsContent>
-
-        <TabsContent value="legal">
-          <LegalComplianceSettings />
-        </TabsContent>
-
-        <TabsContent value="verification">
-          <VerificationSettings />
-        </TabsContent>
-
-        <TabsContent value="trust-score">
-          <TrustScoreConfiguration />
-        </TabsContent>
-
-        <TabsContent value="email">
-          <EmailNotificationSettings />
-        </TabsContent>
-
-        <TabsContent value="database">
-          <DatabaseManagement />
         </TabsContent>
 
         <TabsContent value="security">

@@ -215,6 +215,24 @@ CREATE TABLE IF NOT EXISTS project_milestones (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS change_orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    milestone_id UUID REFERENCES project_milestones(id),
+    requested_by UUID NOT NULL REFERENCES users(id),
+    requested_to UUID NOT NULL REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    cost_impact DECIMAL(12, 2) DEFAULT 0,
+    timeline_impact_days INTEGER DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected
+    approved_at TIMESTAMP WITH TIME ZONE,
+    approved_by UUID REFERENCES users(id),
+    rejected_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS ai_generated_contracts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

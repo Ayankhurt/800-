@@ -152,8 +152,8 @@ export function EscrowDetailView({
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="font-semibold">{account.owner.full_name}</p>
-              <p className="text-sm text-gray-600">{account.owner.email}</p>
+              <p className="font-semibold">{account.owner?.full_name || 'N/A'}</p>
+              <p className="text-sm text-gray-600">{account.owner?.email || 'N/A'}</p>
             </div>
           </CardContent>
         </Card>
@@ -164,8 +164,8 @@ export function EscrowDetailView({
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="font-semibold">{account.contractor.full_name}</p>
-              <p className="text-sm text-gray-600">{account.contractor.email}</p>
+              <p className="font-semibold">{account.contractor?.full_name || 'N/A'}</p>
+              <p className="text-sm text-gray-600">{account.contractor?.email || 'N/A'}</p>
             </div>
           </CardContent>
         </Card>
@@ -204,8 +204,8 @@ export function EscrowDetailView({
                         milestone.status === 'released'
                           ? 'bg-green-500'
                           : milestone.status === 'disputed'
-                          ? 'bg-orange-500'
-                          : 'bg-yellow-500'
+                            ? 'bg-orange-500'
+                            : 'bg-yellow-500'
                       }
                     >
                       {milestone.status}
@@ -244,8 +244,8 @@ export function EscrowDetailView({
                         tx.status === 'completed'
                           ? 'bg-green-500'
                           : tx.status === 'failed'
-                          ? 'bg-red-500'
-                          : 'bg-yellow-500'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500'
                       }
                     >
                       {tx.status}

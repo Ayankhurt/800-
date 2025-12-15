@@ -33,14 +33,12 @@ import {
 } from '../ui/dropdown-menu';
 import {
   Search,
-  Download,
   MoreVertical,
   Eye,
   RefreshCw,
   Lock,
   Unlock,
   DollarSign,
-  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { EscrowDetailView } from './EscrowDetailView';
@@ -53,15 +51,14 @@ export default function EscrowManagement() {
   const [showReleaseDialog, setShowReleaseDialog] = useState(false);
   const [showFreezeDialog, setShowFreezeDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
-  const [showAdjustDialog, setShowAdjustDialog] = useState(false);
+
   const [selectedAccount, setSelectedAccount] = useState<EscrowAccount | null>(null);
   const [releaseAmount, setReleaseAmount] = useState('');
   const [releaseReason, setReleaseReason] = useState('');
   const [freezeReason, setFreezeReason] = useState('');
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
-  const [adjustAmount, setAdjustAmount] = useState('');
-  const [adjustReason, setAdjustReason] = useState('');
+
 
   useEffect(() => {
     loadAccounts();
@@ -85,9 +82,9 @@ export default function EscrowManagement() {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      account.project?.title?.toLowerCase().includes(query) ||
-      account.owner.full_name?.toLowerCase().includes(query) ||
-      account.contractor.full_name?.toLowerCase().includes(query)
+      (account.project?.title || '').toLowerCase().includes(query) ||
+      (account.owner?.full_name || '').toLowerCase().includes(query) ||
+      (account.contractor?.full_name || '').toLowerCase().includes(query)
     );
   });
 
@@ -175,46 +172,7 @@ export default function EscrowManagement() {
     }
   };
 
-  const handleAdjust = async () => {
-    if (!selectedAccount || !adjustAmount || !adjustReason.trim()) {
-      toast.error('Please fill all required fields');
-      return;
-    }
 
-    try {
-      const response = await adminService.adjustEscrowAmount(selectedAccount.id, {
-        new_amount: Number(adjustAmount),
-        reason: adjustReason,
-      });
-      if (response.success) {
-        toast.success('Escrow amount adjusted');
-        setShowAdjustDialog(false);
-        setSelectedAccount(null);
-        setAdjustAmount('');
-        setAdjustReason('');
-        loadAccounts();
-      }
-    } catch (error: any) {
-      toast.error('Failed to adjust escrow amount');
-    }
-  };
-
-  const handleGenerateReport = async (account: EscrowAccount) => {
-    try {
-      const blob = await adminService.generateEscrowReport(account.id, 'pdf');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `escrow-report-${account.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Report generated');
-    } catch (error: any) {
-      toast.error('Failed to generate report');
-    }
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -315,8 +273,8 @@ export default function EscrowManagement() {
                     <TableCell>
                       {account.project?.title || account.project_id}
                     </TableCell>
-                    <TableCell>{account.owner.full_name}</TableCell>
-                    <TableCell>{account.contractor.full_name}</TableCell>
+                    <TableCell>{account.owner?.full_name || 'N/A'}</TableCell>
+                    <TableCell>{account.contractor?.full_name || 'N/A'}</TableCell>
                     <TableCell className="font-semibold">
                       {formatCurrency(account.total_amount)}
                     </TableCell>
@@ -378,21 +336,7 @@ export default function EscrowManagement() {
                             <RefreshCw className="h-4 w-4 mr-2" />
                             Refund to Owner
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedAccount(account);
-                              setShowAdjustDialog(true);
-                            }}
-                          >
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            Adjust Amount
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleGenerateReport(account)}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Generate Report
-                          </DropdownMenuItem>
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -544,53 +488,7 @@ export default function EscrowManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Adjust Dialog */}
-      <Dialog open={showAdjustDialog} onOpenChange={setShowAdjustDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adjust Escrow Amount</DialogTitle>
-            <DialogDescription>
-              Adjust the total escrow amount (e.g., for change orders)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>New Total Amount *</Label>
-              <Input
-                type="number"
-                value={adjustAmount}
-                onChange={(e) => setAdjustAmount(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="adjust-reason">Reason *</Label>
-              <Textarea
-                id="adjust-reason"
-                placeholder="Enter reason for adjustment..."
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAdjustDialog(false);
-                setSelectedAccount(null);
-                setAdjustAmount('');
-                setAdjustReason('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAdjust} disabled={!adjustAmount || !adjustReason.trim()}>
-              Adjust Amount
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

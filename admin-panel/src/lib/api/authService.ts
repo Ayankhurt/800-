@@ -81,11 +81,30 @@ export const authService = {
 
   // Login
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', {
-      email,
-      password,
-    });
-    return response.data;
+    try {
+      // Try regular login first
+      const response = await apiClient.post<LoginResponse>('/auth/login', {
+        email,
+        password,
+      });
+      return response.data;
+    } catch (error: any) {
+      // If regular login fails with 400/401, try admin login
+      if (error.response?.status === 400 || error.response?.status === 401) {
+        try {
+          const adminResponse = await apiClient.post<LoginResponse>('/auth/admin/login', {
+            email,
+            password,
+          });
+          return adminResponse.data;
+        } catch (adminError) {
+          // If admin login also fails, throw the original error
+          throw error;
+        }
+      }
+      // For other errors, throw immediately
+      throw error;
+    }
   },
 
   // Verify OTP (MFA)

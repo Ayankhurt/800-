@@ -1,33 +1,48 @@
 import apiClient from './axios';
 
-// Types
+// Types - matches actual backend response
 export interface Dispute {
   id: string;
   project_id: string;
-  complainant_id: string;
-  respondent_id: string;
-  status: string;
-  priority?: string;
-  category?: string;
-  amount?: number;
+  raised_by: string;
+  reason: string;
   description?: string;
-  assigned_admin_id?: string;
+  status: string;
+  resolution_notes?: string;
+  resolved_at?: string;
   created_at: string;
   updated_at: string;
   project?: {
     id: string;
-    name: string;
+    title: string;
+    owner_id: string;
+    contractor_id: string;
+    conversations?: {
+      id: string;
+      messages?: {
+        id: string;
+        content: string;
+        created_at: string;
+        sender?: {
+          first_name: string;
+          last_name: string;
+        };
+      }[];
+    }[];
   };
-  complainant?: {
+  raised_by_user?: {
     id: string;
-    full_name: string;
+    first_name: string;
+    last_name: string;
     email: string;
   };
-  respondent?: {
+  responses?: {
     id: string;
-    full_name: string;
-    email: string;
-  };
+    message: string;
+    created_at: string;
+    user_id: string;
+    evidence?: any[];
+  }[];
 }
 
 export interface DisputeMessage {
@@ -50,7 +65,7 @@ export const disputesService = {
     limit?: number;
     offset?: number;
   }): Promise<{ success: boolean; data: { disputes: Dispute[]; total: number } }> => {
-    const response = await apiClient.get('/disputes', { params });
+    const response = await apiClient.get('/admin/disputes', { params });
     return response.data;
   },
 
@@ -60,27 +75,21 @@ export const disputesService = {
     return response.data;
   },
 
-  // Update dispute status
-  updateDisputeStatus: async (id: string, status: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.put(`/disputes/${id}/status`, { status });
+  // Resolve dispute
+  resolveDispute: async (id: string, data: { resolution: string; resolution_notes: string }): Promise<{ success: boolean; data: any }> => {
+    const response = await apiClient.put(`/disputes/${id}/resolve`, data);
     return response.data;
   },
 
-  // Assign dispute to admin
-  assignDispute: async (id: string, admin_id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.put(`/disputes/${id}/assign`, { admin_id });
+  // Close dispute
+  closeDispute: async (id: string): Promise<{ success: boolean; data: any }> => {
+    const response = await apiClient.put(`/disputes/${id}/close`);
     return response.data;
   },
 
-  // Get dispute messages
-  getDisputeMessages: async (id: string): Promise<{ success: boolean; data: DisputeMessage[] }> => {
-    const response = await apiClient.get(`/disputes/${id}/messages`);
-    return response.data;
-  },
-
-  // Add message to dispute
-  addDisputeMessage: async (id: string, message: string): Promise<{ success: boolean; data: DisputeMessage }> => {
-    const response = await apiClient.post(`/disputes/${id}/messages`, { message });
+  // Add response to dispute
+  addDisputeResponse: async (id: string, message: string): Promise<{ success: boolean; data: any }> => {
+    const response = await apiClient.post(`/disputes/${id}/responses`, { message });
     return response.data;
   },
 };

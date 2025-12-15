@@ -48,7 +48,7 @@ export const createProject = async (req, res) => {
                 owner_id: userId,
                 title,
                 description,
-                budget,
+                total_amount: budget, // Map budget to total_amount here
                 location,
                 category,
                 start_date: startDate,
@@ -150,6 +150,35 @@ export const getProjectById = async (req, res) => {
 // ==========================================
 // MILESTONES
 // ==========================================
+
+export const getMilestones = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { project_id } = req.params;
+
+        // Check project access
+        const { data: project } = await supabase.from("projects").select("owner_id, contractor_id").eq("id", project_id).single();
+        if (!project) return res.status(404).json(formatResponse(false, "Project not found", null));
+
+        // Allow owner, contractor, or admin
+        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
+        if (project.owner_id !== userId && project.contractor_id !== userId && !isAdmin) {
+            return res.status(403).json(formatResponse(false, "Unauthorized", null));
+        }
+
+        const { data, error } = await supabase
+            .from("project_milestones")
+            .select("*")
+            .eq("project_id", project_id)
+            .order("due_date", { ascending: true });
+
+        if (error) throw error;
+
+        return res.json(formatResponse(true, "Milestones retrieved", data));
+    } catch (err) {
+        return res.status(500).json(formatResponse(false, err.message, null));
+    }
+};
 
 export const createMilestone = async (req, res) => {
     try {

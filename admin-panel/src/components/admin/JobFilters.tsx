@@ -12,10 +12,10 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
+
 import { Badge } from '../ui/badge';
-import { X, Filter, Calendar as CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, Filter } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 export interface JobFilters {
@@ -145,161 +145,9 @@ export function JobFilters({ filters, onFiltersChange, onReset }: JobFiltersProp
             )}
           </div>
 
-          {/* Date Posted Range */}
-          <div className="space-y-2">
-            <Label>Date Posted Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal',
-                      !localFilters.date_from && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.date_from
-                      ? format(localFilters.date_from, 'PPP')
-                      : 'From'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.date_from}
-                    onSelect={(date) => handleFilterChange('date_from', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal',
-                      !localFilters.date_to && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.date_to
-                      ? format(localFilters.date_to, 'PPP')
-                      : 'To'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.date_to}
-                    onSelect={(date) => handleFilterChange('date_to', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            {(localFilters.date_from || localFilters.date_to) && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => {
-                  removeFilter('date_from');
-                  removeFilter('date_to');
-                }}
-              >
-                Date Range
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
 
-          {/* Budget Range */}
-          <div className="space-y-2">
-            <Label>Budget Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="number"
-                placeholder="Min"
-                min="0"
-                value={localFilters.budget_min || ''}
-                onChange={(e) =>
-                  handleFilterChange(
-                    'budget_min',
-                    e.target.value ? Number(e.target.value) : undefined
-                  )
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Max"
-                min="0"
-                value={localFilters.budget_max || ''}
-                onChange={(e) =>
-                  handleFilterChange(
-                    'budget_max',
-                    e.target.value ? Number(e.target.value) : undefined
-                  )
-                }
-              />
-            </div>
-            {(localFilters.budget_min || localFilters.budget_max) && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => {
-                  removeFilter('budget_min');
-                  removeFilter('budget_max');
-                }}
-              >
-                Budget Range
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
 
-          {/* Location */}
-          <div className="space-y-2">
-            <Label>Location</Label>
-            <Input
-              placeholder="Enter location"
-              value={localFilters.location || ''}
-              onChange={(e) =>
-                handleFilterChange('location', e.target.value || undefined)
-              }
-            />
-            {localFilters.location && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => removeFilter('location')}
-              >
-                {localFilters.location}
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
 
-          {/* Posted By */}
-          <div className="space-y-2">
-            <Label>Posted By (User ID or Email)</Label>
-            <Input
-              placeholder="Enter user ID or email"
-              value={localFilters.posted_by || ''}
-              onChange={(e) =>
-                handleFilterChange('posted_by', e.target.value || undefined)
-              }
-            />
-            {localFilters.posted_by && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => removeFilter('posted_by')}
-              >
-                {localFilters.posted_by}
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
 
           <div className="flex gap-2 pt-2">
             <Button

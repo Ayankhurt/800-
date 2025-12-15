@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.0.105:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.2.10:5000';
 
 // Create axios instance
 const apiClient = axios.create({

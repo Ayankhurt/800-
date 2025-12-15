@@ -2,10 +2,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users, Briefcase, DollarSign, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { Users, Briefcase, DollarSign, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { UserRole } from '@/types';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '../ui/badge';
+// Core Services
 import { statsService } from '@/src/lib/api/statsService';
 import { adminService } from '@/src/lib/api/adminService';
 import { projectsService } from '@/src/lib/api/projectsService';
@@ -57,9 +57,8 @@ const getTimeAgo = (date: string) => {
 export function Dashboard({ role }: DashboardProps) {
   // Fetch admin dashboard stats
   const { data: statsData, isLoading: statsLoading } = useQuery({
-    queryKey: ['admin-dashboard-stats'],
+    queryKey: ['admin-dashboard-stats', 'v2'],
     queryFn: () => statsService.getAdminDashboardStats(),
-    enabled: role === 'super_admin' || role === 'admin',
   });
 
   // Fetch all users for total count
@@ -72,14 +71,14 @@ export function Dashboard({ role }: DashboardProps) {
   // Fetch projects
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects-dashboard'],
-    queryFn: () => projectsService.getAllProjects({ limit: 100 }),
+    queryFn: () => adminService.getAllProjects({ limit: 100 }),
     enabled: role === 'super_admin' || role === 'admin',
   });
 
   // Fetch payments for revenue
   const { data: paymentsData, isLoading: paymentsLoading } = useQuery({
     queryKey: ['payments-completed'],
-    queryFn: () => paymentsService.getAllPayments({ status: 'completed', limit: 1000 }),
+    queryFn: () => paymentsService.getAllPayments({ limit: 1000 }),
     enabled: role === 'super_admin' || role === 'admin' || role === 'finance_manager',
   });
 
@@ -108,42 +107,24 @@ export function Dashboard({ role }: DashboardProps) {
 
   // Calculate stats from API data
   const totalUsers = usersData?.data?.total || usersData?.data?.length || 0;
-  const activeProjects = projectsData?.data?.filter((p: any) => p.status === 'active' || p.status === 'bidding')?.length || 0;
+  const activeProjects = projectsData?.data?.projects?.filter((p: any) => p.status === 'active' || p.status === 'bidding')?.length || 0;
 
   // Calculate total revenue from completed payments - payments are nested in data.payments
   const paymentsArray = paymentsData?.data?.payments || [];
-  const totalRevenue = paymentsArray.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0);
-  const openDisputes = disputesData?.data?.length || 0;
+  const totalRevenue = paymentsArray.filter((p: any) => p.status === 'completed' || p.status === 'released').reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0);
+  const openDisputes = disputesData?.data?.total || disputesData?.data?.disputes?.length || 0;
 
   // Finance Manager specific calculations
   const escrowHeld = paymentsArray.filter((p: any) => p.status === 'held' || p.status === 'pending')?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0;
-  const pendingPayoutsAmount = payoutsData?.data?.reduce((sum: number, payout: any) => sum + (payout.amount || 0), 0) || 0;
-  const pendingPayoutsCount = payoutsData?.data?.length || 0;
+  // Calculate safe payouts array for counts
+  const payoutsForStats = Array.isArray(payoutsData?.data?.payouts)
+    ? payoutsData.data.payouts
+    : Array.isArray(payoutsData?.data)
+      ? payoutsData.data
+      : [];
 
-  // Process weekly activity from stats
-  const activityData = statsData?.data?.weekly_activity?.map((item: any) => ({
-    name: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
-    users: item.users || 0,
-    projects: item.projects || 0,
-  })) || [
-      { name: 'Mon', users: 0, projects: 0 },
-      { name: 'Tue', users: 0, projects: 0 },
-      { name: 'Wed', users: 0, projects: 0 },
-      { name: 'Thu', users: 0, projects: 0 },
-      { name: 'Fri', users: 0, projects: 0 },
-      { name: 'Sat', users: 0, projects: 0 },
-      { name: 'Sun', users: 0, projects: 0 },
-    ];
-
-  // Process user distribution from stats
-  const userRolesData = statsData?.data?.user_distribution?.map((item: any, index: number) => {
-    const colors = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-    return {
-      name: item.role || 'Unknown',
-      value: item.count || 0,
-      color: colors[index % colors.length],
-    };
-  }) || [];
+  const pendingPayoutsAmount = payoutsForStats.reduce((sum: number, payout: any) => sum + (payout.amount || 0), 0) || 0;
+  const pendingPayoutsCount = payoutsData?.data?.total || payoutsForStats.length || 0;
 
   // Process recent activity from logs
   // Backend returns: { success: true, data: { logs: [...], pagination: {...} } }
@@ -153,14 +134,20 @@ export function Dashboard({ role }: DashboardProps) {
     : Array.isArray(logsData?.data)
       ? logsData.data
       : [];
-  const recentActivities = logsArray.slice(0, 5).map((log: any) => ({
-    id: log.id,
-    user: log.user?.full_name || log.userId || log.user_id || 'System',
-    action: log.action || 'Activity',
-    project: log.metadata?.project_name || log.metadata?.resource_type || '',
-    time: getTimeAgo(log.createdAt || log.created_at || log.timestamp),
-    status: log.action?.includes('completed') ? 'completed' : log.action?.includes('dispute') ? 'alert' : 'pending',
-  }));
+  const recentActivities = logsArray.slice(0, 5).map((log: any) => {
+    const actionText = log.action || log.action_type || 'Activity';
+    const isCompleted = actionText.includes('completed') || actionText.includes('approve') || actionText.includes('resolve');
+    const isAlert = actionText.includes('dispute') || actionText.includes('report') || actionText.includes('fail');
+
+    return {
+      id: log.id,
+      user: log.user?.full_name || log.userId || log.user_id || 'System',
+      action: actionText.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format "create_job" -> "Create Job"
+      project: log.metadata?.project_name || log.metadata?.resource_type || '',
+      time: getTimeAgo(log.createdAt || log.created_at || log.timestamp),
+      status: isCompleted ? 'completed' : isAlert ? 'alert' : 'pending',
+    };
+  });
 
   const stats = [
     {
@@ -201,6 +188,56 @@ export function Dashboard({ role }: DashboardProps) {
     },
   ];
 
+  // Calculate percentage changes
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const getMonthTotal = (data: any[], statusTypes: string[]) => {
+    return data.filter((item: any) => {
+      const date = new Date(item.created_at);
+      return statusTypes.includes(item.status) && date >= currentMonthStart;
+    }).reduce((sum, item) => sum + (item.amount || 0), 0);
+  };
+
+  const getPreviousMonthTotal = (data: any[], statusTypes: string[]) => {
+    return data.filter((item: any) => {
+      const date = new Date(item.created_at);
+      return statusTypes.includes(item.status) && date >= previousMonthStart && date <= previousMonthEnd;
+    }).reduce((sum, item) => sum + (item.amount || 0), 0);
+  };
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  // Revenue Change
+  const currentMonthRevenue = getMonthTotal(paymentsArray, ['completed', 'released']);
+  const previousMonthRevenue = getPreviousMonthTotal(paymentsArray, ['completed', 'released']);
+  const revenueChange = calculateChange(currentMonthRevenue, previousMonthRevenue);
+
+  // Helper to extract payouts array safely
+  const payoutsArray = Array.isArray(payoutsData?.data?.payouts)
+    ? payoutsData.data.payouts
+    : Array.isArray(payoutsData?.data)
+      ? payoutsData.data
+      : [];
+
+  const currentMonthPayouts = payoutsArray.filter((p: any) => {
+    const date = new Date(p.created_at);
+    return p.status === 'pending' && date >= currentMonthStart;
+  }).length;
+
+  const previousMonthPayouts = payoutsArray.filter((p: any) => {
+    const date = new Date(p.created_at);
+    return p.status === 'pending' && date >= previousMonthStart && date <= previousMonthEnd;
+  }).length;
+
+  const payoutsChange = calculateChange(currentMonthPayouts, previousMonthPayouts);
+
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -230,8 +267,10 @@ export function Dashboard({ role }: DashboardProps) {
                     <p className="text-gray-600">Total Revenue</p>
                     <p className="mt-2 text-2xl font-semibold">{formatCurrency(totalRevenue)}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      <span className="text-green-600 text-sm">+0%</span>
+                      {revenueChange >= 0 ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
+                      <span className={`${revenueChange >= 0 ? 'text-green-600' : 'text-red-600'} text-sm`}>
+                        {revenueChange >= 0 ? '+' : ''}{revenueChange.toFixed(0)}%
+                      </span>
                     </div>
                   </div>
                   <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
@@ -247,7 +286,7 @@ export function Dashboard({ role }: DashboardProps) {
                     <p className="text-gray-600">Escrow Held</p>
                     <p className="mt-2 text-2xl font-semibold">{formatCurrency(escrowHeld)}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-gray-600 text-sm">{paymentsData?.data?.filter((p: any) => p.status === 'held' || p.status === 'pending')?.length || 0} transactions</span>
+                      <span className="text-gray-600 text-sm">{paymentsArray.filter((p: any) => p.status === 'held' || p.status === 'pending')?.length || 0} transactions</span>
                     </div>
                   </div>
                   <div className="bg-orange-50 text-orange-600 p-3 rounded-lg">
@@ -263,7 +302,10 @@ export function Dashboard({ role }: DashboardProps) {
                     <p className="text-gray-600">Pending Payouts</p>
                     <p className="mt-2 text-2xl font-semibold">{formatCurrency(pendingPayoutsAmount)}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-gray-600 text-sm">{pendingPayoutsCount} requests</span>
+                      {payoutsChange >= 0 ? <TrendingUp className="h-4 w-4 text-yellow-600" /> : <TrendingDown className="h-4 w-4 text-green-600" />}
+                      <span className={`${payoutsChange >= 0 ? 'text-yellow-600' : 'text-green-600'} text-sm`}>
+                        {payoutsChange >= 0 ? '+' : ''}{payoutsChange.toFixed(0)}% requests
+                      </span>
                     </div>
                   </div>
                   <div className="bg-yellow-50 text-yellow-600 p-3 rounded-lg">
@@ -279,7 +321,7 @@ export function Dashboard({ role }: DashboardProps) {
                     <p className="text-gray-600">Completed</p>
                     <p className="mt-2 text-2xl font-semibold">{formatCurrency(totalRevenue)}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <span className="text-gray-600 text-sm">This month</span>
+                      <span className="text-gray-600 text-sm">All time</span>
                     </div>
                   </div>
                   <div className="bg-green-50 text-green-600 p-3 rounded-lg">
@@ -297,7 +339,7 @@ export function Dashboard({ role }: DashboardProps) {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-gray-600">Pending Review</p>
-                    <p className="mt-2 text-2xl font-semibold">0</p>
+                    <p className="mt-2 text-2xl font-semibold">{statsData?.data?.supportStats?.pendingReview || 0}</p>
                     <div className="flex items-center gap-1 mt-2">
                       <span className="text-orange-600 text-sm">Needs attention</span>
                     </div>
@@ -312,11 +354,21 @@ export function Dashboard({ role }: DashboardProps) {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <p className="text-gray-600">{role === 'support_agent' ? 'Open Tickets' : 'Reported Content'}</p>
-                    <p className="mt-2 text-2xl font-semibold">0</p>
+                    <p className="text-gray-600">{role === 'support_agent' ? 'New Tickets Today' : 'Reported Content'}</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {role === 'support_agent'
+                        ? (statsData?.data?.supportStats?.openTickets || 0)
+                        : (statsData?.data?.supportStats?.totalReports || 0)}
+                    </p>
                     <div className="flex items-center gap-1 mt-2">
-                      <TrendingDown className="h-4 w-4 text-green-600" />
-                      <span className="text-green-600 text-sm">-0%</span>
+                      {(statsData?.data?.supportStats?.ticketsGrowth || 0) > 0 ? (
+                        <TrendingUp className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-green-600" />
+                      )}
+                      <span className={`text-sm ${(statsData?.data?.supportStats?.ticketsGrowth || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {statsData?.data?.supportStats?.ticketsGrowth || 0}% from yesterday
+                      </span>
                     </div>
                   </div>
                   <div className="bg-red-50 text-red-600 p-3 rounded-lg">
@@ -330,7 +382,7 @@ export function Dashboard({ role }: DashboardProps) {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-gray-600">Verifications</p>
-                    <p className="mt-2 text-2xl font-semibold">0</p>
+                    <p className="mt-2 text-2xl font-semibold">{statsData?.data?.supportStats?.verificationsQueue || 0}</p>
                     <div className="flex items-center gap-1 mt-2">
                       <span className="text-gray-600 text-sm">Awaiting review</span>
                     </div>
@@ -346,10 +398,16 @@ export function Dashboard({ role }: DashboardProps) {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-gray-600">Resolved Today</p>
-                    <p className="mt-2 text-2xl font-semibold">0</p>
+                    <p className="mt-2 text-2xl font-semibold">{statsData?.data?.supportStats?.resolvedToday || 0}</p>
                     <div className="flex items-center gap-1 mt-2">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      <span className="text-green-600 text-sm">+0%</span>
+                      {(statsData?.data?.supportStats?.resolvedGrowth || 0) >= 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                      )}
+                      <span className={`text-sm ${(statsData?.data?.supportStats?.resolvedGrowth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {(statsData?.data?.supportStats?.resolvedGrowth || 0) > 0 && '+'}{statsData?.data?.supportStats?.resolvedGrowth || 0}% from yesterday
+                      </span>
                     </div>
                   </div>
                   <div className="bg-green-50 text-green-600 p-3 rounded-lg">
@@ -386,71 +444,6 @@ export function Dashboard({ role }: DashboardProps) {
               </CardContent>
             </Card>
           ))
-        )}
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Activity Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-[300px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={activityData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="users" stroke="#2563EB" strokeWidth={2} name="Users" />
-                  <Line type="monotone" dataKey="projects" stroke="#10B981" strokeWidth={2} name="Projects" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* User Roles Distribution */}
-        {role !== 'finance_manager' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>User Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : userRolesData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={userRolesData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry) => `${entry.name}: ${entry.value}`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {userRolesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500">
-                  No user distribution data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
         )}
       </div>
 

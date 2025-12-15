@@ -21,6 +21,7 @@ import {
   verifyMFASetup,
   disableMFA,
 } from "../controllers/authController.js";
+import { adminLogin } from "../controllers/adminAuthController.js";
 import { auth } from "../middlewares/auth.js";
 import { requireRole } from "../middlewares/role.js";
 /* CURSOR PATCH START */
@@ -33,6 +34,7 @@ const router = express.Router();
 router.post("/signup", signup);
 /* CURSOR PATCH START */
 router.post("/login", loginLimiter, login);
+router.post("/admin/login", loginLimiter, adminLogin); // Admin login for admin_users table
 /* CURSOR PATCH END */
 /* CURSOR PATCH START */
 // Get current user - All authenticated users can access their own profile

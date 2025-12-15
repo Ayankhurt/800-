@@ -205,7 +205,7 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
       const response = await adminService.deleteJob(jobId);
       if (response.success) {
         toast.success('Job deleted');
-        onBack();
+        onUpdate();
       }
     } catch (error: any) {
       toast.error('Failed to delete job');
@@ -312,14 +312,7 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
-          <Button variant="outline" onClick={handleFeature}>
-            <Star className="h-4 w-4 mr-2" />
-            {job.featured ? 'Unfeature' : 'Feature'}
-          </Button>
-          <Button variant="outline" onClick={handleFlag}>
-            <Flag className="h-4 w-4 mr-2" />
-            Flag
-          </Button>
+
           <Button variant="outline" onClick={() => setShowDeleteDialog(true)} className="text-red-600">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -345,7 +338,13 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
               <div>
                 <p className="text-sm text-gray-500">Budget</p>
                 <p className="text-lg font-bold mt-1">
-                  {job.budget ? `$${job.budget.toLocaleString()}` : 'Not specified'}
+                  {job.budget_min || job.budget_max ? (
+                    `$${(job.budget_min || 0).toLocaleString()} - $${(job.budget_max || 0).toLocaleString()}`
+                  ) : job.budget ? (
+                    `$${job.budget.toLocaleString()}`
+                  ) : (
+                    'Not specified'
+                  )}
                 </p>
               </div>
               <DollarSign className="h-5 w-5 text-gray-400" />
@@ -515,8 +514,8 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {applications.map((app) => (
-                      <TableRow key={app.id}>
+                    {applications.map((app, index) => (
+                      <TableRow key={app.id || index}>
                         <TableCell>
                           {app.contractor?.full_name || app.contractor_id}
                         </TableCell>
@@ -553,13 +552,13 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
                 <p className="text-center text-gray-500 py-8">No timeline events</p>
               ) : (
                 <div className="space-y-4">
-                  {timeline.map((item) => (
-                    <div key={item.id} className="flex gap-4 border-l-2 border-gray-200 pl-4">
+                  {timeline.map((item, index) => (
+                    <div key={item.id || index} className="flex gap-4 border-l-2 border-gray-200 pl-4">
                       <div className="flex-1">
                         <p className="font-medium">{item.description}</p>
                         <p className="text-sm text-gray-500">
                           {item.created_by?.full_name || 'System'} •{' '}
-                          {format(new Date(item.created_at), 'PPP p')}
+                          {format(new Date(item.timestamp), 'PPP p')}
                         </p>
                       </div>
                     </div>
@@ -580,8 +579,8 @@ export function JobDetailView({ jobId, onBack, onUpdate }: JobDetailViewProps) {
                 <p className="text-center text-gray-500 py-8">No appointments</p>
               ) : (
                 <div className="space-y-4">
-                  {appointments.map((apt) => (
-                    <div key={apt.id} className="border rounded-lg p-4">
+                  {appointments.map((apt, index) => (
+                    <div key={apt.id || index} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">

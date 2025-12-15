@@ -105,8 +105,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
           }
         } else if (profileError) {
-          // Profile fetch failed - clear auth and stop loading
-          clearAuth();
+          // Only clear auth if it's a 401 (unauthorized) error
+          // Other errors (like 404, 500) might be temporary - keep user logged in
+          const errorStatus = (profileError as any)?.response?.status;
+          if (errorStatus === 401) {
+            clearAuth();
+          } else if (storedUser) {
+            // Use cached user data for other errors
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              if (!parsedUser.role_code && parsedUser.role) {
+                const r = String(parsedUser.role).toLowerCase();
+                if (r === 'super_admin') parsedUser.role_code = 'SUPER';
+                else if (r === 'admin') parsedUser.role_code = 'ADMIN';
+                else if (r === 'finance_manager') parsedUser.role_code = 'FIN';
+                else if (r === 'moderator') parsedUser.role_code = 'MOD';
+                else if (r === 'support_agent') parsedUser.role_code = 'SUPPORT';
+                else parsedUser.role_code = String(parsedUser.role).toUpperCase();
+              }
+              setUser(parsedUser);
+            } catch {
+              // If can't parse, clear auth
+              clearAuth();
+            }
+          }
           setLoading(false);
         } else if (!profileLoading) {
           // No profile data and not loading - stop loading

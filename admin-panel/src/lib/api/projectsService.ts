@@ -72,7 +72,7 @@ export const projectsService = {
 
   // Get project milestones
   getProjectMilestones: async (projectId: string): Promise<{ success: boolean; data: Milestone[] }> => {
-    const response = await apiClient.get(`/milestones/projects/${projectId}`);
+    const response = await apiClient.get(`/projects/${projectId}/milestones`);
     return response.data;
   },
 

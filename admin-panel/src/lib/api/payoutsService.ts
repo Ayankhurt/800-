@@ -24,14 +24,14 @@ export const payoutsService = {
     status?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ success: boolean; data: Payout[]; total?: number }> => {
-    const response = await apiClient.get('/payouts', { params });
+  }): Promise<{ success: boolean; data: { payouts: Payout[]; total: number } }> => {
+    const response = await apiClient.get('/admin/payouts', { params });
     return response.data;
   },
 
   // Get payout by ID
   getPayoutById: async (id: string): Promise<{ success: boolean; data: Payout }> => {
-    const response = await apiClient.get(`/payouts/${id}`);
+    const response = await apiClient.get(`/admin/payouts/${id}`);
     return response.data;
   },
 

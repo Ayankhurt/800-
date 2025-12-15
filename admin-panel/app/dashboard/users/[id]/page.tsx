@@ -65,7 +65,7 @@ export default function UserProfileDetails() {
   const loadUserDetails = async () => {
     try {
       setLoading(true);
-      const response = await adminService.getUserDetails(userId);
+      const response = await adminService.getUserById(userId);
       if (response.success) {
         setUser(response.data);
         setEditData(response.data);
@@ -97,7 +97,7 @@ export default function UserProfileDetails() {
         updateData.role = roleMap[updateData.role_code] || updateData.role_code.toLowerCase();
       }
 
-      const response = await adminService.updateUserDetails(userId, updateData);
+      const response = await adminService.updateUser(userId, updateData);
       if (response.success) {
         toast.success('User updated successfully');
         setEditMode(false);
@@ -346,7 +346,6 @@ export default function UserProfileDetails() {
                         <SelectItem value="subcontractor">Subcontractor</SelectItem>
                         <SelectItem value="trade_specialist">Trade Specialist</SelectItem>
                         <SelectItem value="viewer">Viewer</SelectItem>
-                        <SelectItem value="client">Client</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (

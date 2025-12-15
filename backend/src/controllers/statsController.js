@@ -136,19 +136,103 @@ export const getAdminDashboardStats = async (req, res) => {
       .filter(p => p.status === 'completed')
       .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
+    // Get Support Stats
+    const { count: openTickets } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open');
+
+    const { count: pendingTickets } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open'); // Assuming 'pending' review maps to open tickets for now, or check specific status
+
+    // Resolved Today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: resolvedToday } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'resolved')
+      .gte('updated_at', today.toISOString());
+
+    // Resolved Yesterday (for growth calc)
+    const yesterdayStart = new Date(today);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const { count: resolvedYesterday } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'resolved')
+      .gte('updated_at', yesterdayStart.toISOString())
+      .lt('updated_at', today.toISOString());
+
+    // Created Today (for trend calc)
+    const { count: createdToday } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', today.toISOString());
+
+    // Created Yesterday
+    const { count: createdYesterday } = await supabase
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', yesterdayStart.toISOString())
+      .lt('created_at', today.toISOString());
+
+    // Calculate Percentages
+    const calculateGrowth = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const resolvedGrowth = calculateGrowth(resolvedToday || 0, resolvedYesterday || 0);
+    const ticketsGrowth = calculateGrowth(createdToday || 0, createdYesterday || 0);
+
+    // Verifications Queue
+    const { count: verificationsQueue } = await supabase
+      .from('contractor_verifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('verification_status', 'pending');
+
+    // Moderation Reports
+    let totalReports = 0;
+    try {
+      const { count } = await supabase
+        .from('moderation_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      totalReports = count || 0;
+    } catch (e) {
+      // Table might not exist yet
+    }
+
+
+    const responseData = {
+      totalUsers: totalUsers || 0,
+      pendingApprovals: pendingApprovals || 0,
+      openDisputes: openDisputes || 0,
+      totalProjects: totalProjects || 0,
+      financeSummary: {
+        totalRevenue,
+        pendingPayments,
+        totalPayouts,
+        netRevenue: totalRevenue - totalPayouts,
+      },
+      supportStats: {
+        pendingReview: pendingTickets || 0,
+        openTickets: openTickets || 0,
+        verificationsQueue: verificationsQueue || 0,
+        resolvedToday: resolvedToday || 0,
+        totalReports: totalReports || 0,
+        resolvedGrowth,
+        ticketsGrowth
+      }
+    };
+
+    logger.info(`[getAdminDashboardStats] Sending response: ${JSON.stringify(responseData.supportStats)}`);
+
     return res.json(
-      formatResponse(true, 'Admin dashboard stats retrieved', {
-        totalUsers: totalUsers || 0,
-        pendingApprovals: pendingApprovals || 0,
-        openDisputes: openDisputes || 0,
-        totalProjects: totalProjects || 0,
-        financeSummary: {
-          totalRevenue,
-          pendingPayments,
-          totalPayouts,
-          netRevenue: totalRevenue - totalPayouts,
-        },
-      })
+      formatResponse(true, 'Admin dashboard stats retrieved', responseData)
     );
   } catch (error) {
     return res.status(500).json(formatResponse(false, error.message, null));

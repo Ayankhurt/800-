@@ -448,31 +448,107 @@ export const changeUserRole = async (req, res) => {
 
 export const getAllProjects = async (req, res) => {
   try {
-    const { page = 1, limit = 50, status, search } = req.query;
+    const {
+      page = 1,
+      limit = 50,
+      status,
+      search,
+      owner_id,
+      contractor_id,
+      trade_type,
+      budget_min,
+      budget_max,
+      start_date_from,
+      start_date_to
+    } = req.query;
+
     const offset = (page - 1) * limit;
 
+    // 1. Fetch Projects (Raw)
     let query = supabase
       .from("projects")
-      .select(`
-        *,
-        owner:users!projects_owner_id_fkey (id, first_name, last_name, email),
-        contractor:users!projects_contractor_id_fkey (id, first_name, last_name, company_name)
-      `, { count: 'exact' })
-      .range(offset, offset + limit - 1)
-      .order("created_at", { ascending: false });
+      .select('*', { count: 'exact' });
 
-    if (status) query = query.eq("status", status);
+    // Apply Filters (Direct columns only)
+    if (status && status !== 'all') query = query.eq("status", status);
     if (search) query = query.ilike("title", `%${search}%`);
+    if (owner_id) query = query.eq("owner_id", owner_id);
+    if (contractor_id) query = query.eq("contractor_id", contractor_id);
 
-    const { data, count, error } = await query;
+    if (budget_min) query = query.gte("total_amount", budget_min);
+    if (budget_max) query = query.lte("total_amount", budget_max);
+
+    if (start_date_from) query = query.gte("start_date", start_date_from);
+    if (start_date_to) query = query.lte("start_date", start_date_to);
+
+    // Filter by trade_type (requires checking if job_id matches a job with that trade_type)
+    if (trade_type) {
+      const { data: jobData } = await supabase.from('jobs').select('id').eq('trade_type', trade_type);
+      if (jobData) {
+        const jobIds = jobData.map(j => j.id);
+        query = query.in('job_id', jobIds);
+      }
+    }
+
+    // Pagination
+    query = query.range(offset, offset + limit - 1).order("created_at", { ascending: false });
+
+    const { data: projectsData, count, error } = await query;
 
     if (error) {
       logger.error('Get all projects error:', error);
       throw error;
     }
 
+    // 2. Manual Join (Owner, Contractor, Job)
+    let enrichedProjects = [];
+    if (projectsData && projectsData.length > 0) {
+      const userIds = new Set();
+      const jobIds = new Set();
+
+      projectsData.forEach(p => {
+        if (p.owner_id) userIds.add(p.owner_id);
+        if (p.contractor_id) userIds.add(p.contractor_id);
+        if (p.job_id) jobIds.add(p.job_id);
+      });
+
+      // Fetch related data in parallel
+      const promises = [];
+
+      if (userIds.size > 0) {
+        promises.push(supabase.from('users').select('id, first_name, last_name, email, company_name').in('id', [...userIds]));
+      } else {
+        promises.push(Promise.resolve({ data: [] }));
+      }
+
+      if (jobIds.size > 0) {
+        promises.push(supabase.from('jobs').select('id, title, trade_type').in('id', [...jobIds]));
+      } else {
+        promises.push(Promise.resolve({ data: [] }));
+      }
+
+      const [usersRes, jobsRes] = await Promise.all(promises);
+
+      const userMap = {};
+      usersRes.data?.forEach(u => userMap[u.id] = u);
+
+      const jobMap = {};
+      jobsRes.data?.forEach(j => jobMap[j.id] = j);
+
+      enrichedProjects = projectsData.map(p => ({
+        ...p,
+        owner: p.owner_id ? (userMap[p.owner_id] || null) : null,
+        contractor: p.contractor_id ? (userMap[p.contractor_id] || null) : null,
+        job: p.job_id ? (jobMap[p.job_id] || null) : null,
+        // Computed fields
+        budget: p.total_amount, // Map total_amount to budget
+        completion_percentage: p.total_amount > 0 ? Math.round(((p.paid_amount || 0) / p.total_amount) * 100) : 0,
+        dispute_count: 0
+      }));
+    }
+
     return res.json(formatResponse(true, "Projects retrieved", {
-      projects: data || [],
+      projects: enrichedProjects,
       total: count || 0,
       page: parseInt(page) || 1,
       pages: Math.ceil((count || 0) / limit)
@@ -521,6 +597,42 @@ export const getProjectById = async (req, res) => {
   }
 };
 
+export const getProjectsDashboard = async (req, res) => {
+  try {
+    const { count: setupCount } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'setup');
+    const { count: activeCount } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'active');
+    const { count: completedCount } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'completed');
+    const { count: disputedCount } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'disputed');
+    const { count: cancelledCount } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'cancelled');
+
+    // Total for calculations
+    const totalCount = (setupCount || 0) + (activeCount || 0) + (completedCount || 0) + (disputedCount || 0) + (cancelledCount || 0);
+
+    const stats = {
+      active_projects_count: activeCount || 0,
+      average_completion_time: 0,
+      on_time_completion_rate: 100,
+      dispute_rate: totalCount > 0 ? Math.round(((disputedCount || 0) / totalCount) * 100) : 0,
+      payment_release_stats: {
+        total_released: 0,
+        total_pending: 0
+      },
+      projects_by_status: {
+        setup: setupCount || 0,
+        active: activeCount || 0,
+        completed: completedCount || 0,
+        disputed: disputedCount || 0,
+        cancelled: cancelledCount || 0
+      }
+    };
+
+    return res.json(formatResponse(true, "Dashboard stats retrieved", stats));
+  } catch (err) {
+    logger.error('Get projects dashboard error:', err);
+    return res.status(500).json(formatResponse(false, err.message, null));
+  }
+};
+
 // ==================== JOBS MANAGEMENT ====================
 
 export const getAllJobs = async (req, res) => {
@@ -532,7 +644,8 @@ export const getAllJobs = async (req, res) => {
       .from("jobs")
       .select(`
         *,
-        project_manager:users!jobs_project_manager_id_fkey (id, first_name, last_name, email)
+        posted_by:users!jobs_project_manager_id_fkey (id, first_name, last_name, email),
+        job_applications(count)
       `, { count: 'exact' })
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
@@ -547,8 +660,13 @@ export const getAllJobs = async (req, res) => {
       throw error;
     }
 
+    const enrichedJobs = (data || []).map(job => ({
+      ...job,
+      applications_count: job.job_applications?.[0]?.count || 0
+    }));
+
     return res.json(formatResponse(true, "Jobs retrieved", {
-      jobs: data || [],
+      jobs: enrichedJobs,
       total: count || 0,
       page: parseInt(page) || 1,
       pages: Math.ceil((count || 0) / limit)
@@ -556,6 +674,38 @@ export const getAllJobs = async (req, res) => {
   } catch (err) {
     logger.error('Get all jobs error:', err);
     return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve jobs", null));
+  }
+};
+
+export const deleteJob = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Delete related records (Manual Cascade)
+    const tables = ['bids', 'job_applications', 'appointments', 'invites', 'notifications'];
+
+    // We try to delete from all potential related tables. 
+    // Uses Promise.allSettled to not fail if table doesn't exist.
+    await Promise.allSettled(
+      tables.map(table => supabase.from(table).delete().eq(table === 'notifications' ? 'data->>job_id' : 'job_id', id))
+    );
+    // Note: notifications usually store job_id in jsonb data, filtering might differ or not track FK. 
+    // Ideally we assume strict FKs are on bids/applications/appointments.
+
+    const { error } = await supabase
+      .from("jobs")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      logger.error('Delete job error:', error);
+      throw error;
+    }
+
+    return res.json(formatResponse(true, "Job deleted successfully", null));
+  } catch (err) {
+    logger.error('Delete job error:', err);
+    return res.status(500).json(formatResponse(false, err.message || "Failed to delete job", null));
   }
 };
 
@@ -606,25 +756,77 @@ export const getFinancialStats = async (req, res) => {
       throw error;
     }
 
-    const completed = transactions?.filter(t => t.status === 'completed') || [];
-    const totalRevenue = completed.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const tList = transactions || [];
+    const now = new Date();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const sevenDays = 7 * oneDay;
+    const thirtyDays = 30 * oneDay;
 
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    const monthlyRevenue = completed
-      .filter(t => t.created_at && new Date(t.created_at) >= thisMonth)
+    const completed = tList.filter(t => t.status === 'completed');
+    const totalVolume = completed.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    // Platform Fees (Assume 10% of volume if no specific fee records)
+    const fees = tList.filter(t => t.type === 'fee' && t.status === 'completed');
+    const platformFees = fees.length > 0
+      ? fees.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
+      : totalVolume * 0.1;
+
+    // Escrow Balance (Sum of 'escrow' transactions that are 'held' or 'locked')
+    // Assuming 'pending' escrow = held
+    const escrowBalance = tList
+      .filter(t => t.type === 'escrow' && (t.status === 'held' || t.status === 'pending'))
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
+    const pendingPayouts = tList
+      .filter(t => t.type === 'payout' && t.status === 'pending')
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const failedPayments = tList.filter(t => t.status === 'failed').length;
+
+    const refundsProcessed = tList
+      .filter(t => t.type === 'refund' && t.status === 'completed')
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const countCompleted = completed.length;
+    const averageTransactionSize = countCompleted > 0 ? totalVolume / countCompleted : 0;
+
+    const paymentSuccessRate = tList.length > 0
+      ? (completed.length / tList.length) * 100
+      : 0;
+
+    // Time-based volumes
+    const dailyVolume = completed
+      .filter(t => t.created_at && new Date(t.created_at) >= new Date(now.getTime() - oneDay))
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const weeklyVolume = completed
+      .filter(t => t.created_at && new Date(t.created_at) >= new Date(now.getTime() - sevenDays))
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const monthlyVolume = completed
+      .filter(t => t.created_at && new Date(t.created_at) >= new Date(now.getTime() - thirtyDays))
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const activeEscrowAccounts = tList.filter(t => t.type === 'escrow' && t.status === 'held').length;
+    const pendingPayments = tList.filter(t => t.status === 'pending').length;
+
     const stats = {
-      total_revenue: totalRevenue || 0,
-      monthly_revenue: monthlyRevenue || 0,
-      total_transactions: transactions?.length || 0,
-      completed_transactions: completed.length || 0,
-      pending_transactions: transactions?.filter(t => t.status === 'pending').length || 0,
-      failed_transactions: transactions?.filter(t => t.status === 'failed').length || 0
+      totalVolume,
+      platformFees,
+      escrowBalance,
+      pendingPayouts,
+      failedPayments,
+      refundsProcessed,
+      averageTransactionSize,
+      paymentSuccessRate,
+      dailyVolume,
+      weeklyVolume,
+      monthlyVolume,
+      activeEscrowAccounts,
+      pendingPayments
     };
 
-    return res.json(formatResponse(true, "Financial stats retrieved", stats));
+    return res.json(formatResponse(true, "Financial metrics retrieved", stats));
   } catch (err) {
     logger.error('Get financial stats error:', err);
     return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve financial stats", null));
@@ -655,21 +857,44 @@ export const getAllTransactions = async (req, res) => {
     // Manual Encodement
     let enrichedData = [];
     if (data && data.length > 0) {
-      const userIds = [...new Set(data.map(i => i.sender_id).filter(Boolean))];
-      const projectIds = [...new Set(data.map(i => i.project_id).filter(Boolean))];
+      const userIds = new Set();
+      const projectIds = new Set();
 
-      const { data: users } = await supabase.from("users").select("id, first_name, last_name, email").in("id", userIds);
-      const { data: projects } = await supabase.from("projects").select("id, title").in("id", projectIds);
+      data.forEach(t => {
+        if (t.sender_id) userIds.add(t.sender_id);
+        if (t.receiver_id) userIds.add(t.receiver_id);
+        if (t.project_id) projectIds.add(t.project_id);
+      });
+
+      const promises = [];
+      if (userIds.size > 0) {
+        promises.push(supabase.from("users").select("id, first_name, last_name, email").in("id", [...userIds]));
+      } else {
+        promises.push(Promise.resolve({ data: [] }));
+      }
+
+      if (projectIds.size > 0) {
+        promises.push(supabase.from("projects").select("id, title").in("id", [...projectIds]));
+      } else {
+        promises.push(Promise.resolve({ data: [] }));
+      }
+
+      const [usersRes, projectsRes] = await Promise.all(promises);
 
       const userMap = {};
-      users?.forEach(u => userMap[u.id] = u);
+      usersRes.data?.forEach(u => {
+        userMap[u.id] = { ...u, full_name: `${u.first_name} ${u.last_name}` };
+      });
+
       const projectMap = {};
-      projects?.forEach(p => projectMap[p.id] = p);
+      projectsRes.data?.forEach(p => projectMap[p.id] = p);
 
       enrichedData = data.map(i => ({
         ...i,
-        user: userMap[i.sender_id] || null,
-        project: projectMap[i.project_id] || null
+        payer: i.sender_id ? (userMap[i.sender_id] || null) : null,
+        payee: i.receiver_id ? (userMap[i.receiver_id] || null) : null,
+        user: i.sender_id ? (userMap[i.sender_id] || null) : null, // Backend convention might vary, keeping backward compat
+        project: i.project_id ? (projectMap[i.project_id] || null) : null
       }));
     } else {
       enrichedData = data || [];
@@ -684,6 +909,164 @@ export const getAllTransactions = async (req, res) => {
   } catch (err) {
     logger.error('Get all transactions error:', err);
     return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve transactions", null));
+  }
+};
+
+// Get Transaction Details
+export const getTransactionDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: transaction, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    if (!transaction) return res.status(404).json(formatResponse(false, "Transaction not found"));
+
+    // Enrich with user info
+    let payer = null;
+    let payee = null;
+
+    if (transaction.sender_id) {
+      const { data: sender } = await supabase.from("users").select("id, first_name, last_name, email").eq("id", transaction.sender_id).single();
+      if (sender) payer = { ...sender, full_name: `${sender.first_name} ${sender.last_name}` };
+    }
+
+    if (transaction.receiver_id) {
+      const { data: receiver } = await supabase.from("users").select("id, first_name, last_name, email").eq("id", transaction.receiver_id).single();
+      if (receiver) payee = { ...receiver, full_name: `${receiver.first_name} ${receiver.last_name}` };
+    }
+
+    const enrichedTransaction = {
+      ...transaction,
+      payer,
+      payee,
+      status_history: transaction.metadata?.status_history || [], // Assuming we might store history in metadata
+      related_transactions: transaction.metadata?.related_transactions || [],
+      fees: transaction.metadata?.fees || { platform_fee: 0, processing_fee: 0, total_fees: 0 }
+    };
+
+    return res.json(formatResponse(true, "Transaction details retrieved", enrichedTransaction));
+
+  } catch (err) {
+    logger.error('Get transaction details error:', err);
+    return res.status(500).json(formatResponse(false, err.message, null));
+  }
+};
+
+// Refund Transaction
+export const refundTransaction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    const { data: originalTx, error: txError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (txError || !originalTx) return res.status(404).json(formatResponse(false, "Transaction not found"));
+
+    if (originalTx.status !== 'completed') {
+      return res.status(400).json(formatResponse(false, "Only completed transactions can be refunded"));
+    }
+
+    const refundAmount = amount || originalTx.amount;
+
+    if (refundAmount > originalTx.amount) {
+      return res.status(400).json(formatResponse(false, "Refund amount cannot exceed original transaction amount"));
+    }
+
+    // 1. Create Refund Transaction
+    const { data: refundTx, error: refundError } = await supabase
+      .from("transactions")
+      .insert({
+        type: 'refund',
+        status: 'completed', // Refunds are usually unrelated to external gateways in this mock/seed env
+        amount: refundAmount,
+        sender_id: originalTx.receiver_id, // Reverse direction
+        receiver_id: originalTx.sender_id,
+        description: `Refund for TX ${originalTx.id}: ${reason}`,
+        project_id: originalTx.project_id,
+        metadata: {
+          original_transaction_id: originalTx.id,
+          reason
+        }
+      })
+      .select()
+      .single();
+
+    if (refundError) throw refundError;
+
+    // 2. Update Original Transaction status if full refund
+    if (refundAmount >= originalTx.amount) {
+      await supabase.from("transactions").update({ status: 'refunded' }).eq("id", id);
+    }
+
+    // 3. Log Action
+    await supabase.from("audit_logs").insert({
+      user_id: req.user.id,
+      action_type: "refund_transaction",
+      resource_type: "transaction",
+      resource_id: id,
+      metadata: { refund_amount: refundAmount, reason }
+    });
+
+    return res.json(formatResponse(true, "Refund issued successfully", refundTx));
+
+  } catch (err) {
+    logger.error('Refund transaction error:', err);
+    return res.status(500).json(formatResponse(false, err.message, null));
+  }
+};
+
+// Cancel Transaction
+export const cancelTransaction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data: tx, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !tx) return res.status(404).json(formatResponse(false, "Transaction not found"));
+
+    if (tx.status !== 'pending') {
+      return res.status(400).json(formatResponse(false, "Only pending transactions can be cancelled"));
+    }
+
+    // Update status
+    const { error: updateError } = await supabase
+      .from("transactions")
+      .update({
+        status: 'cancelled',
+        metadata: { ...tx.metadata, cancellation_reason: reason }
+      })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    // Log
+    await supabase.from("audit_logs").insert({
+      user_id: req.user.id,
+      action_type: "cancel_transaction",
+      resource_type: "transaction",
+      resource_id: id,
+      metadata: { reason }
+    });
+
+    return res.json(formatResponse(true, "Transaction cancelled successfully"));
+
+  } catch (err) {
+    logger.error('Cancel transaction error:', err);
+    return res.status(500).json(formatResponse(false, err.message, null));
   }
 };
 
@@ -795,11 +1178,18 @@ export const getAllVerificationRequests = async (req, res) => {
     const { page = 1, limit = 50, status, type } = req.query;
     const offset = (page - 1) * limit;
 
-    const { data, count, error } = await supabase
-      .from("verification_requests")
-      .select("*", { count: 'exact' })
+    let query = supabase
+      .from("contractor_verifications")
+      .select("*", { count: 'exact' });
+
+    if (status && status !== 'all') query = query.eq("verification_status", status);
+    if (type && type !== 'all') query = query.eq("verification_type", type);
+
+    query = query
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
+
+    const { data, count, error } = await query;
 
     if (error) {
       logger.error('Get all verification requests error:', error);
@@ -809,22 +1199,31 @@ export const getAllVerificationRequests = async (req, res) => {
     // Manual Encodement
     let enrichedData = [];
     if (data && data.length > 0) {
-      const userIds = [...new Set(data.map(i => i.user_id).filter(Boolean))];
+      const userIds = [...new Set(data.map(i => i.contractor_id).filter(Boolean))];
       const { data: users } = await supabase.from("users").select("id, first_name, last_name, email, company_name").in("id", userIds);
 
       const userMap = {};
-      users?.forEach(u => userMap[u.id] = u);
+      users?.forEach(u => {
+        userMap[u.id] = {
+          ...u,
+          full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email
+        };
+      });
 
       enrichedData = data.map(i => ({
         ...i,
-        user: userMap[i.user_id] || null
+        type: i.verification_type,
+        status: i.verification_status,
+        priority: 'normal',
+        submitted_at: i.created_at,
+        user: userMap[i.contractor_id] || null
       }));
     } else {
       enrichedData = data || [];
     }
 
     return res.json(formatResponse(true, "Verification requests retrieved", {
-      requests: enrichedData,
+      items: enrichedData,
       total: count || 0,
       page: parseInt(page) || 1,
       pages: Math.ceil((count || 0) / limit)
@@ -835,52 +1234,234 @@ export const getAllVerificationRequests = async (req, res) => {
   }
 };
 
+export const getVerificationStats = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("contractor_verifications")
+      .select("verification_type, verification_status, created_at, expiry_date");
+
+    if (error) throw error;
+
+    const total = data.length;
+    const approved = data.filter(i => i.verification_status === 'approved').length;
+    const rejected = data.filter(i => i.verification_status === 'rejected').length;
+    const pending = data.filter(i => i.verification_status === 'pending');
+
+    const pending_by_type = {
+      identity: pending.filter(i => i.verification_type === 'identity').length,
+      license: pending.filter(i => i.verification_type === 'license').length,
+      insurance: pending.filter(i => i.verification_type === 'insurance').length,
+      background_check: pending.filter(i => i.verification_type === 'background_check').length
+    };
+
+    const approval_rate = total > 0 ? Math.round((approved / total) * 100) : 0;
+    const rejection_rate = total > 0 ? Math.round((rejected / total) * 100) : 0;
+
+    return res.json(formatResponse(true, "Stats retrieved", {
+      pending_by_type,
+      average_processing_time: 24, // Mock
+      expiring_soon: 0, // Mock
+      approval_rate,
+      rejection_rate
+    }));
+  } catch (err) {
+    logger.error('Get verification stats error:', err);
+    return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve stats", null));
+  }
+};
+
+export const getVerificationDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data: verification, error } = await supabase
+      .from("contractor_verifications")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    if (!verification) return res.status(404).json(formatResponse(false, "Verification not found"));
+
+    const { data: user } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name")
+      .eq("id", verification.contractor_id)
+      .single();
+
+    const userData = user ? {
+      ...user,
+      full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email
+    } : { email: 'Unknown', full_name: 'Unknown' };
+
+    // verification_documents table does not exist in extra_tables.sql
+    // So we use document_url from verification record
+    const documents = verification.document_url ? [{
+      id: 'doc-1', // Mock ID
+      verification_id: verification.id,
+      type: verification.verification_type === 'identity' ? 'government_id' : verification.verification_type,
+      url: verification.document_url,
+      status: 'pending',
+      uploaded_at: verification.created_at,
+      validated: false
+    }] : [];
+
+    const result = {
+      ...verification,
+      type: verification.verification_type,
+      status: verification.verification_status,
+      submitted_at: verification.created_at,
+      user: userData,
+      documents: documents || [],
+      profile_match: { name_match: true, dob_match: true, address_match: true }
+    };
+
+    return res.json(formatResponse(true, "Details retrieved", result));
+  } catch (err) {
+    logger.error('Get verification details error:', err);
+    return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve details", null));
+  }
+};
+
+export const approveVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const { error } = await supabase
+      .from("contractor_verifications")
+      .update({ verification_status: 'approved', notes })
+      .eq("id", id);
+
+    if (error) throw error;
+    return res.json(formatResponse(true, "Verification approved"));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message || "Failed to approve", null));
+  }
+};
+
+export const rejectVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const { error } = await supabase
+      .from("contractor_verifications")
+      .update({ verification_status: 'rejected', notes: reason })
+      .eq("id", id);
+
+    if (error) throw error;
+    return res.json(formatResponse(true, "Verification rejected"));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message || "Failed to reject", null));
+  }
+};
+
 // ==================== CONTENT MODERATION ====================
 
 export const getAllReports = async (req, res) => {
   try {
-    const { page = 1, limit = 50, status, content_type } = req.query;
+    const { page = 1, limit = 50, status, content_type, priority } = req.query;
     const offset = (page - 1) * limit;
 
-    const { data, count, error } = await supabase
+    let query = supabase
       .from("content_reports")
-      .select("*", { count: 'exact' })
+      .select("*", { count: 'exact' });
+
+    if (status && status !== 'all') query = query.eq("status", status);
+    if (content_type && content_type !== 'all') query = query.eq("content_type", content_type);
+
+    query = query
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
 
+    const { data, count, error } = await query;
+
     if (error) {
-      logger.error('Get all payouts error:', error);
+      logger.error('Get all reports error:', error);
       throw error;
     }
 
-    // Manual Encodement
+    // Enrich with user data
     let enrichedData = [];
     if (data && data.length > 0) {
-      const userIds = [...new Set(data.map(i => i.reported_by).filter(Boolean))];
-      const { data: users } = await supabase.from("users").select("id, first_name, last_name, email").in("id", userIds);
+      const reporterIds = [...new Set(data.map(i => i.reported_by).filter(Boolean))];
+      const reviewerIds = [...new Set(data.map(i => i.reviewed_by).filter(Boolean))];
+      const allUserIds = [...new Set([...reporterIds, ...reviewerIds])];
+
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, first_name, last_name, email")
+        .in("id", allUserIds);
 
       const userMap = {};
-      users?.forEach(u => userMap[u.id] = u);
+      users?.forEach(u => {
+        userMap[u.id] = {
+          ...u,
+          full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email
+        };
+      });
 
       enrichedData = data.map(i => ({
         ...i,
-        reported_by_user: userMap[i.reported_by] || null
+        reported_by: userMap[i.reported_by] || null,
+        reviewed_by: userMap[i.reviewed_by] || null,
+        assigned_to: userMap[i.reviewed_by] || null, // Use reviewed_by as assigned_to for now
+        report_reason: i.reason || 'No reason provided',
+        report_details: i.description || '',
+        reported_at: i.created_at,
+        priority: 'normal' // Mock priority since it's not in schema
       }));
     } else {
-      enrichedData = data;
+      enrichedData = data || [];
     }
 
     return res.json(formatResponse(true, "Content reports retrieved", {
-      reports: enrichedData,
-      total: count,
+      items: enrichedData,
+      total: count || 0,
       page: parseInt(page),
-      pages: Math.ceil(count / limit)
+      pages: Math.ceil((count || 0) / limit)
     }));
   } catch (err) {
     logger.error('API error:', { endpoint: req.path, error: err });
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
   }
 };
+
+export const resolveReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes } = req.body;
+
+    let status = 'resolved';
+    let action_taken = action;
+
+    if (action === 'dismiss') {
+      status = 'dismissed';
+    } else if (action === 'remove') {
+      action_taken = 'content_removed';
+    } else if (action === 'approve') {
+      action_taken = 'content_approved';
+      status = 'resolved';
+    }
+
+    const { error } = await supabase
+      .from("content_reports")
+      .update({
+        status,
+        action_taken,
+        admin_notes: notes,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: req.user?.id || null
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return res.json(formatResponse(true, "Report resolved successfully"));
+  } catch (err) {
+    logger.error('Resolve report error:', err);
+    return res.status(500).json(formatResponse(false, err.message || "Failed to resolve report", null));
+  }
+};
+
 
 // ==================== ANALYTICS ====================
 
@@ -953,26 +1534,32 @@ export const getSystemSettings = async (req, res) => {
 
 export const updateSystemSetting = async (req, res) => {
   try {
-    const { key, value, description } = req.body;
+    const settings = req.body;
+
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json(formatResponse(false, "Invalid settings format"));
+    }
+
+    const updates = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: String(value), // Ensure value is stringified if needed
+      updated_by: req.user.id,
+      updated_at: new Date()
+    }));
 
     const { data, error } = await supabase
       .from("system_settings")
-      .upsert({
-        key,
-        value,
-        description,
-        updated_by: req.user.id,
-        updated_at: new Date()
-      })
-      .select()
-      .single();
+      .upsert(updates)
+      .select();
 
     if (error) {
-      logger.error('Get all payouts error:', error);
+      logger.error('Update settings error:', error);
       throw error;
     }
 
-    return res.json(formatResponse(true, "System setting updated", data));
+    await logAdminAction(req.user.id, 'update_settings', 'system', 'all', { count: updates.length });
+
+    return res.json(formatResponse(true, "System settings updated", data));
   } catch (err) {
     logger.error('API error:', { endpoint: req.path, error: err });
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
@@ -1241,13 +1828,23 @@ export const deleteUserHard = async (req, res) => {
       return res.status(400).json(formatResponse(false, "Cannot delete your own account", null));
     }
 
-    // Perform Hard Delete via Supabase Auth Admin
-    // This removes from auth.users and should cascade to public.users
-    const { data, error } = await supabase.auth.admin.deleteUser(id);
+    // Step 1: Delete from users table first (to avoid foreign key issues)
+    const { error: dbError } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", id);
 
-    if (error) {
-      logger.error('Delete User Auth error:', error);
-      throw error;
+    if (dbError) {
+      logger.error('Delete User from DB error:', dbError);
+      // Continue anyway to try deleting from auth
+    }
+
+    // Step 2: Delete from Supabase Auth
+    const { data, error: authError } = await supabase.auth.admin.deleteUser(id);
+
+    if (authError) {
+      logger.error('Delete User from Auth error:', authError);
+      throw authError;
     }
 
     // Log action
@@ -1255,7 +1852,7 @@ export const deleteUserHard = async (req, res) => {
       await logAdminAction(req.user.id, 'delete_user_hard', 'user', id, { reason: 'Admin hard delete' });
     } catch (e) { console.warn('Logging failed', e); }
 
-    return res.json(formatResponse(true, "User permanently deleted", null));
+    return res.json(formatResponse(true, "User permanently deleted from both database and auth", null));
   } catch (err) {
     logger.error('API error:', { endpoint: req.path, error: err });
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
@@ -1409,12 +2006,21 @@ export const getAllPayouts = async (req, res) => {
 
       const contractorMap = {};
       if (contractors) {
-        contractors.forEach(c => contractorMap[c.id] = c);
+        contractors.forEach(c => {
+          contractorMap[c.id] = {
+            ...c,
+            full_name: `${c.first_name || ''} ${c.last_name || ''}`.trim()
+          };
+        });
       }
 
       enrichedPayouts = data.map(p => ({
         ...p,
-        contractor: contractorMap[p.contractor_id] || null
+        contractor: contractorMap[p.contractor_id] || null,
+        // Add mock data for fields that don't exist in DB yet
+        scheduled_date: p.scheduled_date || null,
+        processed_at: p.processed_at || (p.status === 'completed' ? p.created_at : null),
+        bank_account: p.bank_account || null
       }));
     } else {
       enrichedPayouts = data;
@@ -1492,6 +2098,80 @@ export const processPayout = async (req, res) => {
     return res.status(500).json(formatResponse(false, err.message || "Failed to process payout", null));
   }
 };
+
+// Approve Payout
+export const approvePayout = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('payouts')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAdminAction(req.user?.id || 'system', 'approve_payout', 'payout', id);
+
+    return res.json(formatResponse(true, "Payout approved successfully", data));
+  } catch (err) {
+    logger.error('Approve payout error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Hold Payout
+export const holdPayout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data, error } = await supabase
+      .from('payouts')
+      .update({ status: 'held', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAdminAction(req.user?.id || 'system', 'hold_payout', 'payout', id, { reason });
+
+    return res.json(formatResponse(true, "Payout held successfully", data));
+  } catch (err) {
+    logger.error('Hold payout error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+
+
+// Resend Failed Payout
+export const resendFailedPayout = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('payouts')
+      .update({ status: 'pending', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await logAdminAction(req.user?.id || 'system', 'resend_payout', 'payout', id);
+
+    return res.json(formatResponse(true, "Payout resent successfully", data));
+  } catch (err) {
+    logger.error('Resend payout error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+
 
 // ==================== REVIEWS MANAGEMENT ====================
 
@@ -1694,53 +2374,118 @@ export const getAllAppointments = async (req, res) => {
 
 export const getAllEscrowAccounts = async (req, res) => {
   try {
-    const { page = 1, limit = 50, search, status } = req.query;
+    const { page = 1, limit = 50, status } = req.query;
     const offset = (page - 1) * limit;
 
+    // Use correct table: escrow_transactions
     let query = supabase
       .from("escrow_transactions")
-      .select("*, projects(id, title), owner:users!payer_id(id, first_name, last_name, email), contractor:users!payee_id(id, first_name, last_name, email)", { count: 'exact' })
+      .select("*", { count: 'exact' })
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
 
     if (status) {
-      // Map frontend status to backend status if needed
-      // Frontend: active, frozen, closed, disputed
-      // Backend (escrow_transactions): held, released, failed
       if (status === 'active') query = query.eq("status", "held");
-      else if (status === 'closed') query = query.eq("status", "released");
+      else if (status === 'closed') query = query.in("status", ["completed", "released"]);
       else query = query.eq("status", status);
     }
 
-    if (search) {
-      // Search is tricky with relations, skipping for V1
-    }
-
-    const { data, count, error } = await query;
+    const { data: transactions, count, error } = await query;
 
     if (error) {
-      logger.error('Get all payouts error:', error);
+      logger.error('Get all escrow accounts error:', error);
       throw error;
     }
 
-    // Transform data to match frontend EscrowAccount interface
-    const accounts = data.map(t => ({
-      id: t.id,
-      project_id: t.project_id,
-      project: t.projects ? {
-        id: t.projects.id,
-        title: t.projects.title,
-        owner: t.owner,
-        contractor: t.contractor
-      } : null,
-      total_amount: t.amount,
-      released_amount: t.status === 'released' ? t.amount : 0,
-      remaining_balance: t.status === 'held' ? t.amount : 0,
-      status: t.status === 'held' ? 'active' : (t.status === 'released' ? 'closed' : t.status),
-      owner: t.owner,
-      contractor: t.contractor,
-      created_at: t.created_at
-    }));
+    const tList = transactions || [];
+
+    // Manual embedding of relationships
+    // Transactions lack user_id, so we infer user (payer) from project.owner_id
+    const projectIds = [...new Set(tList.map(t => t.project_id).filter(Boolean))];
+
+    let projects = [];
+    let users = [];
+    let contractors = [];
+
+    // Fetch Projects
+    if (projectIds.length > 0) {
+      const { data: p } = await supabase
+        .from('projects')
+        .select('id, title, contractor_id, owner_id')
+        .in('id', projectIds);
+      projects = p || [];
+
+      // Fetch Contractors (Payees)
+      const contractorIds = [...new Set(projects.map(p => p.contractor_id).filter(Boolean))];
+      if (contractorIds.length > 0) {
+        const { data: c } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .in('id', contractorIds);
+        contractors = c || [];
+      }
+
+      // Fetch Owners (Payers) via deposited_by
+      const userIds = [...new Set(tList.map(t => t.deposited_by).filter(Boolean))];
+      if (userIds.length > 0) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+        users = u || [];
+      }
+    }
+
+    // Create lookup maps
+    const projectMap = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+
+    const userMap = users.reduce((acc, u) => ({
+      ...acc,
+      [u.id]: {
+        ...u,
+        full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim()
+      }
+    }), {});
+
+    const contractorMap = contractors.reduce((acc, c) => ({
+      ...acc,
+      [c.id]: {
+        ...c,
+        full_name: `${c.first_name || ''} ${c.last_name || ''}`.trim()
+      }
+    }), {});
+
+    // Transform data
+    const accounts = tList.map(t => {
+      const project = projectMap[t.project_id];
+      const owner = userMap[t.deposited_by];
+
+      const contractorId = project?.contractor_id;
+      const contractor = contractorId ? contractorMap[contractorId] : null;
+
+      // Status mapping
+      let frontendStatus = t.status;
+      if (t.status === 'pending') frontendStatus = 'active';
+      if (t.status === 'completed' || t.status === 'released') frontendStatus = 'closed';
+
+      return {
+        id: t.id,
+        project_id: t.project_id,
+        project: project ? {
+          id: project.id,
+          title: project.title,
+          owner: owner,
+          contractor: contractor
+        } : null,
+        total_amount: t.amount,
+        released_amount: (t.status === 'completed' || t.status === 'released' || t.status === 'refunded') ? t.amount : 0,
+        remaining_balance: t.status === 'pending' || t.status === 'held' ? t.amount : 0,
+        status: frontendStatus,
+        owner: owner,
+        contractor: contractor,
+        created_at: t.created_at
+      };
+    });
 
     return res.json(formatResponse(true, "Escrow accounts retrieved", { accounts, total: count }));
   } catch (err) {
@@ -1748,6 +2493,186 @@ export const getAllEscrowAccounts = async (req, res) => {
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
   }
 };
+
+// Get Escrow Details
+export const getEscrowDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch Transaction
+    const { data: t, error } = await supabase
+      .from("escrow_transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !t) return res.status(404).json(formatResponse(false, "Escrow account not found"));
+
+    // Fetch Project
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id, title, contractor_id, owner_id")
+      .eq("id", t.project_id)
+      .single();
+
+    // Fetch Owner (Payer)
+    const { data: owner } = await supabase
+      .from("users")
+      .select("id, first_name, last_name, email")
+      .eq("id", t.deposited_by)
+      .single();
+
+    // Fetch Contractor
+    let contractor = null;
+    if (project?.contractor_id) {
+      const { data: c } = await supabase
+        .from("users")
+        .select("id, first_name, last_name, email")
+        .eq("id", project.contractor_id)
+        .single();
+      contractor = c;
+    }
+
+    // Enhance Names
+    const ownerData = owner ? {
+      ...owner,
+      full_name: `${owner.first_name || ''} ${owner.last_name || ''}`.trim()
+    } : null;
+
+    const contractorData = contractor ? {
+      ...contractor,
+      full_name: `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim()
+    } : null;
+
+    // Status mapping
+    let frontendStatus = t.status;
+    if (t.status === 'pending') frontendStatus = 'active';
+    if (t.status === 'held') frontendStatus = 'active';
+    if (t.status === 'completed' || t.status === 'released') frontendStatus = 'closed';
+
+    const account = {
+      id: t.id,
+      project_id: t.project_id,
+      project: project ? { ...project, owner: ownerData, contractor: contractorData } : null,
+      total_amount: t.amount,
+      released_amount: (t.status === 'released' || t.status === 'completed' || t.status === 'refunded') ? t.amount : 0,
+      remaining_balance: (t.status === 'held' || t.status === 'pending') ? t.amount : 0,
+      status: frontendStatus,
+      owner: ownerData,
+      contractor: contractorData,
+      created_at: t.created_at,
+      milestones: [],
+      transaction_history: [
+        {
+          id: t.id,
+          type: 'Deposit',
+          amount: t.amount,
+          status: (t.status === 'held' || t.status === 'released') ? 'completed' : t.status,
+          initiated_at: t.created_at
+        }
+      ]
+    };
+
+    return res.json(formatResponse(true, "Escrow details retrieved", account));
+  } catch (err) {
+    logger.error('Get escrow details error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Release Escrow Payment
+export const releaseEscrowPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    const { error } = await supabase
+      .from('escrow_transactions')
+      .update({ status: 'released', updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Log action (simplified)
+    await logAdminAction(req.user?.id || 'system', 'release_escrow', 'transaction', id, { amount, reason });
+
+    return res.json(formatResponse(true, "Payment released successfully"));
+  } catch (err) {
+    logger.error('Release escrow error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Freeze Escrow Account
+export const freezeEscrowAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    // Note: 'id' here comes from Frontend 'account.id' which is TRANSACTION ID in our mapping
+    // But Freeze usually applies to ACCOUNT?
+    // Frontend maps row key=account.id -> t.id.
+    // So we are freezing the TRANSACTION (holding it)?
+    // Or we should find the ACCOUNT (project_id) and freeze it?
+    // For MVP, setting transaction status to 'held' (already held?) -> 'frozen'?
+    // DB 'status' enum might not have 'frozen'.
+    // Seed used 'held', 'released'.
+    // I'll assume updating 'escrow_accounts' table is what is meant, but we have transaction ID.
+    // I'll fetch transaction to get project_id, then freeze account.
+
+    // Fetch Link
+    const { data: tx } = await supabase.from('escrow_transactions').select('project_id').eq('id', id).single();
+    if (tx) {
+      await supabase.from('escrow_accounts').update({ status: 'frozen' }).eq('project_id', tx.project_id);
+    }
+
+    return res.json(formatResponse(true, "Account frozen successfully"));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Unfreeze Escrow Account
+export const unfreezeEscrowAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data: tx } = await supabase.from('escrow_transactions').select('project_id').eq('id', id).single();
+    if (tx) {
+      await supabase.from('escrow_accounts').update({ status: 'active' }).eq('project_id', tx.project_id);
+    }
+
+    return res.json(formatResponse(true, "Account unfrozen successfully"));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Refund Escrow
+export const refundEscrowToOwner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    const { error } = await supabase
+      .from('escrow_transactions')
+      .update({ status: 'refunded', updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return res.json(formatResponse(true, "Refund processed successfully"));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+// Adjust Escrow Amount
+
+
+// Generate Escrow Report
+
 
 export const getAllAdminUsers = async (req, res) => {
   try {

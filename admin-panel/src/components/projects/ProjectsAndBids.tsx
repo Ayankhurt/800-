@@ -7,10 +7,10 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
+import {
+  Search,
+  Filter,
+  Plus,
   MoreVertical,
   Eye,
   CheckCircle,
@@ -35,6 +35,7 @@ import {
 import { Progress } from '../ui/progress';
 import { Skeleton } from '../ui/skeleton';
 import { projectsService } from '@/src/lib/api/projectsService';
+import { adminService } from '@/src/lib/api/adminService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -59,6 +60,17 @@ const formatDate = (dateString?: string) => {
   }
 };
 
+// Helper to get client name
+const getClientName = (project: any) => {
+  if (project.client?.full_name) return project.client.full_name;
+  if (project.owner?.full_name) return project.owner.full_name;
+  if (project.owner?.first_name || project.owner?.last_name) {
+    return `${project.owner.first_name || ''} ${project.owner.last_name || ''}`.trim();
+  }
+  if (project.user?.full_name) return project.user.full_name;
+  return 'N/A';
+};
+
 export function ProjectsAndBids() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -66,20 +78,20 @@ export function ProjectsAndBids() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
-  // Fetch projects
+  // Fetch projects (Using Admin Service)
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects', statusFilter],
-    queryFn: () => projectsService.getAllProjects({ 
+    queryFn: () => adminService.getAllProjects({
       status: statusFilter,
-      limit: 100 
+      limit: 100
     }),
   });
 
-  // Fetch bids for all projects
+  // Fetch bids for all projects (Using Admin Service)
   const { data: bidsData } = useQuery({
     queryKey: ['bids-all'],
-    queryFn: () => projectsService.getBids({ limit: 1000 }),
-    enabled: !!projectsData?.data,
+    queryFn: () => adminService.getAllBids({ limit: 1000 }),
+    enabled: !!projectsData,
   });
 
   // Approve milestone mutation
@@ -106,17 +118,25 @@ export function ProjectsAndBids() {
     },
   });
 
-  const projects = projectsData?.data || [];
-  const bids = bidsData?.data || [];
+  // Handle different API response structures (AdminService vs ProjectsService)
+  const rawProjects = projectsData?.data;
+  const projects = Array.isArray(rawProjects) ? rawProjects : (rawProjects?.projects || []);
+
+  const rawBids = bidsData?.data;
+  const bids = Array.isArray(rawBids) ? rawBids : (rawBids?.bids || []);
 
   // Filter projects by search query
   const filteredProjects = projects.filter((project: any) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
+    const title = project.title || project.name || '';
+    const clientName = project.client?.full_name || project.owner?.full_name || project.user?.full_name || '';
+    const clientEmail = project.client?.email || project.owner?.email || project.user?.email || '';
+
     return (
-      project.name?.toLowerCase().includes(query) ||
-      project.client?.full_name?.toLowerCase().includes(query) ||
-      project.client?.email?.toLowerCase().includes(query) ||
+      title.toLowerCase().includes(query) ||
+      clientName.toLowerCase().includes(query) ||
+      clientEmail.toLowerCase().includes(query) ||
       formatCurrency(project.budget).toLowerCase().includes(query)
     );
   });
@@ -129,7 +149,7 @@ export function ProjectsAndBids() {
 
   // Get milestones for a project
   const [projectMilestones, setProjectMilestones] = useState<Record<string, any[]>>({});
-  
+
   const fetchMilestones = async (projectId: string) => {
     if (projectMilestones[projectId]) return;
     try {
@@ -228,19 +248,19 @@ export function ProjectsAndBids() {
             data.map((project: any) => {
               const bidCount = getBidCount(project.id);
               const progress = getProjectProgress(project.id);
-              
+
               return (
                 <TableRow key={project.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{project.name || 'Unnamed Project'}</div>
+                      <div className="font-medium">{project.title || project.name || 'Unnamed Project'}</div>
                       <div className="text-gray-500 text-sm">
                         {project.description ? `${project.description.substring(0, 50)}...` : 'No description'}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    {project.client?.full_name || project.user?.full_name || 'N/A'}
+                    {getClientName(project)}
                   </TableCell>
                   <TableCell>{getStatusBadge(project.status)}</TableCell>
                   <TableCell>
@@ -364,8 +384,8 @@ export function ProjectsAndBids() {
           <div className="flex gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input 
-                placeholder="Search projects by name, client, or budget..." 
+              <Input
+                placeholder="Search projects by name, client, or budget..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -426,37 +446,41 @@ export function ProjectsAndBids() {
                 <div className="space-y-4">
                   {activeProjects.slice(0, 10).map((project: any) => {
                     // Fetch milestones on mount
-                    if (!projectMilestones[project.id]) {
+                    if (projectMilestones[project.id] === undefined) {
                       fetchMilestones(project.id);
                     }
                     const milestones = projectMilestones[project.id] || [];
                     const pendingMilestones = milestones.filter((m: any) => m.status === 'pending' || m.status === 'submitted');
-                    
+
                     if (pendingMilestones.length === 0 && milestones.length === 0) {
                       return (
                         <div key={project.id} className="p-4 border rounded-lg">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-medium">{project.name || 'Unnamed Project'}</h3>
+                              <h3 className="font-medium">{project.title || project.name || 'Unnamed Project'}</h3>
                               <p className="text-gray-600 mt-1">
-                                Client: {project.client?.full_name || project.user?.full_name || 'N/A'}
+                                Client: {getClientName(project)}
                               </p>
-                              <p className="text-gray-500 text-sm mt-2">Loading milestones...</p>
+                              {projectMilestones[project.id] === undefined ? (
+                                <p className="text-gray-500 text-sm mt-2">Loading milestones...</p>
+                              ) : (
+                                <p className="text-gray-500 text-sm mt-2">No milestones set</p>
+                              )}
                             </div>
                           </div>
                         </div>
                       );
                     }
-                    
+
                     if (pendingMilestones.length === 0) return null;
-                    
+
                     return (
                       <div key={project.id} className="p-4 border rounded-lg">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-medium">{project.name || 'Unnamed Project'}</h3>
+                            <h3 className="font-medium">{project.title || project.name || 'Unnamed Project'}</h3>
                             <p className="text-gray-600 mt-1">
-                              Client: {project.client?.full_name || project.user?.full_name || 'N/A'}
+                              Client: {getClientName(project)}
                             </p>
                             <div className="mt-3 flex items-center gap-4">
                               <div>
@@ -464,16 +488,16 @@ export function ProjectsAndBids() {
                                 <span>{pendingMilestones.length}</span>
                               </div>
                               {milestones.length > 0 && (
-                                <Progress 
-                                  value={(milestones.filter((m: any) => m.status === 'completed' || m.status === 'approved').length / milestones.length) * 100} 
-                                  className="w-40" 
+                                <Progress
+                                  value={(milestones.filter((m: any) => m.status === 'completed' || m.status === 'approved').length / milestones.length) * 100}
+                                  className="w-40"
                                 />
                               )}
                             </div>
                           </div>
                           {pendingMilestones.length > 0 && (
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               className="text-blue-600"
                               onClick={() => {
                                 const nextMilestone = pendingMilestones[0];
@@ -516,6 +540,6 @@ export function ProjectsAndBids() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </div >
   );
 }

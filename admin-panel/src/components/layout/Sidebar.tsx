@@ -139,13 +139,7 @@ function SidebarContent({ currentUser }: { currentUser: AuthUser | null }) {
     },
 
     // Financial Management
-    {
-      id: 'payments',
-      label: 'Payments',
-      icon: <DollarSign className="h-5 w-5" />,
-      allowedRoles: ['super_admin', 'finance_manager'],
-      adminOnly: false,
-    },
+
     {
       id: 'transactions',
       label: 'Transactions',

@@ -128,15 +128,20 @@ export function TransactionDetailView({
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Initiated At</p>
-                <p>{format(new Date(transaction.initiated_at), 'PPpp')}</p>
+                <p>{
+                  (() => {
+                    const date = transaction.initiated_at ? new Date(transaction.initiated_at) : (transaction.created_at ? new Date(transaction.created_at) : null);
+                    return date && !isNaN(date.getTime()) ? format(date, 'PPpp') : 'N/A';
+                  })()
+                }</p>
               </div>
-              {transaction.completed_at && (
+              {transaction.completed_at && !isNaN(new Date(transaction.completed_at).getTime()) && (
                 <div>
                   <p className="text-sm text-gray-600">Completed At</p>
                   <p>{format(new Date(transaction.completed_at), 'PPpp')}</p>
                 </div>
               )}
-              {transaction.failed_at && (
+              {transaction.failed_at && !isNaN(new Date(transaction.failed_at).getTime()) && (
                 <div>
                   <p className="text-sm text-gray-600">Failed At</p>
                   <p>{format(new Date(transaction.failed_at), 'PPpp')}</p>

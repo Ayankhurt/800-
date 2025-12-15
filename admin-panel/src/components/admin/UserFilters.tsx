@@ -13,21 +13,13 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { Badge } from '../ui/badge';
-import { X, Filter, Calendar as CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface UserFilters {
   role?: string;
   status?: string;
   verification_status?: string;
-  date_from?: Date;
-  date_to?: Date;
-  trust_score_min?: number;
-  trust_score_max?: number;
-  location?: string;
   search?: string;
 }
 
@@ -204,142 +196,6 @@ export function UserFilters({ filters, onFiltersChange, onReset }: UserFiltersPr
                     (o) => o.value === localFilters.verification_status
                   )?.label
                 }
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
-
-          {/* Registration Date Range */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Registration Date Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal',
-                      !localFilters.date_from && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.date_from
-                      ? format(localFilters.date_from, 'PPP')
-                      : 'From'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.date_from}
-                    onSelect={(date) => handleFilterChange('date_from', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'justify-start text-left font-normal',
-                      !localFilters.date_to && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {localFilters.date_to
-                      ? format(localFilters.date_to, 'PPP')
-                      : 'To'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={localFilters.date_to}
-                    onSelect={(date) => handleFilterChange('date_to', date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            {(localFilters.date_from || localFilters.date_to) && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => {
-                  removeFilter('date_from');
-                  removeFilter('date_to');
-                }}
-              >
-                Date Range
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
-
-          {/* Trust Score Range */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Trust Score Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="number"
-                placeholder="Min"
-                min="0"
-                max="100"
-                value={localFilters.trust_score_min || ''}
-                onChange={(e) =>
-                  handleFilterChange(
-                    'trust_score_min',
-                    e.target.value ? Number(e.target.value) : undefined
-                  )
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Max"
-                min="0"
-                max="100"
-                value={localFilters.trust_score_max || ''}
-                onChange={(e) =>
-                  handleFilterChange(
-                    'trust_score_max',
-                    e.target.value ? Number(e.target.value) : undefined
-                  )
-                }
-              />
-            </div>
-            {(localFilters.trust_score_min || localFilters.trust_score_max) && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => {
-                  removeFilter('trust_score_min');
-                  removeFilter('trust_score_max');
-                }}
-              >
-                Trust Score
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
-            )}
-          </div>
-
-          {/* Location */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Location/State</Label>
-            <Input
-              placeholder="Enter location or state"
-              value={localFilters.location || ''}
-              onChange={(e) =>
-                handleFilterChange('location', e.target.value || undefined)
-              }
-            />
-            {localFilters.location && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer"
-                onClick={() => removeFilter('location')}
-              >
-                {localFilters.location}
                 <X className="h-3 w-3 ml-1" />
               </Badge>
             )}

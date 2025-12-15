@@ -66,8 +66,8 @@ const ADMIN_ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
   { value: 'admin', label: 'Admin' },
   { value: 'moderator', label: 'Moderator' },
-  { value: 'support', label: 'Support Agent' },
-  { value: 'finance', label: 'Finance Manager' },
+  { value: 'support_agent', label: 'Support Agent' },
+  { value: 'finance_manager', label: 'Finance Manager' },
 ];
 
 export default function AdminUserManagement() {
@@ -78,6 +78,7 @@ export default function AdminUserManagement() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [createData, setCreateData] = useState({
     email: '',
@@ -85,7 +86,6 @@ export default function AdminUserManagement() {
     role: '',
     first_name: '',
     last_name: '',
-    require_2fa: false,
     permissions: [] as string[],
     ip_whitelist: [] as string[],
   });
@@ -141,7 +141,6 @@ export default function AdminUserManagement() {
           role: '',
           first_name: '',
           last_name: '',
-          require_2fa: false,
           permissions: [],
           ip_whitelist: [],
         });
@@ -164,6 +163,11 @@ export default function AdminUserManagement() {
       is_active: admin.is_active,
     });
     setShowEditModal(true);
+  };
+
+  const handleViewAdmin = (admin: AdminUser) => {
+    setSelectedAdmin(admin);
+    setShowViewModal(true);
   };
 
   const handleSaveEdit = async () => {
@@ -333,9 +337,7 @@ export default function AdminUserManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            // TODO: Navigate to activity logs filtered by this admin
-                          }}
+                          onClick={() => handleViewAdmin(admin)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -425,18 +427,7 @@ export default function AdminUserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="require_2fa"
-                checked={createData.require_2fa}
-                onCheckedChange={(checked) =>
-                  setCreateData({ ...createData, require_2fa: checked as boolean })
-                }
-              />
-              <Label htmlFor="require_2fa" className="cursor-pointer">
-                Require MFA
-              </Label>
-            </div>
+
             <div>
               <Label>IP Whitelist (comma-separated)</Label>
               <Input
@@ -465,7 +456,6 @@ export default function AdminUserManagement() {
                   role: '',
                   first_name: '',
                   last_name: '',
-                  require_2fa: false,
                   permissions: [],
                   ip_whitelist: [],
                 });
@@ -521,18 +511,7 @@ export default function AdminUserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="edit_require_2fa"
-                checked={editData.require_2fa}
-                onCheckedChange={(checked) =>
-                  setEditData({ ...editData, require_2fa: checked as boolean })
-                }
-              />
-              <Label htmlFor="edit_require_2fa" className="cursor-pointer">
-                Require 2FA
-              </Label>
-            </div>
+
             <div className="flex items-center gap-2">
               <Checkbox
                 id="edit_is_active"
@@ -567,6 +546,136 @@ export default function AdminUserManagement() {
               Cancel
             </Button>
             <Button onClick={handleSaveEdit}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Admin Details Modal */}
+      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Admin User Details</DialogTitle>
+            <DialogDescription>
+              View complete information for this admin user.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAdmin && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-4 pb-4 border-b">
+                <Avatar className="h-16 w-16">
+                  <AvatarFallback className="bg-blue-600 text-white text-xl">
+                    {getInitials(selectedAdmin.first_name, selectedAdmin.last_name, selectedAdmin.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {selectedAdmin.first_name && selectedAdmin.last_name
+                      ? `${selectedAdmin.first_name} ${selectedAdmin.last_name}`
+                      : selectedAdmin.email}
+                  </h3>
+                  <p className="text-sm text-gray-500">{selectedAdmin.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-500">Role</Label>
+                  <p className="font-medium mt-1">
+                    <Badge variant="outline">
+                      {ADMIN_ROLES.find((r) => r.value === selectedAdmin.role)?.label || selectedAdmin.role}
+                    </Badge>
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-gray-500">Status</Label>
+                  <p className="font-medium mt-1">
+                    {selectedAdmin.is_active ? (
+                      <Badge className="bg-green-500">Active</Badge>
+                    ) : (
+                      <Badge className="bg-gray-500">Inactive</Badge>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-gray-500">Two-Factor Authentication</Label>
+                  <p className="font-medium mt-1 flex items-center gap-2">
+                    {selectedAdmin.two_factor_enabled ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>Enabled</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                        <span>Disabled</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-gray-500">User ID</Label>
+                  <p className="font-mono text-xs mt-1 bg-gray-100 p-2 rounded">
+                    {selectedAdmin.id}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-gray-500">Last Login</Label>
+                  <p className="font-medium mt-1">
+                    {selectedAdmin.last_login_at
+                      ? format(new Date(selectedAdmin.last_login_at), 'MMM dd, yyyy HH:mm')
+                      : 'Never'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-gray-500">Created At</Label>
+                  <p className="font-medium mt-1">
+                    {selectedAdmin.created_at
+                      ? format(new Date(selectedAdmin.created_at), 'MMM dd, yyyy HH:mm')
+                      : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {selectedAdmin.ip_whitelist && selectedAdmin.ip_whitelist.length > 0 && (
+                <div>
+                  <Label className="text-gray-500">IP Whitelist</Label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedAdmin.ip_whitelist.map((ip, index) => (
+                      <Badge key={index} variant="secondary">
+                        {ip}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedAdmin.permissions && selectedAdmin.permissions.length > 0 && (
+                <div>
+                  <Label className="text-gray-500">Permissions</Label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedAdmin.permissions.map((permission, index) => (
+                      <Badge key={index} variant="outline">
+                        {permission}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowViewModal(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              setShowViewModal(false);
+              if (selectedAdmin) {
+                handleEditAdmin(selectedAdmin);
+              }
+            }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit User
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

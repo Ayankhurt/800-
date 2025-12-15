@@ -23,19 +23,9 @@ import {
 } from '../ui/select';
 import { Badge } from '../ui/badge';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import {
   Search,
   Eye,
   AlertTriangle,
-  Clock,
-  DollarSign,
-  User,
-  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -49,13 +39,6 @@ export default function DisputeQueue() {
   const [filters, setFilters] = useState({
     status: 'all',
     type: 'all',
-    filed_date_from: undefined as Date | undefined,
-    filed_date_to: undefined as Date | undefined,
-    project_id: '',
-    filed_by: '',
-    amount_min: '',
-    amount_max: '',
-    assigned_admin: '',
   });
   const [sortBy, setSortBy] = useState<'priority' | 'date'>('priority');
 
@@ -69,30 +52,23 @@ export default function DisputeQueue() {
       const params: any = {};
       if (filters.status && filters.status !== 'all') params.status = filters.status;
       if (filters.type && filters.type !== 'all') params.type = filters.type;
-      if (filters.filed_date_from) params.filed_date_from = filters.filed_date_from.toISOString();
-      if (filters.filed_date_to) params.filed_date_to = filters.filed_date_to.toISOString();
-      if (filters.project_id) params.project_id = filters.project_id;
-      if (filters.filed_by) params.filed_by = filters.filed_by;
-      if (filters.amount_min) params.amount_min = Number(filters.amount_min);
-      if (filters.amount_max) params.amount_max = Number(filters.amount_max);
-      if (filters.assigned_admin) params.assigned_admin = filters.assigned_admin;
 
       const response = await adminService.getAllDisputes(params);
       if (response.success) {
         let items = response.data.disputes || response.data || [];
-        
+
         // Sort items
         if (sortBy === 'priority') {
           const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-          items = items.sort((a: Dispute, b: Dispute) => 
+          items = items.sort((a: Dispute, b: Dispute) =>
             (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99)
           );
         } else {
-          items = items.sort((a: Dispute, b: Dispute) => 
+          items = items.sort((a: Dispute, b: Dispute) =>
             new Date(b.filing_date).getTime() - new Date(a.filing_date).getTime()
           );
         }
-        
+
         setDisputes(items);
       }
     } catch (error: any) {
@@ -222,83 +198,13 @@ export default function DisputeQueue() {
               <SelectItem value="damage">Damage</SelectItem>
             </SelectContent>
           </Select>
-          <Input
-            placeholder="Project ID"
-            value={filters.project_id}
-            onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}
-          />
-          <Input
-            placeholder="Filed By"
-            value={filters.filed_by}
-            onChange={(e) => setFilters({ ...filters, filed_by: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="Amount Min"
-            value={filters.amount_min}
-            onChange={(e) => setFilters({ ...filters, amount_min: e.target.value })}
-          />
-          <Input
-            type="number"
-            placeholder="Amount Max"
-            value={filters.amount_max}
-            onChange={(e) => setFilters({ ...filters, amount_max: e.target.value })}
-          />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'justify-start text-left font-normal',
-                  !filters.filed_date_from && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.filed_date_from
-                  ? format(filters.filed_date_from, 'PPP')
-                  : 'Filed From'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={filters.filed_date_from}
-                onSelect={(date) => setFilters({ ...filters, filed_date_from: date })}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'justify-start text-left font-normal',
-                  !filters.filed_date_to && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.filed_date_to
-                  ? format(filters.filed_date_to, 'PPP')
-                  : 'Filed To'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={filters.filed_date_to}
-                onSelect={(date) => setFilters({ ...filters, filed_date_to: date })}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex justify-end">
           <Select
             value={sortBy}
             onValueChange={(value: 'priority' | 'date') => setSortBy(value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

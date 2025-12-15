@@ -104,23 +104,49 @@ export const getDisputeById = async (req, res) => {
         const role = req.user.role;
         const { id } = req.params;
 
-        const { data, error } = await supabase
+        // Fetch dispute with project and user details
+        const { data: disputeData, error: disputeError } = await supabase
             .from("disputes")
             .select(`
         *,
-        project:projects (*),
-        raised_by_user:users!disputes_raised_by_fkey (id, first_name, last_name, email, avatar_url),
-        responses:dispute_responses (*)
+        project:projects (
+            *,
+            conversations (
+                *,
+                messages (
+                    *,
+                    sender:users (first_name, last_name, email, avatar_url)
+                )
+            )
+        ),
+        raised_by_user:users!disputes_raised_by_fkey (id, first_name, last_name, email, avatar_url)
       `)
             .eq("id", id)
             .single();
 
-        if (error || !data) {
+        if (disputeError || !disputeData) {
+            if (disputeError) console.error("Dispute fetch error:", disputeError);
             return res.status(404).json(formatResponse(false, "Dispute not found", null));
         }
 
+        // Fetch responses separately due to potential missing FK relationship in schema
+        const { data: responsesData, error: responsesError } = await supabase
+            .from("dispute_responses")
+            .select('*')
+            .eq('dispute_id', id);
+
+        if (responsesError) {
+            console.error("Responses fetch error:", responsesError);
+            // Don't fail the whole request, just return empty responses
+        }
+
+        const data = {
+            ...disputeData,
+            responses: responsesData || []
+        };
+
         // Check access
-        if (role !== 'admin' &&
+        if (role !== 'admin' && role !== 'super_admin' &&
             data.raised_by !== userId &&
             data.project.owner_id !== userId &&
             data.project.contractor_id !== userId) {
@@ -185,7 +211,7 @@ export const addDisputeResponse = async (req, res) => {
 export const resolveDispute = async (req, res) => {
     try {
         const { id } = req.params;
-        const { resolution, resolution_notes, amount_to_client, amount_to_contractor } = req.body;
+        const { resolution, resolution_notes } = req.body;
 
         if (!resolution || !resolution_notes) {
             return res.status(400).json(formatResponse(false, "Resolution and notes required", null));
@@ -197,8 +223,6 @@ export const resolveDispute = async (req, res) => {
                 status: 'resolved',
                 resolution,
                 resolution_notes,
-                amount_to_client,
-                amount_to_contractor,
                 resolved_at: new Date(),
                 resolved_by: req.user.id
             })
@@ -224,6 +248,7 @@ export const resolveDispute = async (req, res) => {
 export const closeDispute = async (req, res) => {
     try {
         const userId = req.user.id;
+        const role = req.user.role;
         const { id } = req.params;
 
         const { data: dispute } = await supabase
@@ -236,8 +261,8 @@ export const closeDispute = async (req, res) => {
             return res.status(404).json(formatResponse(false, "Dispute not found", null));
         }
 
-        if (dispute.raised_by !== userId) {
-            return res.status(403).json(formatResponse(false, "Only the filer can close the dispute", null));
+        if (dispute.raised_by !== userId && role !== 'admin') {
+            return res.status(403).json(formatResponse(false, "Only the filer or admin can close the dispute", null));
         }
 
         const { data, error } = await supabase

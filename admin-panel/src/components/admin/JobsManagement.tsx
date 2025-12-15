@@ -21,27 +21,11 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Badge } from '../ui/badge';
-// Checkbox removed - Core features only
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/dialog';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import {
   Search,
   MoreVertical,
   Eye,
-  Star,
-  Send,
-  XCircle,
-  CheckCircle2,
   Trash2,
-  AlertTriangle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { JobFilters, JobFilters as JobFiltersType } from './JobFilters';
@@ -51,22 +35,27 @@ export default function JobsManagement() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10; // Fixed limit per page
+
   // Bulk actions removed - Core features only
   const [filters, setFilters] = useState<JobFiltersType>({});
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [showFlagDialog, setShowFlagDialog] = useState(false);
-  const [flagJobId, setFlagJobId] = useState<string | null>(null);
-  const [flagReason, setFlagReason] = useState('');
-  // Bulk Notify removed - Core features only
+  // Flag dialog removed - Core features only
 
   useEffect(() => {
     loadJobs();
-  }, [filters]);
+  }, [filters, page]); // Reload when filters or page changes
 
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: any = {
+        page,
+        limit,
+      };
       if (filters.status) params.status = filters.status;
       if (filters.trade_type) params.trade_type = filters.trade_type;
       if (filters.date_from) params.date_from = filters.date_from instanceof Date ? filters.date_from.toISOString() : filters.date_from;
@@ -78,7 +67,11 @@ export default function JobsManagement() {
 
       const response = await adminService.getAllJobs(params);
       if (response.success) {
-        setJobs(response.data.jobs || response.data || []);
+        setJobs(response.data.jobs || []);
+        // Update pagination from response
+        if (response.data.pages) {
+          setTotalPages(response.data.pages);
+        }
       }
     } catch (error: any) {
       toast.error('Failed to load jobs');
@@ -101,27 +94,7 @@ export default function JobsManagement() {
     return filtered;
   }, [jobs, searchQuery]);
 
-  // Bulk actions and export removed - Core features only
-
-  const handleFlagJob = async () => {
-    if (!flagJobId || !flagReason.trim()) {
-      toast.error('Please provide a reason');
-      return;
-    }
-
-    try {
-      const response = await adminService.flagJob(flagJobId, flagReason);
-      if (response.success) {
-        toast.success('Job flagged');
-        setShowFlagDialog(false);
-        setFlagJobId(null);
-        setFlagReason('');
-        loadJobs();
-      }
-    } catch (error: any) {
-      toast.error('Failed to flag job');
-    }
-  };
+  // Bulk actions, export, and flag removed - Core features only
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
@@ -151,7 +124,7 @@ export default function JobsManagement() {
     );
   }
 
-  if (loading) {
+  if (loading && jobs.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -227,9 +200,10 @@ export default function JobsManagement() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{job.title}</p>
-                          {job.featured && (
+                          {/* Featured flag is not in schema yet, commenting out to avoid confusion */}
+                          {/* {job.featured && (
                             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          )}
+                          )} */}
                         </div>
                         <p className="text-sm text-gray-500 line-clamp-1">
                           {job.description}
@@ -241,7 +215,16 @@ export default function JobsManagement() {
                       {job.trade_type || '-'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {job.budget ? `$${job.budget.toLocaleString()}` : '-'}
+                      {/* Handle Budget Range or Single Budget */}
+                      {job.budget_min || job.budget_max ? (
+                        // If we have min/max, show range
+                        `$${(job.budget_min || 0).toLocaleString()} - $${(job.budget_max || 0).toLocaleString()}`
+                      ) : job.budget ? (
+                        // Fallback to 'budget' if it exists
+                        `$${job.budget.toLocaleString()}`
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {job.location || '-'}
@@ -250,7 +233,8 @@ export default function JobsManagement() {
                       {job.posted_by?.full_name || job.posted_by?.email || '-'}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
-                      {job.applications_count || 0}
+                      {/* Handle Singular vs Plural field names from Backend */}
+                      {job.application_count || job.applications_count || 0}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
                       {job.created_at
@@ -270,66 +254,6 @@ export default function JobsManagement() {
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={async () => {
-                              const newStatus =
-                                job.status === 'open' ? 'closed' : 'open';
-                              try {
-                                const response = await adminService.changeJobStatus(
-                                  job.id,
-                                  newStatus
-                                );
-                                if (response.success) {
-                                  toast.success(`Job ${newStatus}`);
-                                  loadJobs();
-                                }
-                              } catch (error: any) {
-                                toast.error('Failed to change status');
-                              }
-                            }}
-                          >
-                            {job.status === 'open' ? (
-                              <>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Close Job
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Reopen Job
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={async () => {
-                              try {
-                                const response = await adminService.featureJob(
-                                  job.id,
-                                  !job.featured
-                                );
-                                if (response.success) {
-                                  toast.success(
-                                    job.featured ? 'Job unfeatured' : 'Job featured'
-                                  );
-                                  loadJobs();
-                                }
-                              } catch (error: any) {
-                                toast.error('Failed to feature job');
-                              }
-                            }}
-                          >
-                            <Star className="h-4 w-4 mr-2" />
-                            {job.featured ? 'Unfeature' : 'Feature'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setFlagJobId(job.id);
-                              setShowFlagDialog(true);
-                            }}
-                          >
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Flag Content
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={async () => {
@@ -364,48 +288,37 @@ export default function JobsManagement() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Flag Dialog */}
-      <Dialog open={showFlagDialog} onOpenChange={setShowFlagDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Flag Inappropriate Content</DialogTitle>
-            <DialogDescription>
-              Provide a reason for flagging this job.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="flag-reason">Reason *</Label>
-              <Textarea
-                id="flag-reason"
-                placeholder="Enter reason for flagging..."
-                value={flagReason}
-                onChange={(e) => setFlagReason(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowFlagDialog(false);
-                setFlagJobId(null);
-                setFlagReason('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleFlagJob} disabled={!flagReason.trim()}>
-              Flag Job
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* Flag Dialog removed - Core features only */}
       {/* Bulk Notify Dialog removed - Core features only */}
     </div>
   );

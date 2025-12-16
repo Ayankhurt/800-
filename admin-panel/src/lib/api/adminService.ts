@@ -695,6 +695,12 @@ export const adminService = {
     return response.data;
   },
 
+  // Process Payout (Generic Status Update)
+  processPayout: async (payoutId: string, status?: string) => {
+    const response = await apiClient.post(`/admin/payouts/${payoutId}/process`, { status });
+    return response.data;
+  },
+
   // Approve Payout
   approvePayout: async (payoutId: string) => {
     const response = await apiClient.post(`/admin/payouts/${payoutId}/approve`);

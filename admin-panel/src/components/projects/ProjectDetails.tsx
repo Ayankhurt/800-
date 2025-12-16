@@ -10,6 +10,7 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Skeleton } from '../ui/skeleton';
 import { ArrowLeft, Calendar, MapPin, DollarSign, User, Briefcase, CheckCircle, Clock } from 'lucide-react';
+import { BidsTab } from './BidsTab';
 
 const formatCurrency = (amount: number | undefined) => {
     if (!amount && amount !== 0) return 'N/A';
@@ -50,7 +51,7 @@ export function ProjectDetails({ id }: ProjectDetailsProps) {
 
     const { data: projectResponse, isLoading, error } = useQuery({
         queryKey: ['project', id],
-        queryFn: () => projectsService.getProjectById(id),
+        queryFn: () => adminService.getProjectById(id),
         retry: 1
     });
 
@@ -170,11 +171,7 @@ export function ProjectDetails({ id }: ProjectDetailsProps) {
                             </Card>
                         </TabsContent>
                         <TabsContent value="bids">
-                            <Card>
-                                <CardContent className="pt-6 text-center text-gray-500">
-                                    Bids functionality coming soon.
-                                </CardContent>
-                            </Card>
+                            <BidsTab projectId={id} />
                         </TabsContent>
                     </Tabs>
                 </div>

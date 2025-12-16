@@ -90,10 +90,11 @@ const getAvailableRoles = (currentUserRole?: string) => {
 
 const getAvailableRolesForCreate = (currentUserRole?: string) => {
   return [
-    { value: 'homeowner', label: 'Homeowner' },
-    { value: 'contractor', label: 'Contractor' },
-    { value: 'admin', label: 'Admin' },
-    { value: 'support', label: 'Support' },
+    { value: 'general_contractor', label: 'General Contractor (GC)' },
+    { value: 'subcontractor', label: 'Subcontractor (Sub)' },
+    { value: 'trade_specialist', label: 'Trade Specialist (TS)' },
+    { value: 'project_manager', label: 'Project Manager (PM)' },
+    { value: 'viewer', label: 'Viewer' },
   ];
 };
 /* 
@@ -214,7 +215,14 @@ export default function UsersManagement() {
       }
     } catch (error: any) {
       console.error('🔴 Suspend API Error:', error);
-      toast.error('Suspend Error: ' + (error.message || 'Unknown'));
+      console.error('🔴 Error Response:', error.response?.data);
+
+      const errorMessage = error.response?.data?.message ||
+        error.response?.statusText ||
+        error.message ||
+        'Unknown error';
+
+      toast.error(`Suspend Error: ${errorMessage} (Status: ${error.response?.status || 'N/A'})`);
     }
   };
 
@@ -879,15 +887,20 @@ export default function UsersManagement() {
                 onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="company_name">Company Name</Label>
-              <Input
-                id="company_name"
-                placeholder="Enter company name"
-                value={createUserData.company_name}
-                onChange={(e) => setCreateUserData({ ...createUserData, company_name: e.target.value })}
-              />
-            </div>
+            {/* Company Name - Only for Contractors */}
+            {(createUserData.role_code === 'general_contractor' ||
+              createUserData.role_code === 'subcontractor' ||
+              createUserData.role_code === 'trade_specialist') && (
+                <div className="grid gap-2">
+                  <Label htmlFor="company_name">Company Name</Label>
+                  <Input
+                    id="company_name"
+                    placeholder="Enter company name"
+                    value={createUserData.company_name}
+                    onChange={(e) => setCreateUserData({ ...createUserData, company_name: e.target.value })}
+                  />
+                </div>
+              )}
             <div className="grid gap-2">
               <Label htmlFor="password">Password *</Label>
               <Input

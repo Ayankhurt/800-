@@ -23,6 +23,7 @@ export default function SystemConfiguration() {
     business_hours: '',
     timezone: 'America/Los_Angeles',
     currency: 'USD',
+    platform_fee: '0',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -146,6 +147,17 @@ export default function SystemConfiguration() {
                 <SelectItem value="GBP">GBP (£)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Platform Fee (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={settings.platform_fee}
+              onChange={(e) => setSettings({ ...settings, platform_fee: e.target.value })}
+              placeholder="0"
+            />
           </div>
         </div>
         <div className="flex justify-end">

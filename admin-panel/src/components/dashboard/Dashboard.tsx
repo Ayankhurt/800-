@@ -99,8 +99,9 @@ export function Dashboard({ role }: DashboardProps) {
   // Fetch admin logs for recent activity
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['admin-logs-recent'],
-    queryFn: () => adminService.getAdminLogs({ limit: 20 }),
-    enabled: role === 'super_admin' || role === 'admin',
+    queryFn: () => adminService.getAuditLogs({ limit: 20 }),
+    // Enable for all admin roles
+    enabled: true,
   });
 
   const isLoading = statsLoading || usersLoading || projectsLoading || paymentsLoading || disputesLoading;
@@ -126,17 +127,45 @@ export function Dashboard({ role }: DashboardProps) {
   const pendingPayoutsAmount = payoutsForStats.reduce((sum: number, payout: any) => sum + (payout.amount || 0), 0) || 0;
   const pendingPayoutsCount = payoutsData?.data?.total || payoutsForStats.length || 0;
 
-  // Process recent activity from logs
+  // Process recent activity from logs with role-specific filtering
   // Backend returns: { success: true, data: { logs: [...], pagination: {...} } }
-  // So we need to access logsData?.data?.logs, not logsData?.data
   const logsArray = Array.isArray(logsData?.data?.logs)
     ? logsData.data.logs
     : Array.isArray(logsData?.data)
       ? logsData.data
       : [];
-  const recentActivities = logsArray.slice(0, 5).map((log: any) => {
+
+  // Filter logs based on role
+  const filteredLogs = logsArray.filter((log: any) => {
+    const action = (log.action || log.action_type || '').toLowerCase();
+
+    switch (role) {
+      case 'finance_manager':
+        // Finance Manager sees payment, payout, escrow, transaction activities
+        return ['payment', 'payout', 'escrow', 'transaction', 'refund', 'withdrawal', 'deposit', 'invoice', 'fee', 'bank'].some(k => action.includes(k));
+
+      case 'support_agent':
+        // Support sees tickets, user issues, disputes, verifications
+        return ['ticket', 'support', 'dispute', 'user', 'report', 'verification', 'kyc', 'inquiry', 'message'].some(k => action.includes(k));
+
+      case 'moderator':
+        // Moderator sees content moderation, reports, flags, approvals
+        return ['moderate', 'report', 'flag', 'review', 'approve', 'reject', 'ban', 'suspend', 'content', 'job', 'project'].some(k => action.includes(k));
+
+      case 'admin':
+      case 'super_admin':
+        // Admin and Super Admin see everything
+        return true;
+
+      default:
+        // Default: show all
+        return true;
+    }
+  });
+
+  const recentActivities = filteredLogs.slice(0, 5).map((log: any) => {
     const actionText = log.action || log.action_type || 'Activity';
-    const isCompleted = actionText.includes('completed') || actionText.includes('approve') || actionText.includes('resolve');
+    const isCompleted = actionText.includes('completed') || actionText.includes('approve') || actionText.includes('resolve') || actionText.includes('login') || actionText.includes('update') || actionText.includes('create') || actionText.includes('delete');
     const isAlert = actionText.includes('dispute') || actionText.includes('report') || actionText.includes('fail');
 
     return {
@@ -149,12 +178,85 @@ export function Dashboard({ role }: DashboardProps) {
     };
   });
 
+  // Calculate percentage changes
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const formatChange = (val: number) => {
+    const safeVal = isNaN(val) ? 0 : val;
+    return `${safeVal >= 0 ? '+' : ''}${safeVal.toFixed(0)}%`;
+  };
+
+  const getTrend = (val: number) => (val >= 0 ? 'up' as const : 'down' as const);
+
+  // Helper for counts
+  const getPeriodCount = (data: any[], start: Date, end?: Date) => {
+    if (!Array.isArray(data)) return 0;
+    return data.filter((item: any) => {
+      const date = new Date(item.created_at || item.createdAt);
+      return date >= start && (!end || date <= end);
+    }).length;
+  };
+
+  // 1. Users Growth
+  const usersArr = Array.isArray(usersData?.data?.users) ? usersData.data.users : [];
+  const usersChange = calculateChange(
+    getPeriodCount(usersArr, currentMonthStart),
+    getPeriodCount(usersArr, previousMonthStart, previousMonthEnd)
+  );
+
+  // 2. Projects Growth
+  const projectsArr = Array.isArray(projectsData?.data?.projects) ? projectsData.data.projects : [];
+  const projectsChange = calculateChange(
+    getPeriodCount(projectsArr, currentMonthStart),
+    getPeriodCount(projectsArr, previousMonthStart, previousMonthEnd)
+  );
+
+  // 3. Revenue Growth
+  const getRevenue = (start: Date, end?: Date) => {
+    return paymentsArray.filter((p: any) => {
+      const date = new Date(p.created_at || p.processed_at);
+      const isPaid = p.status === 'completed' || p.status === 'released';
+      return isPaid && date >= start && (!end || date <= end);
+    }).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+  };
+  const revenueChange = calculateChange(
+    getRevenue(currentMonthStart),
+    getRevenue(previousMonthStart, previousMonthEnd)
+  );
+
+  // 4. Disputes Growth
+  const disputesArr = Array.isArray(disputesData?.data?.disputes) ? disputesData.data.disputes : [];
+  const disputesChange = calculateChange(
+    getPeriodCount(disputesArr, currentMonthStart),
+    getPeriodCount(disputesArr, previousMonthStart, previousMonthEnd)
+  );
+
+  // 5. Payouts Change
+  const payoutsArray = Array.isArray(payoutsData?.data?.payouts)
+    ? payoutsData.data.payouts
+    : Array.isArray(payoutsData?.data)
+      ? payoutsData.data
+      : [];
+
+  const payoutsChange = calculateChange(
+    payoutsArray.filter((p: any) => p.status === 'pending' && new Date(p.created_at) >= currentMonthStart).length,
+    payoutsArray.filter((p: any) => p.status === 'pending' && new Date(p.created_at) >= previousMonthStart && new Date(p.created_at) <= previousMonthEnd).length
+  );
+
   const stats = [
     {
       title: 'Total Users',
       value: formatNumber(totalUsers),
-      change: '+0%', // TODO: Calculate from previous period
-      trend: 'up' as const,
+      change: formatChange(usersChange),
+      trend: getTrend(usersChange),
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -162,8 +264,8 @@ export function Dashboard({ role }: DashboardProps) {
     {
       title: 'Active Projects',
       value: formatNumber(activeProjects),
-      change: '+0%', // TODO: Calculate from previous period
-      trend: 'up' as const,
+      change: formatChange(projectsChange),
+      trend: getTrend(projectsChange),
       icon: Briefcase,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -171,8 +273,8 @@ export function Dashboard({ role }: DashboardProps) {
     {
       title: 'Total Revenue',
       value: formatCurrency(totalRevenue),
-      change: '+0%', // TODO: Calculate from previous period
-      trend: 'up' as const,
+      change: formatChange(revenueChange),
+      trend: getTrend(revenueChange),
       icon: DollarSign,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -180,62 +282,13 @@ export function Dashboard({ role }: DashboardProps) {
     {
       title: 'Open Disputes',
       value: formatNumber(openDisputes),
-      change: '-0%', // TODO: Calculate from previous period
-      trend: 'down' as const,
+      change: formatChange(disputesChange),
+      trend: getTrend(disputesChange),
       icon: AlertCircle,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
   ];
-
-  // Calculate percentage changes
-  const now = new Date();
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
-  const getMonthTotal = (data: any[], statusTypes: string[]) => {
-    return data.filter((item: any) => {
-      const date = new Date(item.created_at);
-      return statusTypes.includes(item.status) && date >= currentMonthStart;
-    }).reduce((sum, item) => sum + (item.amount || 0), 0);
-  };
-
-  const getPreviousMonthTotal = (data: any[], statusTypes: string[]) => {
-    return data.filter((item: any) => {
-      const date = new Date(item.created_at);
-      return statusTypes.includes(item.status) && date >= previousMonthStart && date <= previousMonthEnd;
-    }).reduce((sum, item) => sum + (item.amount || 0), 0);
-  };
-
-  const calculateChange = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  };
-
-  // Revenue Change
-  const currentMonthRevenue = getMonthTotal(paymentsArray, ['completed', 'released']);
-  const previousMonthRevenue = getPreviousMonthTotal(paymentsArray, ['completed', 'released']);
-  const revenueChange = calculateChange(currentMonthRevenue, previousMonthRevenue);
-
-  // Helper to extract payouts array safely
-  const payoutsArray = Array.isArray(payoutsData?.data?.payouts)
-    ? payoutsData.data.payouts
-    : Array.isArray(payoutsData?.data)
-      ? payoutsData.data
-      : [];
-
-  const currentMonthPayouts = payoutsArray.filter((p: any) => {
-    const date = new Date(p.created_at);
-    return p.status === 'pending' && date >= currentMonthStart;
-  }).length;
-
-  const previousMonthPayouts = payoutsArray.filter((p: any) => {
-    const date = new Date(p.created_at);
-    return p.status === 'pending' && date >= previousMonthStart && date <= previousMonthEnd;
-  }).length;
-
-  const payoutsChange = calculateChange(currentMonthPayouts, previousMonthPayouts);
 
 
   return (

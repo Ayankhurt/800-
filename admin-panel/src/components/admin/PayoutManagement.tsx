@@ -59,6 +59,8 @@ export default function PayoutManagement() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
   const [holdReason, setHoldReason] = useState('');
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState<string>('processed');
 
   useEffect(() => {
     loadPayouts();
@@ -133,6 +135,18 @@ export default function PayoutManagement() {
       }
     } catch (error: any) {
       toast.error('Failed to resend payout');
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedPayout) return;
+    try {
+      await adminService.processPayout(selectedPayout.id, newStatus);
+      toast.success('Payout status updated');
+      setShowStatusDialog(false);
+      loadPayouts();
+    } catch (error: any) {
+      toast.error('Failed to update status');
     }
   };
 
@@ -318,6 +332,16 @@ export default function PayoutManagement() {
                             </DropdownMenuItem>
                           )}
 
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedPayout(payout);
+                              setNewStatus(payout.status);
+                              setShowStatusDialog(true);
+                            }}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Update Status
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -368,7 +392,43 @@ export default function PayoutManagement() {
         </DialogContent>
       </Dialog>
 
-
+      {/* Update Status Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Payout Status</DialogTitle>
+            <DialogDescription>
+              Manually update the status of this payout.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="held">Held</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStatusDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateStatus}>
+              Update Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Payout Details Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>

@@ -83,3 +83,13 @@
     at file:///C:/Users/HP/Desktop/800$/800-/backend/node_modules/express-rate-limit/dist/index.mjs:779:7
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
     at async file:///C:/Users/HP/Desktop/800$/800-/backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {"service":"bidroom-backend"}
+2025-12-16 02:53:12 [error]: Refund transaction error: Could not find the 'description' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 02:53:22 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:00:36 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:09:36 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:17:14 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:23:16 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:25:03 [error]: Cancel transaction error: Could not find the 'metadata' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:41:31 [error]: Cancel transaction error: Could not find the 'description' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-16 03:56:39 [error]: Cancel transaction error: invalid input value for enum payment_status: "cancelled" {"service":"bidroom-backend","code":"22P02","details":null,"hint":null}
+2025-12-16 03:56:41 [error]: Cancel transaction error: invalid input value for enum payment_status: "cancelled" {"service":"bidroom-backend","code":"22P02","details":null,"hint":null}

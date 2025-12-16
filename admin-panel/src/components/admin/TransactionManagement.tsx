@@ -152,7 +152,8 @@ export default function TransactionManagement() {
         loadTransactions();
       }
     } catch (error: any) {
-      toast.error('Failed to cancel transaction');
+      console.error('Cancel transaction error:', error);
+      toast.error(error?.response?.data?.message || 'Failed to cancel transaction');
     }
   };
 

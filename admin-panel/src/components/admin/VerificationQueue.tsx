@@ -81,19 +81,25 @@ export default function VerificationQueue() {
       const response = await adminService.getVerificationQueue(params);
       if (response.success) {
         let items = response.data.items || response.data || [];
-        
+
+        // Map backend fields to frontend interface
+        items = items.map((item: any) => ({
+          ...item,
+          type: item.type || item.verification_type, // Map verification_type to type
+        }));
+
         // Sort items
         if (sortBy === 'priority') {
-          const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-          items = items.sort((a: VerificationQueueItem, b: VerificationQueueItem) => 
+          const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+          items = items.sort((a: any, b: any) =>
             (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99)
           );
         } else {
-          items = items.sort((a: VerificationQueueItem, b: VerificationQueueItem) => 
+          items = items.sort((a: any, b: any) =>
             new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
           );
         }
-        
+
         setQueueItems(items);
       }
     } catch (error: any) {
@@ -136,6 +142,9 @@ export default function VerificationQueue() {
       license: `/dashboard/verification/license/${item.id}`,
       insurance: `/dashboard/verification/insurance/${item.id}`,
       background_check: `/dashboard/verification/background-check/${item.id}`,
+      // Map business types to identity page as fallback/handler
+      business: `/dashboard/verification/identity/${item.id}`,
+      business_registration: `/dashboard/verification/identity/${item.id}`,
     };
     router.push(routeMap[item.type] || '/dashboard/verification');
   };

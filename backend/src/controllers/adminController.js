@@ -961,7 +961,8 @@ export const getTransactionDetails = async (req, res) => {
 export const refundTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amount, reason } = req.body;
+    const amount = req.body?.amount || null;
+    const reason = req.body?.reason || 'No reason provided';
 
     const { data: originalTx, error: txError } = await supabase
       .from("transactions")
@@ -990,12 +991,9 @@ export const refundTransaction = async (req, res) => {
         amount: refundAmount,
         sender_id: originalTx.receiver_id, // Reverse direction
         receiver_id: originalTx.sender_id,
-        description: `Refund for TX ${originalTx.id}: ${reason}`,
+        // description: `Refund for TX ${originalTx.id}: ${reason}`, // Column missing
         project_id: originalTx.project_id,
-        metadata: {
-          original_transaction_id: originalTx.id,
-          reason
-        }
+        // metadata: { original_transaction_id: originalTx.id, reason } // Column missing
       })
       .select()
       .single();
@@ -1028,7 +1026,7 @@ export const refundTransaction = async (req, res) => {
 export const cancelTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body?.reason || 'No reason provided';
 
     const { data: tx, error } = await supabase
       .from("transactions")
@@ -1046,8 +1044,8 @@ export const cancelTransaction = async (req, res) => {
     const { error: updateError } = await supabase
       .from("transactions")
       .update({
-        status: 'cancelled',
-        metadata: { ...tx.metadata, cancellation_reason: reason }
+        status: 'failed'
+        // metadata and description columns missing in schema
       })
       .eq("id", id);
 
@@ -1341,7 +1339,7 @@ export const approveVerification = async (req, res) => {
 export const rejectVerification = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body?.reason || 'No reason provided';
     const { error } = await supabase
       .from("contractor_verifications")
       .update({ verification_status: 'rejected', notes: reason })
@@ -1866,7 +1864,9 @@ export const deleteUser = async (req, res) => {
 export const suspendUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason, duration } = req.body;
+    // Make reason and duration optional to prevent destructuring error
+    const reason = req.body?.reason || 'No reason provided';
+    const duration = req.body?.duration || null;
 
     const { data, error } = await supabase
       .from("users")
@@ -2126,7 +2126,7 @@ export const approvePayout = async (req, res) => {
 export const holdPayout = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body?.reason || 'No reason provided';
 
     const { data, error } = await supabase
       .from('payouts')
@@ -2607,7 +2607,7 @@ export const releaseEscrowPayment = async (req, res) => {
 export const freezeEscrowAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body?.reason || 'No reason provided';
 
     // Note: 'id' here comes from Frontend 'account.id' which is TRANSACTION ID in our mapping
     // But Freeze usually applies to ACCOUNT?
@@ -2636,7 +2636,7 @@ export const freezeEscrowAccount = async (req, res) => {
 export const unfreezeEscrowAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const reason = req.body?.reason || 'No reason provided';
 
     const { data: tx } = await supabase.from('escrow_transactions').select('project_id').eq('id', id).single();
     if (tx) {
@@ -2653,7 +2653,8 @@ export const unfreezeEscrowAccount = async (req, res) => {
 export const refundEscrowToOwner = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amount, reason } = req.body;
+    const amount = req.body?.amount || null;
+    const reason = req.body?.reason || 'No reason provided';
 
     const { error } = await supabase
       .from('escrow_transactions')

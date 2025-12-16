@@ -733,25 +733,124 @@ describe('JobsContext', () => {
 
 ## 🚀 Deployment Guide
 
-### iOS App Store
+### iOS App Store Deployment
+
+#### Prerequisites
+- Apple Developer Account ($99/year)
+- Xcode installed (Mac required)
+- EAS CLI: `npm install -g eas-cli`
+
+#### Steps
 ```bash
-# Configure EAS
+# 1. Configure EAS
 eas build:configure
 
-# Build for iOS
+# 2. Update app.json
+{
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.bidroom.construction",
+      "buildNumber": "1"
+    }
+  }
+}
+
+# 3. Build for iOS
 eas build --platform ios --profile production
 
-# Submit to App Store
-eas submit --platform ios
+# 4. Submit to App Store
+eas submit --platform ios --latest
 ```
 
-### Google Play Store
+#### App Store Connect Setup
+1. Create app in App Store Connect
+2. Fill app information:
+   - **Name**: BidRoom
+   - **Category**: Business / Productivity
+   - **Age Rating**: 4+
+3. Upload screenshots (required sizes):
+   - iPhone 14 Pro Max: 1290 x 2796 px
+   - iPhone 8 Plus: 1242 x 2208 px
+   - iPad Pro 12.9": 2048 x 2732 px
+4. Add app description and keywords
+5. Set privacy policy URL
+6. Submit for review (24-48 hours)
+
+### Android Play Store Deployment
+
+#### Prerequisites
+- Google Play Console Account ($25 one-time)
+- Android Studio (optional)
+- EAS CLI installed
+
+#### Steps
 ```bash
-# Build for Android
+# 1. Update app.json
+{
+  "expo": {
+    "android": {
+      "package": "com.bidroom.construction",
+      "versionCode": 1
+    }
+  }
+}
+
+# 2. Build for Android
 eas build --platform android --profile production
 
-# Submit to Google Play
-eas submit --platform android
+# 3. Submit to Play Store
+eas submit --platform android --latest
+```
+
+#### Play Store Console Setup
+1. Create app in Play Store Console
+2. Complete store listing:
+   - **App name**: BidRoom - Construction Management
+   - **Short description** (80 chars)
+   - **Full description** (4000 chars)
+   - **Category**: Business
+3. Upload assets:
+   - App icon: 512 x 512 px
+   - Feature graphic: 1024 x 500 px
+   - Screenshots: Minimum 2 (1080 x 1920 px)
+4. Complete content rating questionnaire
+5. Set pricing (Free)
+6. Upload AAB file
+7. Submit for review (1-3 days)
+
+### Required Assets
+
+#### App Icons
+- iOS: 1024 x 1024 px (PNG, no transparency)
+- Android: 512 x 512 px (PNG)
+
+#### Screenshots
+Create screenshots showing:
+- Job posting interface
+- Contractor search
+- Project dashboard
+- Messaging system
+- Payment/escrow screen
+
+#### Privacy Policy
+Required URL with:
+- Data collection practices
+- Third-party services
+- User rights
+- Contact information
+
+### Version Updates
+```bash
+# Update version in app.json
+{
+  "version": "1.0.1",
+  "ios": { "buildNumber": "2" },
+  "android": { "versionCode": 2 }
+}
+
+# Build and submit
+eas build --platform all --profile production
+eas submit --platform all --latest
 ```
 
 ### Web Deployment
@@ -765,6 +864,13 @@ vercel deploy
 # Or deploy to Netlify
 netlify deploy --prod
 ```
+
+### Deployment Costs
+| Platform | Cost | Frequency |
+|----------|------|-----------|
+| Apple Developer | $99 | Yearly |
+| Google Play Console | $25 | One-time |
+| **Total First Year** | **$124** | - |
 
 ---
 

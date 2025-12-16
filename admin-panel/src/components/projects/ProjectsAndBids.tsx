@@ -79,12 +79,24 @@ export function ProjectsAndBids() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
   // Fetch projects (Using Admin Service)
-  const { data: projectsData, isLoading: projectsLoading } = useQuery({
+  const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useQuery({
     queryKey: ['projects', statusFilter],
-    queryFn: () => adminService.getAllProjects({
-      status: statusFilter,
-      limit: 100
-    }),
+    queryFn: async () => {
+      console.log('🔵 Fetching projects with status:', statusFilter);
+      try {
+        const result = await adminService.getAllProjects({
+          status: statusFilter,
+          limit: 100
+        });
+        console.log('🔵 Projects API Response:', result);
+        return result;
+      } catch (error: any) {
+        console.error('🔴 Projects API Error:', error);
+        console.error('🔴 Error Response:', error.response?.data);
+        console.error('🔴 Error Status:', error.response?.status);
+        throw error;
+      }
+    },
   });
 
   // Fetch bids for all projects (Using Admin Service)

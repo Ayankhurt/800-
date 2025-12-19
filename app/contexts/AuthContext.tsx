@@ -3,6 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authAPI, setAuthToken, getStoredToken } from "@/services/api";
 import { router } from "expo-router";
+import { supabase } from "@/lib/supabaseClient";
+import { Platform } from "react-native";
 
 // App roles + ADMIN (for login only, not signup)
 export type AppRole = "PM" | "GC" | "SUB" | "TS" | "VIEWER" | "ADMIN";
@@ -39,6 +41,7 @@ interface AuthContextType {
   navigateByRole: (role: AppRole) => void;
   safeNavigate: (path: string) => void;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  loginWithOAuth: (provider: 'google' | 'github') => Promise<{ success: boolean; error?: string }>;
 }
 
 export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => {
@@ -140,17 +143,99 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
     restoreSession();
   }, []);
 
+  // Listen for Supabase auth state changes (for OAuth)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Supabase Auth]', event, session?.user?.email);
+
+      if (event === 'SIGNED_IN' && session) {
+        // OAuth login successful - session created by Supabase
+        console.log('[OAuth] Session detected, syncing with backend...');
+
+        const supabaseUser = session.user;
+
+        try {
+          // Call backend to sync OAuth user and get backend JWT
+          const response = await authAPI.oauthSync({
+            supabaseUser,
+            supabaseToken: session.access_token,
+          });
+
+          if (response.success && response.data) {
+            const { token: backendToken, user: backendUser } = response.data;
+
+            // Map backend role to app role
+            let roleCode = backendUser.role || backendUser.role_code || backendUser.roleCode;
+            if (roleCode && typeof roleCode === 'object') {
+              roleCode = roleCode.role_code || roleCode.roleCode || roleCode.code;
+            }
+            const appRole = mapBackendRoleToAppRole(roleCode) || 'PM';
+
+            setUser({
+              id: backendUser.id,
+              email: backendUser.email || '',
+              fullName: backendUser.first_name + ' ' + backendUser.last_name,
+              role: appRole,
+              company: backendUser.company_name,
+              phone: backendUser.phone,
+              avatar: backendUser.avatar_url,
+            });
+
+            // Use backend JWT token
+            await setAuthToken(backendToken);
+            setTokenState(backendToken);
+            setIsAuthenticated(true);
+            setHydrationComplete(true);
+
+            console.log('[OAuth] Backend sync successful, using backend JWT');
+
+            // Navigate to dashboard
+            setTimeout(() => {
+              navigateByRole(appRole, true);
+            }, 500);
+          }
+        } catch (error) {
+          console.error('[OAuth] Backend sync failed:', error);
+          // Fallback to basic Supabase user data
+          setUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            fullName: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+            role: 'PM',
+            company: supabaseUser.user_metadata?.company,
+            phone: supabaseUser.user_metadata?.phone,
+            avatar: supabaseUser.user_metadata?.avatar_url,
+          });
+
+          // CRITICAL FIX: Store the Supabase token so API calls work
+          await setAuthToken(session.access_token);
+          setTokenState(session.access_token);
+          setIsAuthenticated(true);
+          setHydrationComplete(true);
+
+          setTimeout(() => {
+            navigateByRole('PM', true);
+          }, 500);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigateByRole]);
+
   // Restore session from SecureStore
   const restoreSession = useCallback(async () => {
     // Use clearAuthState helper to avoid circular dependency with logout
     try {
       setLoading(true);
       const storedToken = await getStoredToken();
-      
+
       if (storedToken) {
         await setAuthToken(storedToken);
         setTokenState(storedToken);
-        
+
         // Fetch user profile - ALWAYS get fresh role from backend
         try {
           const response = await authAPI.getProfile();
@@ -159,14 +244,14 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
             // Map backend role to app role - check multiple possible field names
             // Backend might return role as object {name, role_code} or as string
             let roleCode = userData.role || userData.role_code || userData.roleCode || userData.role_name;
-            
+
             // If role is an object, extract role_code
             if (roleCode && typeof roleCode === 'object') {
               roleCode = roleCode.role_code || roleCode.roleCode || roleCode.code;
             }
-            
+
             const appRole = mapBackendRoleToAppRole(roleCode);
-            
+
             // Only allow app roles + ADMIN (for login)
             if (appRole && ["PM", "GC", "SUB", "TS", "VIEWER", "ADMIN"].includes(appRole)) {
               const mappedUser: User = {
@@ -180,10 +265,10 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
               };
               setUser(mappedUser);
               setIsAuthenticated(true);
-              
+
               // Mark hydration as complete after token + user/role are loaded
               setHydrationComplete(true);
-              
+
               // DO NOT navigate here - let _layout.tsx handle navigation
               // Navigation happens after loading completes and user/role are confirmed
             } else {
@@ -222,15 +307,15 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       roleCode = roleCode.role_code || roleCode.roleCode || roleCode.code;
       console.log("Extracted role_code from object:", roleCode);
     }
-    
+
     // Check if roleCode exists and is a string
     if (!roleCode || typeof roleCode !== 'string') {
       console.warn("Invalid roleCode:", roleCode);
       return null;
     }
-    
+
     const upperRoleCode = roleCode.toUpperCase();
-    
+
     // Map backend codes to app roles + ADMIN
     const roleMap: Record<string, AppRole> = {
       PM: "PM",
@@ -246,8 +331,12 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       "SUBCONTRACTOR": "SUB",
       "TRADE SPECIALIST": "TS",
       "ADMIN CONSOLE": "ADMIN",
+      // Handle database enum values (backend returns these)
+      "PROJECT_MANAGER": "PM",
+      "GENERAL_CONTRACTOR": "GC",
+      "TRADE_SPECIALIST": "TS",
     };
-    
+
     return roleMap[upperRoleCode] || null;
   };
 
@@ -255,43 +344,43 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
   const login = useCallback(async (email: string, password: string) => {
     try {
       const response = await authAPI.login(email, password);
-      
+
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
-        
+
         if (!newToken || !userData) {
           return { success: false, error: "Invalid response from server" };
         }
-        
+
         // Map backend role to app role - check multiple possible field names
         // Backend might return role as object {name, role_code} or as string
         let roleCode = userData.role || userData.role_code || userData.roleCode || userData.role_name;
-        
+
         // If role is an object, extract role_code
         if (roleCode && typeof roleCode === 'object') {
           roleCode = roleCode.role_code || roleCode.roleCode || roleCode.code;
         }
-        
-        console.log("Login response user data:", { 
-          role: userData.role, 
-          role_code: userData.role_code, 
-          extractedRoleCode: roleCode, 
-          allUserData: userData 
+
+        console.log("Login response user data:", {
+          role: userData.role,
+          role_code: userData.role_code,
+          extractedRoleCode: roleCode,
+          allUserData: userData
         });
         const appRole = mapBackendRoleToAppRole(roleCode);
-        
+
         // Allow app roles + ADMIN (for login only)
         if (!appRole || !["PM", "GC", "SUB", "TS", "VIEWER", "ADMIN"].includes(appRole)) {
-          return { 
-            success: false, 
-            error: `Invalid user role: ${roleCode || 'undefined'}. Only app roles and ADMIN are allowed.` 
+          return {
+            success: false,
+            error: `Invalid user role: ${roleCode || 'undefined'}. Only app roles and ADMIN are allowed.`
           };
         }
-        
+
         // Save token
         await setAuthToken(newToken);
         setTokenState(newToken);
-        
+
         // Map user data
         const mappedUser: User = {
           id: userData.id || userData.user_id,
@@ -302,18 +391,18 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
           phone: userData.phone || userData.phoneNumber || userData.phone_number,
           avatar: userData.avatar || userData.avatar_url,
         };
-        
+
         setUser(mappedUser);
         setIsAuthenticated(true);
-        
+
         // Mark hydration as complete after successful login
         setHydrationComplete(true);
-        
+
         // Navigate ONLY after hydration is complete
         // Use navigateByRole with force=true since we just set hydrationComplete
         // (state update is async, so we bypass the check)
         navigateByRole(appRole, true);
-        
+
         return { success: true };
       } else {
         return { success: false, error: response.message || "Login failed" };
@@ -350,12 +439,12 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       if (data.role === "ADMIN") {
         return { success: false, error: "Admin users cannot sign up. Please use login instead." };
       }
-      
+
       // Only allow app roles for signup (no ADMIN)
       if (!["PM", "GC", "SUB", "TS", "VIEWER"].includes(data.role)) {
         return { success: false, error: "Invalid role. Only app roles are allowed for signup." };
       }
-      
+
       const response = await authAPI.signup({
         fullName: data.fullName,
         email: data.email,
@@ -372,51 +461,51 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
         certifications: data.certifications,
         projectType: data.projectType,
       });
-      
+
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
-        
+
         if (!newToken || !userData) {
           return { success: false, error: "Invalid response from server" };
         }
-        
+
         // Map backend role to app role - check multiple possible field names
         // Backend might return role as object {name, role_code} or as string
         let roleCode = userData.role || userData.role_code || userData.roleCode || userData.role_name;
-        
+
         // If role is an object, extract role_code
         if (roleCode && typeof roleCode === 'object') {
           roleCode = roleCode.role_code || roleCode.roleCode || roleCode.code;
         }
-        
-        console.log("Signup response user data:", { 
-          role: userData.role, 
-          role_code: userData.role_code, 
-          extractedRoleCode: roleCode, 
-          allUserData: userData 
+
+        console.log("Signup response user data:", {
+          role: userData.role,
+          role_code: userData.role_code,
+          extractedRoleCode: roleCode,
+          allUserData: userData
         });
         const appRole = mapBackendRoleToAppRole(roleCode);
-        
+
         // Block ADMIN from signup
         if (appRole === "ADMIN") {
-          return { 
-            success: false, 
-            error: "Admin users cannot sign up. Please use login instead." 
+          return {
+            success: false,
+            error: "Admin users cannot sign up. Please use login instead."
           };
         }
-        
+
         // Only allow app roles for signup (no ADMIN)
         if (!appRole || !["PM", "GC", "SUB", "TS", "VIEWER"].includes(appRole)) {
-          return { 
-            success: false, 
-            error: `Invalid user role: ${roleCode || 'undefined'}. Only app roles are allowed for signup.` 
+          return {
+            success: false,
+            error: `Invalid user role: ${roleCode || 'undefined'}. Only app roles are allowed for signup.`
           };
         }
-        
+
         // Save token
         await setAuthToken(newToken);
         setTokenState(newToken);
-        
+
         // Map user data
         const mappedUser: User = {
           id: userData.id || userData.user_id,
@@ -427,18 +516,18 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
           phone: userData.phone || userData.phoneNumber || userData.phone_number,
           avatar: userData.avatar || userData.avatar_url,
         };
-        
+
         setUser(mappedUser);
         setIsAuthenticated(true);
-        
+
         // Mark hydration as complete after successful signup
         setHydrationComplete(true);
-        
+
         // Navigate ONLY after hydration is complete
         // Use navigateByRole with force=true since we just set hydrationComplete
         // (state update is async, so we bypass the check)
         navigateByRole(appRole, true);
-        
+
         return { success: true };
       } else {
         return { success: false, error: response.message || "Signup failed" };
@@ -460,18 +549,18 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       await authAPI.logout();
     } catch (error: any) {
       // Backend logout failed - that's okay, we'll still clear local state
-      console.warn("Backend logout failed (continuing with local logout):", 
+      console.warn("Backend logout failed (continuing with local logout):",
         error?.response?.status || error?.message);
     } finally {
       // Always clear local authentication state
       await clearAuthState();
-      
+
       // Only reset hydration if it was complete (user was logged in)
       // If hydration wasn't complete, we're still in initial load, so don't reset
       if (hydrationComplete) {
         setHydrationComplete(false);
       }
-      
+
       // Safe navigation to login - only if Stack is rendered (hydrationComplete was true)
       // If Stack isn't rendered yet, the normal flow will handle showing login screen
       if (hydrationComplete) {
@@ -519,6 +608,40 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
     }
   }, [safeNavigate, clearAuthState, hydrationComplete]);
 
+  // Social login with OAuth (Google & GitHub)
+  const loginWithOAuth = useCallback(async (provider: 'google' | 'github') => {
+    try {
+      console.log(`[OAuth] Starting ${provider} login...`);
+
+      // Redirect to app root - Supabase stores session automatically
+      const redirectTo = Platform.OS === 'web'
+        ? `${window.location.origin}/`
+        : 'exp://localhost:8082/';
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: Platform.OS !== 'web', // Only redirect on web
+        },
+      });
+
+      if (error) {
+        console.error(`[OAuth] ${provider} login error:`, error);
+        return { success: false, error: error.message };
+      }
+
+      console.log(`[OAuth] ${provider} login initiated successfully`);
+      // On web, browser will redirect automatically
+      // On mobile, need to handle the URL callback
+      return { success: true };
+
+    } catch (error: any) {
+      console.error(`[OAuth] ${provider} login exception:`, error);
+      return { success: false, error: error.message || `${provider} login failed` };
+    }
+  }, []);
+
   // Update user in local state (for profile updates)
   const updateUser = useCallback(async (updates: Partial<User>) => {
     if (user) {
@@ -542,7 +665,8 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       navigateByRole,
       safeNavigate,
       updateUser,
+      loginWithOAuth,
     }),
-    [user, token, loading, isAuthenticated, isNavigationReady, hydrationComplete, login, signup, logout, restoreSession, navigateByRole, safeNavigate, updateUser]
+    [user, token, loading, isAuthenticated, isNavigationReady, hydrationComplete, login, signup, logout, restoreSession, navigateByRole, safeNavigate, updateUser, loginWithOAuth]
   );
 });

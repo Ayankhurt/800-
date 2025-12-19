@@ -171,7 +171,7 @@ export const depositToEscrow = async (req, res) => {
         // Get project details
         const { data: project, error: projectError } = await supabase
             .from('projects')
-            .select('*, contractor:users!projects_contractor_id_fkey(stripe_account_id)')
+            .select('*, contractor:users!fk_projects_contractor_id(stripe_account_id)')
             .eq('id', projectId)
             .single();
 
@@ -249,7 +249,7 @@ export const releaseEscrow = async (req, res) => {
         // Get escrow transaction
         const { data: escrow, error: escrowError } = await supabase
             .from('escrow_transactions')
-            .select('*, projects(*, contractor:users!projects_contractor_id_fkey(stripe_account_id))')
+            .select('*, projects(*, contractor:users!fk_projects_contractor_id(stripe_account_id))')
             .eq('id', escrowId)
             .eq('project_id', projectId)
             .single();
@@ -329,7 +329,7 @@ export const autoReleaseOnApproval = async (milestoneId) => {
         // Get milestone details
         const { data: milestone, error: milestoneError } = await supabase
             .from('project_milestones')
-            .select('*, projects(*, contractor:users!projects_contractor_id_fkey(stripe_account_id))')
+            .select('*, projects(*, contractor:users!fk_projects_contractor_id(stripe_account_id))')
             .eq('id', milestoneId)
             .single();
 

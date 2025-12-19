@@ -1,5 +1,6 @@
 import { supabase } from "../config/supabaseClient.js";
 import { formatResponse } from "../utils/formatResponse.js";
+import { notificationService } from "../services/notificationService.js";
 
 // Send Message with Real-Time Support
 export const sendMessage = async (req, res) => {
@@ -65,18 +66,14 @@ export const sendMessage = async (req, res) => {
             .update({ updated_at: new Date().toISOString() })
             .eq("id", convId);
 
-        // Create notification for receiver
-        await supabase
-            .from("notifications")
-            .insert({
-                user_id: receiver_id,
-                type: "new_message",
-                title: "New Message",
-                message: `${req.user.first_name} ${req.user.last_name} sent you a message`,
-                related_id: convId,
-                is_read: false,
-                created_at: new Date().toISOString()
-            });
+        // Create notification for receiver using service
+        await notificationService.send(
+            receiver_id,
+            "New Message",
+            `${req.user.first_name || 'Someone'} sent you a message: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+            "new_message",
+            { conversation_id: convId }
+        );
 
         return res.status(201).json(formatResponse(true, "Message sent", data));
     } catch (err) {

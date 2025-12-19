@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Appointment, EstimateRequest, JobNotification } from "@/types";
 import { useAuth } from "./AuthContext";
 import { useJobs } from "./JobsContext";
+import { appointmentsAPI } from "@/services/api";
 
 const STORAGE_KEYS = {
   APPOINTMENTS: "appointments",
@@ -22,18 +23,57 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
   }, []);
 
   const loadData = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const [storedAppointments, storedRequests] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.APPOINTMENTS),
+      setIsLoading(true);
+      const [storedRequests, apiResponse] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.ESTIMATE_REQUESTS),
+        appointmentsAPI.getAll(),
       ]);
 
-      setAppointments(storedAppointments ? JSON.parse(storedAppointments) : []);
       setEstimateRequests(storedRequests ? JSON.parse(storedRequests) : []);
+
+      if (apiResponse.success && apiResponse.data) {
+        const mappedAppointments = apiResponse.data.map((appt: any) => {
+          const isAttendee = appt.attendee_id === user.id;
+          const otherUser = isAttendee ? appt.creator : appt.attendee;
+          const otherFirstName = otherUser?.first_name || "";
+          const otherLastName = otherUser?.last_name || "";
+          const otherFullName = (otherFirstName + " " + otherLastName).trim() || "Unknown";
+
+          return {
+            id: appt.id,
+            title: appt.title,
+            contractorId: appt.attendee_id,
+            contractorName: otherFullName,
+            contractorCompany: otherUser?.company_name || "",
+            date: appt.start_time.split("T")[0],
+            time:
+              appt.start_time.split("T")[1]?.substring(0, 5) || "00:00",
+            type: "meeting", // Generic type if not specified
+            location: "Online", // Default
+            status: appt.status,
+            notes: appt.description,
+            jobId: appt.project_id,
+            createdBy: appt.created_by,
+            createdAt: appt.created_at,
+            updatedAt: appt.updated_at,
+          };
+        });
+        setAppointments(mappedAppointments);
+      } else {
+        // Fallback to local storage if API fails
+        const storedAppointments = await AsyncStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
+        setAppointments(storedAppointments ? JSON.parse(storedAppointments) : []);
+      }
     } catch (error) {
       console.error("Failed to load appointments data:", error);
-      setAppointments([]);
-      setEstimateRequests([]);
+      const storedAppointments = await AsyncStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
+      setAppointments(storedAppointments ? JSON.parse(storedAppointments) : []);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +117,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
       jobId: data.jobId,
       applicationId: data.applicationId,
       requestedBy: user.id,
-      requestedByName: user.name,
+      requestedByName: user.fullName || "Me",
       requestedFrom: data.requestedFrom,
       requestedFromName: data.requestedFromName,
       location: data.location,
@@ -99,7 +139,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
       applicationId: data.applicationId,
       type: "estimate_requested",
       title: "Estimate Request",
-      message: `${user.name} requested an estimate for ${job.title}`,
+      message: `${user.fullName || "User"} requested an estimate for ${job.title}`,
       read: false,
       createdAt: new Date().toISOString(),
     };
@@ -139,7 +179,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
       jobId: request.jobId,
       applicationId: request.applicationId,
       createdBy: user.id,
-      createdByName: user.name,
+      createdByName: user.fullName || "Me",
       requestedBy: request.requestedBy,
       confirmedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -152,11 +192,11 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
     const updatedRequests = estimateRequests.map(r =>
       r.id === requestId
         ? {
-            ...r,
-            status: "confirmed" as const,
-            appointmentId: newAppointment.id,
-            updatedAt: new Date().toISOString(),
-          }
+          ...r,
+          status: "confirmed" as const,
+          appointmentId: newAppointment.id,
+          updatedAt: new Date().toISOString(),
+        }
         : r
     );
     await saveEstimateRequests(updatedRequests);
@@ -193,77 +233,119 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
   }) => {
     if (!user) return null;
 
-    const newAppointment: Appointment = {
-      ...appointmentData,
-      id: `appt-${Date.now()}`,
-      status: "scheduled",
-      createdBy: user.id,
-      createdByName: user.name,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const startTime = `${appointmentData.date}T${appointmentData.time}:00Z`;
 
-    const updatedAppointments = [...appointments, newAppointment];
-    await saveAppointments(updatedAppointments);
+      const apiResponse = await appointmentsAPI.create({
+        title: appointmentData.title,
+        description: appointmentData.notes,
+        start_time: startTime,
+        attendee_id: appointmentData.contractorId,
+        project_id: appointmentData.jobId,
+        status: "scheduled",
+      });
 
-    if (appointmentData.jobId) {
-      const job = getJobById(appointmentData.jobId);
-      if (job) {
-        const notification: JobNotification = {
-          id: `notif-${Date.now()}`,
-          userId: appointmentData.contractorId,
-          jobId: appointmentData.jobId,
-          applicationId: appointmentData.applicationId,
-          appointmentId: newAppointment.id,
-          type: "estimate_requested",
-          title: `New ${appointmentData.type.replace('_', ' ')} Scheduled`,
-          message: `${user.name} scheduled a ${appointmentData.type.replace('_', ' ')} for ${job.title}`,
-          read: false,
-          createdAt: new Date().toISOString(),
+      if (apiResponse.success && apiResponse.data) {
+        const appt = apiResponse.data;
+        const newAppointment: Appointment = {
+          ...appointmentData,
+          id: appt.id,
+          status: appt.status,
+          createdBy: appt.created_by,
+          createdByName: user.fullName || "Me",
+          createdAt: appt.created_at,
+          updatedAt: appt.updated_at,
         };
-        await addNotification(notification);
-      }
-    }
 
-    return newAppointment;
-  }, [appointments, getJobById, saveAppointments, user, addNotification]);
+        const updatedAppointments = [...appointments, newAppointment];
+        setAppointments(updatedAppointments);
+        await AsyncStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedAppointments));
+
+        if (appointmentData.jobId) {
+          const job = getJobById(appointmentData.jobId);
+          if (job) {
+            const notification: JobNotification = {
+              id: `notif-${Date.now()}`,
+              userId: appointmentData.contractorId,
+              jobId: appointmentData.jobId,
+              applicationId: appointmentData.applicationId,
+              appointmentId: newAppointment.id,
+              type: "estimate_requested",
+              title: `New ${appointmentData.type.replace('_', ' ')} Scheduled`,
+              message: `${user.fullName || "User"} scheduled a ${appointmentData.type.replace('_', ' ')} for ${job.title}`,
+              read: false,
+              createdAt: new Date().toISOString(),
+            };
+            await addNotification(notification);
+          }
+        }
+
+        return newAppointment;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to create appointment via API:", error);
+      return null;
+    }
+  }, [appointments, getJobById, user, addNotification]);
 
   const updateAppointment = useCallback(async (
     appointmentId: string,
     updates: Partial<Appointment>
   ) => {
-    const updatedAppointments = appointments.map(appt =>
-      appt.id === appointmentId
-        ? { ...appt, ...updates, updatedAt: new Date().toISOString() }
-        : appt
-    );
-    await saveAppointments(updatedAppointments);
-
-    const appointment = updatedAppointments.find(a => a.id === appointmentId);
-    if (appointment && updates.status === "completed" && appointment.jobId) {
-      const job = getJobById(appointment.jobId);
-      if (job && appointment.requestedBy) {
-        const notification: JobNotification = {
-          id: `notif-${Date.now()}`,
-          userId: appointment.requestedBy,
-          jobId: appointment.jobId,
-          applicationId: appointment.applicationId,
-          appointmentId,
-          type: "estimate_completed",
-          title: "Estimate Completed",
-          message: `${appointment.contractorName} completed the estimate for ${job.title}`,
-          read: false,
-          createdAt: new Date().toISOString(),
-        };
-        await addNotification(notification);
+    try {
+      const backendUpdates: any = {};
+      if (updates.status) backendUpdates.status = updates.status;
+      if (updates.title) backendUpdates.title = updates.title;
+      if (updates.notes) backendUpdates.description = updates.notes;
+      if (updates.date && updates.time) {
+        backendUpdates.start_time = `${updates.date}T${updates.time}:00Z`;
       }
+
+      await appointmentsAPI.update(appointmentId, backendUpdates);
+
+      const updatedAppointments = appointments.map(appt =>
+        appt.id === appointmentId
+          ? { ...appt, ...updates, updatedAt: new Date().toISOString() }
+          : appt
+      );
+      setAppointments(updatedAppointments);
+      await AsyncStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedAppointments));
+
+      const appointment = updatedAppointments.find(a => a.id === appointmentId);
+      if (appointment && updates.status === "completed" && appointment.jobId) {
+        const job = getJobById(appointment.jobId);
+        if (job && appointment.requestedBy) {
+          const notification: JobNotification = {
+            id: `notif-${Date.now()}`,
+            userId: appointment.requestedBy,
+            jobId: appointment.jobId,
+            applicationId: appointment.applicationId,
+            appointmentId,
+            type: "estimate_completed",
+            title: "Estimate Completed",
+            message: `${appointment.contractorName} completed the estimate for ${job.title}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+          };
+          await addNotification(notification);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update appointment:", error);
     }
-  }, [appointments, getJobById, saveAppointments, addNotification]);
+  }, [appointments, getJobById, addNotification]);
 
   const deleteAppointment = useCallback(async (appointmentId: string) => {
-    const updatedAppointments = appointments.filter(appt => appt.id !== appointmentId);
-    await saveAppointments(updatedAppointments);
-  }, [appointments, saveAppointments]);
+    try {
+      await appointmentsAPI.delete(appointmentId);
+      const updatedAppointments = appointments.filter(appt => appt.id !== appointmentId);
+      setAppointments(updatedAppointments);
+      await AsyncStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updatedAppointments));
+    } catch (error) {
+      console.error("Failed to delete appointment:", error);
+    }
+  }, [appointments]);
 
   const getAppointmentsByUserId = useCallback((userId: string) => {
     return appointments.filter(
@@ -285,7 +367,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
     if (!user) return [];
     const now = new Date();
     return appointments
-      .filter(appt => 
+      .filter(appt =>
         (appt.createdBy === user.id || appt.contractorId === user.id) &&
         appt.status === "scheduled" &&
         new Date(appt.date) >= now

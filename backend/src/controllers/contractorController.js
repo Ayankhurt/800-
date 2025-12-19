@@ -47,28 +47,26 @@ export const updateContractorProfile = async (req, res) => {
             trade_specialization,
             license_number,
             license_type,
-            license_expiry,
+            license_expires_at,
             insurance_provider,
             insurance_policy_number,
-            insurance_expiry,
-            years_experience,
+            insurance_expires_at,
+            experience_years,
             service_area,
-            hourly_rate_min,
-            hourly_rate_max
+            hourly_rate
         } = req.body;
 
         const updateData = { user_id: userId };
         if (trade_specialization) updateData.trade_specialization = trade_specialization;
         if (license_number) updateData.license_number = license_number;
         if (license_type) updateData.license_type = license_type;
-        if (license_expiry) updateData.license_expiry = license_expiry;
+        if (license_expires_at) updateData.license_expires_at = license_expires_at;
         if (insurance_provider) updateData.insurance_provider = insurance_provider;
         if (insurance_policy_number) updateData.insurance_policy_number = insurance_policy_number;
-        if (insurance_expiry) updateData.insurance_expiry = insurance_expiry;
-        if (years_experience !== undefined) updateData.years_experience = years_experience;
+        if (insurance_expires_at) updateData.insurance_expires_at = insurance_expires_at;
+        if (experience_years !== undefined) updateData.experience_years = experience_years;
         if (service_area) updateData.service_area = service_area;
-        if (hourly_rate_min !== undefined) updateData.hourly_rate_min = hourly_rate_min;
-        if (hourly_rate_max !== undefined) updateData.hourly_rate_max = hourly_rate_max;
+        if (hourly_rate !== undefined) updateData.hourly_rate = hourly_rate;
 
         const { data, error } = await supabase
             .from("contractor_profiles")
@@ -236,30 +234,87 @@ export const searchContractors = async (req, res) => {
 
         const offset = (page - 1) * limit;
 
+        // Build query with proper join to users table
         let query = supabase
             .from("contractor_profiles")
-            .select("*", { count: 'exact' })
-            .range(offset, offset + limit - 1);
+            .select(`
+                *,
+                user:users!contractor_profiles_user_id_fkey (
+                    id,
+                    first_name,
+                    last_name,
+                    email,
+                    phone,
+                    avatar_url,
+                    company_name,
+                    location,
+                    bio,
+                    verification_status,
+                    trust_score,
+                    created_at
+                )
+            `, { count: 'exact' });
 
+        // Apply filters on contractor_profiles table only
         if (trade) {
             query = query.eq("trade_specialization", trade);
         }
 
-        if (verified_only === 'true') {
-            query = query.eq("is_verified", true);
-        }
-
         const { data, count, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            console.error("Search contractors error:", error);
+            throw error;
+        }
+
+        // Transform and filter data
+        let contractors = (data || []).map(profile => ({
+            ...profile,
+            ...profile.user, // Flatten user fields to top level
+            contractor_profile: {
+                trade_specialization: profile.trade_specialization,
+                license_number: profile.license_number,
+                license_type: profile.license_type,
+                insurance_provider: profile.insurance_provider,
+                years_experience: profile.years_experience,
+                hourly_rate: profile.hourly_rate,
+                availability_status: profile.availability_status,
+                service_area: profile.service_area
+            }
+        }));
+
+        // Apply post-fetch filters
+        if (location) {
+            contractors = contractors.filter(c =>
+                c.location && c.location.toLowerCase().includes(location.toLowerCase())
+            );
+        }
+
+        // TODO: Add average_rating column to users table to enable this filter
+        // if (min_rating) {
+        //     contractors = contractors.filter(c =>
+        //         c.average_rating && c.average_rating >= parseFloat(min_rating)
+        //     );
+        // }
+
+        if (verified_only === 'true') {
+            contractors = contractors.filter(c =>
+                c.verification_status === 'verified'
+            );
+        }
+
+        // Apply pagination after filtering
+        const filteredCount = contractors.length;
+        const paginatedContractors = contractors.slice(offset, offset + parseInt(limit));
 
         return res.json(formatResponse(true, "Contractors retrieved", {
-            contractors: data,
-            total: count,
+            contractors: paginatedContractors,
+            total: filteredCount,
             page: parseInt(page),
-            pages: Math.ceil(count / limit)
+            pages: Math.ceil(filteredCount / parseInt(limit))
         }));
     } catch (err) {
+        console.error("Search contractors error:", err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };

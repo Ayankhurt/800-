@@ -20,6 +20,7 @@ import {
   setupMFA,
   verifyMFASetup,
   disableMFA,
+  oauthSync,
 } from "../controllers/authController.js";
 import { adminLogin } from "../controllers/adminAuthController.js";
 import { auth } from "../middlewares/auth.js";
@@ -53,6 +54,7 @@ router.post("/reset-password", resetLimiter, resetPassword);
 /* CURSOR PATCH END */
 router.post("/refresh-token", refreshToken);
 router.post("/logout", auth, logout); // Add auth middleware to get user ID
+router.post("/oauth-sync", oauthSync); // OAuth sync endpoint (no auth required)
 /* CURSOR PATCH START */
 router.post(
   "/admin/create-user",

@@ -203,7 +203,7 @@ export default function AppointmentDetailsScreen() {
           </View>
         </View>
 
-        {appointment.notes && (
+        {!!appointment.notes && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Notes</Text>
@@ -235,7 +235,7 @@ export default function AppointmentDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Additional Information</Text>
           <View style={styles.metadataContainer}>
-            {appointment.createdByName && (
+            {!!appointment.createdByName && (
               <View style={styles.metadataRow}>
                 <Text style={styles.metadataLabel}>Created By:</Text>
                 <Text style={styles.metadataValue}>
@@ -268,7 +268,7 @@ export default function AppointmentDetailsScreen() {
           </View>
         </View>
 
-        {appointment.jobId && (
+        {!!appointment.jobId && (
           <View style={styles.section}>
             <TouchableOpacity
               style={styles.viewJobButton}

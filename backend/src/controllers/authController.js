@@ -29,12 +29,21 @@ export const signup = async (req, res) => {
       location
     } = req.body;
 
-    // Validate input
+    logger.info('[SIGNUP] Request received:', { email, first_name, last_name, role });
+
+    // Validate input - all fields required
     if (!email || !password || !first_name || !last_name || !role) {
-      return res.status(400).json(formatResponse(false, "Missing required fields", null));
+      logger.warn('[SIGNUP] Missing required fields');
+      return res.status(400).json(formatResponse(false, "Missing required fields: email, password, first_name, last_name, and role are required", null));
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json(formatResponse(false, "Invalid email format", null));
     }
 
     // Create Auth User - Trigger will automatically create user profile
+    logger.info('[SIGNUP] Creating auth user...');
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -43,40 +52,44 @@ export const signup = async (req, res) => {
     });
 
     if (authError) {
-      logger.error("Auth error:", authError);
+      logger.error("[SIGNUP] Auth error:", authError);
       return res.status(400).json(formatResponse(false, authError.message, null));
     }
 
     const userId = authData.user.id;
 
-    // Wait for trigger to complete (increased timeout)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Fetch the user profile created by trigger
-    const { data: userProfile, error: fetchError } = await supabase
+    // MANUAL USER PROFILE CREATION (don't wait for trigger)
+    // Directly insert into users table
+    const { data: userProfile, error: insertError } = await supabase
       .from("users")
-      .select("*")
-      .eq("id", userId)
+      .insert({
+        id: userId,
+        email: email,
+        first_name: first_name,
+        last_name: last_name,
+        role: role,
+        phone: phone || null,
+        company_name: company_name || null,
+        location: location || null,
+        is_active: true,
+        verification_status: 'verified',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
       .single();
 
-    if (fetchError || !userProfile) {
-      logger.error("User profile not found after trigger:", fetchError);
+    if (insertError) {
+      logger.error("User profile creation error:", insertError);
       // Cleanup auth user if profile creation failed
       await supabase.auth.admin.deleteUser(userId);
-      return res.status(500).json(formatResponse(false, "User profile creation failed. Please try again.", null));
+      return res.status(500).json(formatResponse(false, "User profile creation failed: " + insertError.message, null));
     }
 
-    // Update additional optional fields
-    const updateData = {};
-    if (phone) updateData.phone = phone;
-    if (company_name) updateData.company_name = company_name;
-    if (location) updateData.location = location;
-
-    if (Object.keys(updateData).length > 0) {
-      await supabase
-        .from("users")
-        .update(updateData)
-        .eq("id", userId);
+    if (!userProfile) {
+      logger.error("User profile not returned after insert");
+      await supabase.auth.admin.deleteUser(userId);
+      return res.status(500).json(formatResponse(false, "User profile creation failed. Please try again.", null));
     }
 
     // If Contractor role, create contractor profile
@@ -109,23 +122,10 @@ export const signup = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Fetch updated profile
-    const { data: finalProfile } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-
     return res.status(201).json(
       formatResponse(true, "Signup successful", {
         token,
-        user: finalProfile || {
-          id: userId,
-          email,
-          first_name,
-          last_name,
-          role
-        }
+        user: userProfile
       })
     );
 
@@ -186,15 +186,48 @@ export const login = async (req, res) => {
       return res.status(401).json(formatResponse(false, "Invalid email or password", null));
     }
 
-    // 3. Fetch User Details from 'users' table
-    const { data: userProfile, error: profileError } = await supabase
+    // 3. Fetch User Details - Checks both 'users' and 'admin_users' tables
+    let { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("*")
       .eq("id", data.user.id)
       .single();
 
     if (profileError || !userProfile) {
-      return res.status(400).json(formatResponse(false, "User profile not found", null));
+      logger.info(`User ${data.user.id} not found in 'users' table, checking 'admin_users'...`);
+      const { data: adminProfile } = await supabase
+        .from("admin_users")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+      if (adminProfile) {
+        userProfile = adminProfile;
+      } else {
+        // CRITICAL SYNC: If user exists in Auth but has no entry in any public table, create it now
+        // This fixes "User profile not found" errors for manually created Auth users
+        logger.warn(`User ${data.user.id} logged in but missing from public tables. Auto-creating profile...`);
+
+        const { data: newProfile, error: syncError } = await supabase
+          .from("users")
+          .insert({
+            id: data.user.id,
+            email: email,
+            first_name: data.user.user_metadata?.first_name || 'User',
+            last_name: data.user.user_metadata?.last_name || '',
+            role: data.user.user_metadata?.role || 'viewer',
+            is_active: true,
+            verification_status: 'unverified'
+          })
+          .select()
+          .single();
+
+        if (syncError || !newProfile) {
+          logger.error("Auto-sync failed:", syncError);
+          return res.status(400).json(formatResponse(false, "User profile not found and sync failed", null));
+        }
+        userProfile = newProfile;
+      }
     }
 
     if (!userProfile.is_active) {
@@ -426,16 +459,47 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json(formatResponse(false, "Failed to refresh session", null));
     }
 
-    // 2. Fetch User Details from 'users' table to get latest role
+    // 2. Fetch User Details - Check both tables and auto-sync if needed
     const userId = newSession.user.id;
-    const { data: userProfile, error: profileError } = await supabase
+    let { data: userProfile, error: profileError } = await supabase
       .from("users")
       .select("*")
       .eq("id", userId)
       .single();
 
     if (profileError || !userProfile) {
-      return res.status(401).json(formatResponse(false, "User profile not found", null));
+      logger.info(`User ${userId} not found during refresh, checking admin_users...`);
+      const { data: adminProfile } = await supabase
+        .from("admin_users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (adminProfile) {
+        userProfile = adminProfile;
+      } else {
+        // Auto-sync missing profile
+        logger.warn(`User ${userId} missing from public tables during refresh. Auto-creating...`);
+        const { data: newProfile, error: syncError } = await supabase
+          .from("users")
+          .insert({
+            id: userId,
+            email: newSession.user.email,
+            first_name: newSession.user.user_metadata?.first_name || 'User',
+            last_name: newSession.user.user_metadata?.last_name || '',
+            role: newSession.user.user_metadata?.role || 'viewer',
+            is_active: true,
+            verification_status: 'unverified'
+          })
+          .select()
+          .single();
+
+        if (syncError || !newProfile) {
+          logger.error("Auto-sync failed during refresh:", syncError);
+          return res.status(401).json(formatResponse(false, "User profile not found", null));
+        }
+        userProfile = newProfile;
+      }
     }
 
     if (!userProfile.is_active) {
@@ -928,6 +992,89 @@ export const toggleMfa = async (req, res) => {
     }
   } catch (err) {
     logger.error('Toggle MFA error:', err);
+    return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
+  }
+};
+
+// OAuth Sync - Exchange Supabase OAuth token for backend JWT
+export const oauthSync = async (req, res) => {
+  try {
+    const { supabaseUser, supabaseToken } = req.body;
+
+    if (!supabaseUser || !supabaseToken) {
+      return res.status(400).json(formatResponse(false, "Supabase user data and token are required", null));
+    }
+
+    // Validate Supabase token
+    const { data: { user: validatedUser }, error: validationError } = await supabase.auth.getUser(supabaseToken);
+
+    if (validationError || !validatedUser || validatedUser.id !== supabaseUser.id) {
+      return res.status(401).json(formatResponse(false, "Invalid Supabase token", null));
+    }
+
+    // Check if user exists in backend database
+    let { data: existingUser, error: fetchError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", supabaseUser.id)
+      .single();
+
+    // If user doesn't exist, create profile
+    if (fetchError || !existingUser) {
+      const nameParts = (supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User').split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          first_name: firstName,
+          last_name: lastName,
+          role: 'project_manager', // Default role for OAuth users
+          avatar_url: supabaseUser.user_metadata?.avatar_url,
+          is_active: true,
+          verification_status: 'verified',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        logger.error("OAuth sync - user creation error:", insertError);
+        return res.status(500).json(formatResponse(false, "Failed to create user profile", null));
+      }
+
+      existingUser = newUser;
+    }
+
+    // Update last login
+    await supabase.from("users").update({
+      last_login_at: new Date().toISOString()
+    }).eq("id", supabaseUser.id);
+
+    // Generate backend JWT
+    const token = jwt.sign(
+      {
+        id: existingUser.id,
+        email: existingUser.email,
+        role: existingUser.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json(
+      formatResponse(true, "OAuth sync successful", {
+        token,
+        user: existingUser
+      })
+    );
+
+  } catch (err) {
+    logger.error("OAuth sync error:", err);
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
   }
 };

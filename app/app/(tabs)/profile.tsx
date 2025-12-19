@@ -33,6 +33,8 @@ import {
   RefreshControl,
 } from "react-native";
 import { userAPI } from "@/services/api";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -85,6 +87,7 @@ export default function ProfileScreen() {
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const toast = useToast();
 
   // Fetch profile on mount
   useEffect(() => {
@@ -96,13 +99,24 @@ export default function ProfileScreen() {
       setIsLoading(true);
       console.log("[API] GET /users/me");
       const response = await userAPI.getProfile();
-      
+
       if (response.success && response.data) {
         setProfileData(response.data);
+        console.log("[Profile] Data loaded successfully");
+      } else {
+        toast.error("Failed to load profile");
       }
     } catch (error: any) {
       console.error("[API] Failed to fetch profile:", error);
-      // Use context user as fallback
+
+      // Show appropriate error message
+      if (error.message?.includes("Network Error") || error.message?.includes("connect")) {
+        toast.error("No internet connection. Using cached data.");
+      } else if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+      } else {
+        toast.error("Failed to load profile. Pull to retry.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -150,23 +164,50 @@ export default function ProfileScreen() {
 
 
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: logout,
-        },
-      ],
-      { cancelable: true }
-    );
+  const handleLogout = async () => {
+    // Check if running on web
+    const isWeb = typeof window !== 'undefined' && window.confirm;
+
+    if (isWeb) {
+      // Web: use confirm dialog
+      const confirmed = window.confirm("Are you sure you want to log out?");
+      if (confirmed) {
+        try {
+          console.log("[Logout] Starting logout...");
+          await logout();
+          console.log("[Logout] Logout successful");
+        } catch (error: any) {
+          console.error("Logout error:", error);
+        }
+      }
+    } else {
+      // Native: use Alert
+      Alert.alert(
+        "Log Out",
+        "Are you sure you want to log out?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Log Out",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                toast.info("Logging out...");
+                await logout();
+                toast.success("Logged out successfully");
+              } catch (error: any) {
+                console.error("Logout error:", error);
+                toast.warning("Logged out (offline mode)");
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   const handleEditProfile = () => {
@@ -213,9 +254,9 @@ export default function ProfileScreen() {
           },
         }}
       />
-      
-      <ScrollView 
-        style={styles.scrollView} 
+
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -227,141 +268,152 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>
-              {user?.fullName
-                ?.split(" ")
-                .map((n: string) => n[0])
-                .join("") || "?"}
-            </Text>
-          </View>
-          <Text style={styles.profileName}>{user?.fullName || "User"}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{user?.role}</Text>
-          </View>
-          {/* Admin badge - only visible for ADMIN role */}
-          {isAdmin && (
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>ADMIN</Text>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatarLarge}>
+                <Text style={styles.avatarLargeText}>
+                  {user?.fullName
+                    ?.split(" ")
+                    .map((n: string) => n[0])
+                    .join("") || "?"}
+                </Text>
+              </View>
+              <Text style={styles.profileName}>{user?.fullName || "User"}</Text>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{user?.role}</Text>
+              </View>
+              {/* Admin badge - only visible for ADMIN role */}
+              {isAdmin && (
+                <View style={styles.adminBadge}>
+                  <Text style={styles.adminBadgeText}>ADMIN</Text>
+                </View>
+              )}
+              <Text style={styles.companyName}>{user?.company}</Text>
             </View>
-          )}
-          <Text style={styles.companyName}>{user?.company}</Text>
-        </View>
 
-        <MenuSection title="Account Information">
-          <MenuItem
-            icon={<Mail size={20} color={Colors.primary} />}
-            label="Email"
-            value={user?.email}
-            onPress={handleEditProfile}
-          />
-          <MenuItem
-            icon={<Phone size={20} color={Colors.primary} />}
-            label="Phone"
-            value={user?.phone}
-            onPress={handleEditProfile}
-          />
-          <MenuItem
-            icon={<Building2 size={20} color={Colors.primary} />}
-            label="Company"
-            value={user?.company}
-            onPress={handleEditProfile}
-          />
-          <MenuItem
-            icon={<User size={20} color={Colors.primary} />}
-            label="Edit Profile"
-            onPress={handleEditProfile}
-          />
-        </MenuSection>
+            <MenuSection title="Account Information">
+              <MenuItem
+                icon={<Mail size={20} color={Colors.primary} />}
+                label="Email"
+                value={user?.email}
+                onPress={handleEditProfile}
+              />
+              <MenuItem
+                icon={<Phone size={20} color={Colors.primary} />}
+                label="Phone"
+                value={user?.phone}
+                onPress={handleEditProfile}
+              />
+              <MenuItem
+                icon={<Building2 size={20} color={Colors.primary} />}
+                label="Company"
+                value={user?.company}
+                onPress={handleEditProfile}
+              />
+              <MenuItem
+                icon={<User size={20} color={Colors.primary} />}
+                label="Edit Profile"
+                onPress={handleEditProfile}
+              />
+            </MenuSection>
 
-        <MenuSection title="Communication">
-          <MenuItem
-            icon={<Bell size={20} color={Colors.textSecondary} />}
-            label="Notifications"
-            value={getUnreadNotificationsCount() > 0 ? `${getUnreadNotificationsCount()} new` : undefined}
-            onPress={handleNotifications}
-          />
-          <MenuItem
-            icon={<MessageCircle size={20} color={Colors.textSecondary} />}
-            label="Messages"
-            onPress={handleMessages}
-          />
-        </MenuSection>
+            <MenuSection title="Communication">
+              <MenuItem
+                icon={<Bell size={20} color={Colors.textSecondary} />}
+                label="Notifications"
+                value={getUnreadNotificationsCount() > 0 ? `${getUnreadNotificationsCount()} new` : undefined}
+                onPress={handleNotifications}
+              />
+              <MenuItem
+                icon={<MessageCircle size={20} color={Colors.textSecondary} />}
+                label="Messages"
+                onPress={handleMessages}
+              />
+            </MenuSection>
 
-        <MenuSection title="Preferences">
-          <MenuItem
-            icon={<Settings size={20} color={Colors.textSecondary} />}
-            label="Settings"
-            onPress={handleSettings}
-          />
-          <MenuItem
-            icon={<Shield size={20} color={Colors.textSecondary} />}
-            label="Privacy & Security"
-            onPress={handlePrivacy}
-          />
-        </MenuSection>
+            <MenuSection title="Preferences">
+              <MenuItem
+                icon={<Settings size={20} color={Colors.textSecondary} />}
+                label="Settings"
+                onPress={handleSettings}
+              />
+              <MenuItem
+                icon={<Shield size={20} color={Colors.textSecondary} />}
+                label="Privacy & Security"
+                onPress={handlePrivacy}
+              />
+            </MenuSection>
 
-        <MenuSection title="Support">
-          <MenuItem
-            icon={<HelpCircle size={20} color={Colors.textSecondary} />}
-            label="Help & Support"
-            onPress={handleHelp}
-          />
-          <MenuItem
-            icon={<FileText size={20} color={Colors.textSecondary} />}
-            label="Terms of Service"
-            onPress={handleTerms}
-          />
-        </MenuSection>
+            <MenuSection title="Support">
+              <MenuItem
+                icon={<HelpCircle size={20} color={Colors.textSecondary} />}
+                label="Help & Support"
+                onPress={handleHelp}
+              />
+              <MenuItem
+                icon={<FileText size={20} color={Colors.textSecondary} />}
+                label="Terms of Service"
+                onPress={handleTerms}
+              />
+            </MenuSection>
 
-        {/* Admin-only section */}
-        {isAdmin && (
-          <MenuSection title="Admin">
-            <MenuItem
-              icon={<Shield size={20} color={Colors.primary} />}
-              label="User Management"
-              onPress={handleUserManagement}
-            />
-            <MenuItem
-              icon={<FolderKanban size={20} color={Colors.primary} />}
-              label="Project Approvals"
-              onPress={handleProjectApprovals}
-            />
-            <MenuItem
-              icon={<AlertTriangle size={20} color={Colors.primary} />}
-              label="Disputes Panel"
-              onPress={handleDisputesPanel}
-            />
-            <MenuItem
-              icon={<DollarSign size={20} color={Colors.primary} />}
-              label="Finance"
-              onPress={handleFinance}
-            />
-            <MenuItem
-              icon={<Bell size={20} color={Colors.primary} />}
-              label="Notifications Center"
-              onPress={handleNotificationsCenter}
-            />
-          </MenuSection>
-        )}
+            {/* Admin-only section */}
+            {isAdmin && (
+              <MenuSection title="Admin">
+                <MenuItem
+                  icon={<Shield size={20} color={Colors.primary} />}
+                  label="User Management"
+                  onPress={handleUserManagement}
+                />
+                <MenuItem
+                  icon={<FolderKanban size={20} color={Colors.primary} />}
+                  label="Project Approvals"
+                  onPress={handleProjectApprovals}
+                />
+                <MenuItem
+                  icon={<AlertTriangle size={20} color={Colors.primary} />}
+                  label="Disputes Panel"
+                  onPress={handleDisputesPanel}
+                />
+                <MenuItem
+                  icon={<DollarSign size={20} color={Colors.primary} />}
+                  label="Finance"
+                  onPress={handleFinance}
+                />
+                <MenuItem
+                  icon={<Bell size={20} color={Colors.primary} />}
+                  label="Notifications Center"
+                  onPress={handleNotificationsCenter}
+                />
+              </MenuSection>
+            )}
 
-        <MenuSection title="Account">
-          <MenuItem
-            icon={<LogOut size={20} color={Colors.error} />}
-            label="Log Out"
-            onPress={handleLogout}
-            destructive
-          />
-        </MenuSection>
+            <MenuSection title="Account">
+              <MenuItem
+                icon={<LogOut size={20} color={Colors.error} />}
+                label="Log Out"
+                onPress={handleLogout}
+                destructive
+              />
+            </MenuSection>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Bidroom v1.0.0</Text>
-          <Text style={styles.footerText}>© 2025 Bidroom. All rights reserved.</Text>
-        </View>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Bidroom v1.0.0</Text>
+              <Text style={styles.footerText}>© 2025 Bidroom. All rights reserved.</Text>
+            </View>
           </>
         )}
       </ScrollView>
+
+      {/* Toast notifications */}
+      {toast.toasts.map((t) => (
+        <Toast
+          key={t.id}
+          type={t.type}
+          message={t.message}
+          visible={t.visible}
+          onDismiss={() => toast.dismissToast(t.id)}
+        />
+      ))}
     </View>
   );
 }

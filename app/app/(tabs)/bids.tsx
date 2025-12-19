@@ -120,25 +120,28 @@ export default function BidsScreen() {
   useEffect(() => {
     const fetchBids = async () => {
       if (!user) return;
-      
+
       setIsLoading(true);
       try {
         console.log("[API] GET /bids");
         const response = await bidsAPI.getAll();
-        
+
         if (response.success && response.data) {
+          // Handle both array response and object response { bids: [], total: 0 }
+          const rawData = response.data.bids || (Array.isArray(response.data) ? response.data : []);
+
           // Map backend bid format to frontend Bid type
-          const mappedBids = Array.isArray(response.data) ? response.data.map((bid: any) => ({
+          const mappedBids = rawData.map((bid: any) => ({
             id: bid.id || bid.bid_id,
-            projectName: bid.project_name || bid.projectName || bid.title,
-            description: bid.description,
-            dueDate: bid.due_date || bid.dueDate,
+            projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
+            description: bid.notes || bid.description || "No description provided",
+            dueDate: bid.due_date || bid.dueDate || bid.created_at,
             status: (bid.status || "pending") as BidStatus,
-            budget: bid.budget,
+            budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
             contractorCount: bid.contractor_count || bid.contractorCount || 0,
             submittedCount: bid.submitted_count || bid.submittedCount || 0,
             createdAt: bid.created_at || bid.createdAt,
-          })) : [];
+          }));
           setApiBids(mappedBids);
         }
       } catch (error: any) {
@@ -177,10 +180,10 @@ export default function BidsScreen() {
             color: Colors.text,
             fontWeight: "700" as const,
           },
-          headerRight: () => 
+          headerRight: () =>
             // Visible for PM and GC only (hide for VIEWER)
             canCreateBids && user?.role !== "VIEWER" ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => setShowCreateModal(true)}
               >
@@ -233,9 +236,9 @@ export default function BidsScreen() {
         <FlatList
           data={filteredBids}
           renderItem={({ item }) => (
-            <BidCard 
-              bid={item} 
-              submissionsCount={getSubmissionsByBidId(item.id).length}
+            <BidCard
+              bid={item}
+              submissionsCount={item.submittedCount}
               onPress={() => router.push(`/bid-details?id=${item.id}`)}
             />
           )}
@@ -264,17 +267,18 @@ export default function BidsScreen() {
             try {
               const response = await bidsAPI.getAll();
               if (response.success && response.data) {
-                const mappedBids = Array.isArray(response.data) ? response.data.map((bid: any) => ({
+                const rawData = response.data.bids || (Array.isArray(response.data) ? response.data : []);
+                const mappedBids = rawData.map((bid: any) => ({
                   id: bid.id || bid.bid_id,
-                  projectName: bid.project_name || bid.projectName || bid.title,
-                  description: bid.description,
-                  dueDate: bid.due_date || bid.dueDate,
+                  projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
+                  description: bid.notes || bid.description || "No description provided",
+                  dueDate: bid.due_date || bid.dueDate || bid.created_at,
                   status: (bid.status || "pending") as BidStatus,
-                  budget: bid.budget,
+                  budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
                   contractorCount: bid.contractor_count || bid.contractorCount || 0,
                   submittedCount: bid.submitted_count || bid.submittedCount || 0,
                   createdAt: bid.created_at || bid.createdAt,
-                })) : [];
+                }));
                 setApiBids(mappedBids);
               }
             } catch (error) {
@@ -311,7 +315,7 @@ function CreateBidModal({
   const [submitting, setSubmitting] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
-  
+
   // Fetch available projects on mount
   useEffect(() => {
     const fetchProjects = async () => {
@@ -340,18 +344,18 @@ function CreateBidModal({
     setSubmitting(true);
     try {
       console.log("[API] POST /bids", formData);
-      
+
       // NOTE: The backend expects project_id (UUID) and amount (number)
       // This form is creating a bid request, which might need to:
       // 1. First create a project, then create a bid for it, OR
       // 2. Select an existing project
       // For now, we'll try to extract amount from budget and use a placeholder project_id
       // TODO: Update UI to require project selection or project creation first
-      
+
       // Extract numeric amount from budget string (e.g., "1000$" -> 1000)
       const budgetMatch = formData.budget?.match(/(\d+)/);
       const amount = budgetMatch ? parseFloat(budgetMatch[1]) : 0;
-      
+
       if (!amount || amount <= 0) {
         Alert.alert("Error", "Please enter a valid budget amount (e.g., $1000)");
         setSubmitting(false);
@@ -359,11 +363,12 @@ function CreateBidModal({
       }
 
       // Map frontend bid format to backend format
-      // Backend requires: project_id (UUID), amount (number), notes (optional)
       const backendData = {
-        project_id: formData.projectId || null, // Should be selected from existing projects
-        amount: amount,
-        notes: formData.description || null,
+        project_id: formData.projectId || null,
+        title: formData.projectName,
+        description: formData.description,
+        due_date: formData.dueDate,
+        amount: amount, // Still passing it, backend might ignore or we can update schema
       };
 
       // If no project_id, try to create a project first, then create bid
@@ -376,7 +381,7 @@ function CreateBidModal({
             description: formData.description,
             budget: amount,
           });
-          
+
           if (projectResponse.success && projectResponse.data?.id) {
             backendData.project_id = projectResponse.data.id;
           } else {
@@ -400,7 +405,7 @@ function CreateBidModal({
       }
 
       const response = await bidsAPI.create(backendData);
-      
+
       if (response.success) {
         Alert.alert("Success", "Bid created successfully!");
         setFormData({

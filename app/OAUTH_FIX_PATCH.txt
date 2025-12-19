@@ -1,0 +1,33 @@
+// BHAI YE CODE COPY KARO AUR AuthContext.tsx KI LINE 153-176 KO REPLACE KARDO:
+
+        console.log('[OAuth] Syncing with backend...');
+        const supabaseUser = session.user;
+
+        try {
+          // Try login first (using Supabase ID as password)
+          let result = await login(supabaseUser.email || '', supabaseUser.id);
+
+          // If login fails, register new user
+          if (!result.success) {
+            console.log('[OAuth] Registering new user...');
+            result = await signup(
+              supabaseUser.email || '',
+              supabaseUser.id,
+              supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+              'PM'
+            );
+          }
+
+          if (result.success) {
+            console.log('[OAuth] Backend sync successful!');
+            // login/signup already handles token, user, and navigation
+          } else {
+            console.error('[OAuth] Backend sync failed:', result.error);
+          }
+        } catch (error: any) {
+          console.error('[OAuth] Sync error:', error);
+        }
+
+
+// YE PURANA CODE HAI JO REMOVE KARNA HAI:
+// Line 153-176 (// OAuth login successful... se ... }, 500); tak)

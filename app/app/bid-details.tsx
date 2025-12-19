@@ -62,23 +62,27 @@ export default function BidDetailsScreen() {
 
   const fetchSubmissions = async () => {
     if (!bidId) return;
-    
+
     try {
       setIsLoading(true);
       console.log("[API] GET /bids/:bidId/submissions", bidId);
       const response = await bidsAPI.getSubmissions(bidId);
-      
+
       if (response.success && response.data) {
-        const mappedSubmissions = Array.isArray(response.data) ? response.data.map((sub: any) => ({
+        const rawSubmissions = response.data.submissions || (Array.isArray(response.data) ? response.data : []);
+        const mappedSubmissions = rawSubmissions.map((sub: any) => ({
           id: sub.id || sub.submission_id,
           bidId: sub.bid_id || sub.bidId,
           contractorId: sub.contractor_id || sub.contractorId,
-          contractorName: sub.contractor_name || sub.contractorName,
+          contractorName: sub.contractor?.fullName || sub.contractor_name || sub.contractorName || "Contractor",
+          contractorCompany: sub.contractor?.company || sub.contractor_company || sub.contractorCompany || "",
           amount: sub.amount || sub.bid_amount,
-          notes: sub.notes || sub.comments,
+          notes: sub.notes || sub.comments || sub.proposal,
           submittedAt: sub.submitted_at || sub.submittedAt,
           status: sub.status || "pending",
-        })) : [];
+          documents: sub.documents || [],
+          createdBy: sub.created_by || sub.createdBy,
+        }));
         setApiSubmissions(mappedSubmissions);
       }
     } catch (error: any) {
@@ -91,11 +95,11 @@ export default function BidDetailsScreen() {
 
   const fetchBidComparison = async () => {
     if (!bid?.jobId) return;
-    
+
     try {
       console.log("[API] GET /bids/:jobId/compare", bid.jobId);
       const response = await bidsAPI.compare(bid.jobId);
-      
+
       if (response.success && response.data) {
         setApiBidComparison(response.data);
       }
@@ -174,8 +178,8 @@ export default function BidDetailsScreen() {
       `Award this bid to ${contractorName}?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Award", 
+        {
+          text: "Award",
           onPress: async () => {
             await awardBid(bid.id, submissionId);
             Alert.alert(
@@ -201,8 +205,8 @@ export default function BidDetailsScreen() {
       "Are you sure you want to decline this bid opportunity?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Decline", 
+        {
+          text: "Decline",
           style: "destructive",
           onPress: async () => {
             await declineBid(bid.id);
@@ -419,9 +423,9 @@ export default function BidDetailsScreen() {
               </View>
             ) : (
               submissions.map((submission) => (
-                <SubmissionCard 
-                  key={submission.id} 
-                  submission={submission} 
+                <SubmissionCard
+                  key={submission.id}
+                  submission={submission}
                   canAward={canViewAllBids && bid.status !== "awarded"}
                   isAwarded={bid.status === "awarded" && submission.id === awardedSubmission?.id}
                   onAward={() => handleAwardBid(submission.id, submission.contractorName)}
@@ -462,12 +466,12 @@ export default function BidDetailsScreen() {
   );
 }
 
-function SubmissionCard({ 
-  submission, 
-  canAward, 
+function SubmissionCard({
+  submission,
+  canAward,
   isAwarded,
-  onAward 
-}: { 
+  onAward
+}: {
   submission: BidSubmission;
   canAward: boolean;
   isAwarded?: boolean;
@@ -477,9 +481,9 @@ function SubmissionCard({
   const { user } = useAuth();
 
   const handleSendMessage = () => {
-    router.push({ 
-      pathname: "/messages", 
-      params: { userId: submission.contractorId } 
+    router.push({
+      pathname: "/messages",
+      params: { userId: submission.contractorId }
     } as any);
   };
 
@@ -534,7 +538,7 @@ function SubmissionCard({
           <Text style={styles.awardedBannerText}>Awarded Bid</Text>
         </View>
       )}
-      
+
       <View style={styles.actionButtons}>
         <TouchableOpacity
           style={styles.messageButton}
@@ -589,7 +593,7 @@ function SubmitBidModal({
         amount: parseFloat(formData.amount),
         notes: formData.notes,
       });
-      
+
       if (response.success) {
         Alert.alert("Success", "Your bid has been submitted successfully");
         setFormData({ amount: "", notes: "" });

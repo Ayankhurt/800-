@@ -64,7 +64,7 @@ export default function ProtectedRoute({
     if (requireAdmin) {
       // Role must be in allowed admin roles
       if (!ALLOWED_ADMIN_ROLES.includes(userRole)) {
-        router.push('/dashboard');
+        router.push('/403');
         return;
       }
       return;

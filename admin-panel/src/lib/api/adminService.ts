@@ -980,6 +980,29 @@ export const adminService = {
     const response = await apiClient.post('/admin/settings', settings);
     return response.data;
   },
+
+  // Bulk Actions
+  bulkAction: async (type: 'verify' | 'suspend' | 'delete', user_ids: string[], metadata?: any) => {
+    const endpoint = `/admin/users/bulk-${type}`;
+    const response = await apiClient.post(endpoint, { user_ids, ...metadata });
+    return response.data;
+  },
+
+  // Notifications
+  sendNotification: async (user_id: string, message: string, type: string = 'info', title?: string) => {
+    const response = await apiClient.post(`/admin/users/${user_id}/notify`, { message, type, title });
+    return response.data;
+  },
+
+  broadcastNotification: async (data: { message: string; title?: string; type?: string; target_role?: string }) => {
+    const response = await apiClient.post('/admin/notifications/broadcast', data);
+    return response.data;
+  },
+
+  exportUsers: async () => {
+    const response = await apiClient.get('/admin/users/export', { responseType: 'blob' });
+    return response.data;
+  },
 };
 
 export default adminService;

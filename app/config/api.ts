@@ -33,10 +33,17 @@ if (__DEV__) {
 }
 
 function getBaseURL(): string {
+  // WEB PLATFORM - Always use localhost
+  if (Platform.OS === "web") {
+    console.log("🌐 Web platform detected - using localhost");
+    return "http://localhost:5000/api/v1";
+  }
+
+  // MOBILE PLATFORMS - Use env variables or default IP
   // Priority 1: Full URL from environment variable
   if (process.env.EXPO_PUBLIC_API_URL) {
     let url = process.env.EXPO_PUBLIC_API_URL.trim();
-    
+
     // Check if URL is missing port (for http://)
     // Pattern: http://IP/path (missing port) vs http://IP:PORT/path (has port)
     if (url.startsWith('http://')) {
@@ -45,14 +52,14 @@ function getBaseURL(): string {
       const firstSlash = afterProtocol.indexOf('/');
       const hostPart = firstSlash > 0 ? afterProtocol.substring(0, firstSlash) : afterProtocol;
       const pathPart = firstSlash > 0 ? afterProtocol.substring(firstSlash) : '';
-      
+
       // Check if host part has a port (contains ':')
       if (!hostPart.includes(':')) {
         // Missing port, add default port 5000
         url = `http://${hostPart}:5000${pathPart}`;
       }
     }
-    
+
     // Ensure URL ends with /api/v1 if not already present
     if (!url.includes('/api/v1')) {
       // Remove trailing slash if present
@@ -84,10 +91,9 @@ export const getLocalIPInstructions = () => {
   const currentURL = API_CONFIG.BASE_URL;
   return `API Server: ${currentURL}\n` +
     `Make sure backend is running and accessible at this address.\n` +
-    `Config Source: ${
-      process.env.EXPO_PUBLIC_API_URL ? "EXPO_PUBLIC_API_URL" :
+    `Config Source: ${process.env.EXPO_PUBLIC_API_URL ? "EXPO_PUBLIC_API_URL" :
       process.env.EXPO_PUBLIC_API_IP ? "EXPO_PUBLIC_API_IP + EXPO_PUBLIC_API_PORT" :
-      "Default hardcoded values"
+        "Default hardcoded values"
     }`;
 };
 

@@ -16,8 +16,8 @@ export function calculateTrustScore(contractor: Contractor): TrustScore {
   const reliabilityScore = calculateReliabilityScore(contractor.trustIndicators);
 
   const score = Math.round(
-    verificationScore * 0.4 + 
-    performanceScore * 0.3 + 
+    verificationScore * 0.4 +
+    performanceScore * 0.3 +
     reliabilityScore * 0.3
   );
 
@@ -59,42 +59,49 @@ function calculateVerificationScore(verifications: Verification[]): number {
 function calculatePerformanceScore(contractor: Contractor): number {
   let score = 0;
 
-  score += (contractor.rating / 5) * 40;
+  const rating = Number(contractor.rating) || 0;
+  score += (rating / 5) * 40;
 
-  const reviewBonus = Math.min(contractor.reviewCount / 10, 10);
+  const reviewCount = Number(contractor.reviewCount) || 0;
+  const reviewBonus = Math.min(reviewCount / 10, 10);
   score += reviewBonus;
 
-  const projectBonus = Math.min(contractor.completedProjects / 20, 20);
+  const completedProjects = Number(contractor.completedProjects) || 0;
+  const projectBonus = Math.min(completedProjects / 20, 20);
   score += projectBonus;
 
-  const experienceBonus = Math.min((contractor.yearsInBusiness || 0) / 2, 15);
+  const yearsInBusiness = Number(contractor.yearsInBusiness) || 0;
+  const experienceBonus = Math.min(yearsInBusiness / 2, 15);
   score += experienceBonus;
 
-  const specialtiesBonus = Math.min((contractor.specialties?.length || 0) * 3, 15);
+  const specialtiesCount = Array.isArray(contractor.specialties) ? contractor.specialties.length : 0;
+  const specialtiesBonus = Math.min(specialtiesCount * 3, 15);
   score += specialtiesBonus;
 
   return Math.round(score);
 }
 
 function calculateReliabilityScore(indicators?: TrustIndicators): number {
-  if (!indicators) return 50;
+  if (!indicators || Object.keys(indicators).length === 0) return 50;
 
   let score = 0;
 
-  score += (indicators.responseRate / 100) * 25;
+  score += ((indicators.responseRate || 0) / 100) * 25;
 
-  const responseTimeScore = indicators.responseTime <= 2 ? 20 : 
-                            indicators.responseTime <= 6 ? 15 :
-                            indicators.responseTime <= 12 ? 10 : 5;
+  const responseTime = indicators.responseTime || 24;
+  const responseTimeScore = responseTime <= 2 ? 20 :
+    responseTime <= 6 ? 15 :
+      responseTime <= 12 ? 10 : 5;
   score += responseTimeScore;
 
-  score += (indicators.onTimeRate / 100) * 30;
+  score += ((indicators.onTimeRate || 0) / 100) * 30;
 
-  score += (indicators.repeatClientRate / 100) * 15;
+  score += ((indicators.repeatClientRate || 0) / 100) * 15;
 
-  const disputeScore = indicators.disputeRate <= 2 ? 10 :
-                       indicators.disputeRate <= 5 ? 7 :
-                       indicators.disputeRate <= 10 ? 4 : 0;
+  const disputeRate = indicators.disputeRate || 0;
+  const disputeScore = disputeRate <= 2 ? 10 :
+    disputeRate <= 5 ? 7 :
+      disputeRate <= 10 ? 4 : 0;
   score += disputeScore;
 
   return Math.round(score);
@@ -162,7 +169,7 @@ export function generateTrustSuggestions(contractor: Contractor): string[] {
 
   if (contractor.trustIndicators) {
     const { responseTime, onTimeRate, repeatClientRate } = contractor.trustIndicators;
-    
+
     if (responseTime <= 2) {
       suggestions.push("Responds quickly to inquiries (avg. within 2 hours)");
     }

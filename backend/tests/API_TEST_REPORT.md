@@ -1,6 +1,6 @@
 # 📊 API TEST REPORT
 
-**Generated:** 12/11/2025, 6:38:25 PM
+**Generated:** 12/18/2025, 5:07:08 PM
 **Base URL:** http://localhost:5000
 **API Base:** http://localhost:5000/api/v1
 
@@ -134,7 +134,7 @@
 **Request Data:**
 ```json
 {
-  "email": "test1765460310530@bidroom.com",
+  "email": "test1766059636206@bidroom.com",
   "password": "Test123!@#",
   "full_name": "Test User",
   "role_code": "VIEWER"
@@ -188,8 +188,8 @@
   "message": "Server is healthy",
   "data": {
     "status": "ok",
-    "timestamp": "2025-12-11T13:38:32.399Z",
-    "uptime": 45366.9830646,
+    "timestamp": "2025-12-18T12:07:18.341Z",
+    "uptime": 275.7775065,
     "environment": "development"
   }
 }

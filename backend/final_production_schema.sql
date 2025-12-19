@@ -90,6 +90,11 @@ CREATE POLICY "Public profiles are viewable by everyone" ON public.users FOR SEL
 DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
+-- Allow users to insert their own profile during signup
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
+CREATE POLICY "Users can insert own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
+
+
 -- JOBS
 DROP POLICY IF EXISTS "Jobs are viewable by everyone" ON public.jobs;
 CREATE POLICY "Jobs are viewable by everyone" ON public.jobs FOR SELECT USING (true);

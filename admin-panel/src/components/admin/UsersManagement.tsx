@@ -101,6 +101,7 @@ const getAvailableRolesForCreate = (currentUserRole?: string) => {
    Removed imports: BulkActions, Checkbox, Download 
 */
 import { UserFilters, UserFilters as UserFiltersType } from './UserFilters';
+import { BulkActions } from './BulkActions';
 import { useRouter } from 'next/navigation';
 
 // ... (Constants omitted for brevity, keeping them as is)
@@ -117,7 +118,7 @@ export default function UsersManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-  // selectedUsers removed
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [filters, setFilters] = useState<UserFiltersType>({});
   const [createUserData, setCreateUserData] = useState({
     full_name: '',
@@ -152,7 +153,6 @@ export default function UsersManagement() {
   const availableRoles = getAvailableRoles(user?.role_code);
   const availableRolesForCreate = getAvailableRolesForCreate(user?.role_code);
 
-  // Load users (Page-based)
   const loadUsers = async (pageParam = page, limitParam = limit) => {
     try {
       setLoading(true);
@@ -171,20 +171,11 @@ export default function UsersManagement() {
         setUsers(response.data.users || []);
         setTotalPages(response.data.pages || 1);
         setPage(pageParam);
-
-        console.log(`[UsersManagement] Loaded ${response.data.users.length} users. Checking statuses:`);
-        response.data.users.forEach((u: any) => {
-          if (u.status === 'suspended' || u.is_active === false) {
-            console.log(`Found SUSPENDED user: ${u.email} (is_active: ${u.is_active}, status: ${u.status})`);
-          }
-        });
-
+        setSelectedUsers([]); // Clear selection on load
       } else {
-        console.error('[UsersManagement] API response not successful:', response);
         setUsers([]);
       }
     } catch (error: any) {
-      console.error('[UsersManagement] Failed to load users:', error);
       toast.error(error.response?.data?.message || 'Failed to load users');
       setUsers([]);
     } finally {
@@ -316,7 +307,19 @@ export default function UsersManagement() {
     return filtered;
   }, [users, searchQuery, activeTab, filters]);
 
-  /* Removed handleSelectUser and handleSelectAll */
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUsers(filteredUsers.map(u => u.id));
+    } else {
+      setSelectedUsers([]);
+    }
+  };
 
   const handleViewUser = (userId: string) => {
     router.push(`/dashboard/users/${userId}`);
@@ -518,7 +521,7 @@ export default function UsersManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Users Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Users Management (REAL-TIME UPDATED)</h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Manage all users, verifications, and permissions</p>
         </div>
         {availableRolesForCreate.length > 0 && (
@@ -600,6 +603,10 @@ export default function UsersManagement() {
           onFiltersChange={setFilters}
           onReset={() => setFilters({})}
         />
+        <BulkActions
+          selectedUsers={selectedUsers}
+          onActionComplete={refreshUsers}
+        />
         <div className="w-[140px]">
           <Select
             value={limit.toString()}
@@ -656,6 +663,12 @@ export default function UsersManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[50px]">
+                          <Checkbox
+                            checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                            onCheckedChange={handleSelectAll}
+                          />
+                        </TableHead>
                         <TableHead className="min-w-[200px]">User</TableHead>
                         <TableHead className="min-w-[120px]">Role</TableHead>
                         <TableHead className="min-w-[100px]">Status</TableHead>
@@ -676,7 +689,13 @@ export default function UsersManagement() {
                         </TableRow>
                       ) : (
                         filteredUsers.map((user) => (
-                          <TableRow key={user.id}>
+                          <TableRow key={user.id} className={selectedUsers.includes(user.id) ? 'bg-blue-50' : ''}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedUsers.includes(user.id)}
+                                onCheckedChange={() => handleSelectUser(user.id)}
+                              />
+                            </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">

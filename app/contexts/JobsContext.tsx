@@ -8,7 +8,7 @@ import {
   JobNotification,
   ApplicationStatus,
 } from "@/types";
-import { MOCK_JOBS, MOCK_APPLICATIONS, MOCK_NOTIFICATIONS } from "@/mocks/jobs-data";
+// Mock data removed - app now uses 100% real API data
 import { useAuth } from "./AuthContext";
 
 const STORAGE_KEYS = {
@@ -39,16 +39,16 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
         AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS),
       ]);
 
-      setJobs(storedJobs ? JSON.parse(storedJobs) : MOCK_JOBS);
-      setApplications(storedApplications ? JSON.parse(storedApplications) : MOCK_APPLICATIONS);
+      setJobs(storedJobs ? JSON.parse(storedJobs) : []);
+      setApplications(storedApplications ? JSON.parse(storedApplications) : []);
       setMessages(storedMessages ? JSON.parse(storedMessages) : []);
-      setNotifications(storedNotifications ? JSON.parse(storedNotifications) : MOCK_NOTIFICATIONS);
+      setNotifications(storedNotifications ? JSON.parse(storedNotifications) : []);
     } catch (error) {
       console.error("Failed to load jobs data:", error);
-      setJobs(MOCK_JOBS);
-      setApplications(MOCK_APPLICATIONS);
+      setJobs([]);
+      setApplications([]);
       setMessages([]);
-      setNotifications(MOCK_NOTIFICATIONS);
+      setNotifications([]);
     } finally {
       setIsLoading(false);
     }
@@ -192,11 +192,11 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     const updatedApplications = applications.map(app =>
       app.id === applicationId
         ? {
-            ...app,
-            status,
-            respondedAt: new Date().toISOString(),
-            responseNote,
-          }
+          ...app,
+          status,
+          respondedAt: new Date().toISOString(),
+          responseNote,
+        }
         : app
     );
     await saveApplications(updatedApplications);
@@ -229,7 +229,7 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     applicationId?: string
   ) => {
     if (!user) return null;
-    
+
     const newMessage: JobMessage = {
       id: `msg-${Date.now()}`,
       jobId,

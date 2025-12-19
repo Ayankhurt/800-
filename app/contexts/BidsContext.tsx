@@ -1,74 +1,16 @@
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bid, BidSubmission } from "@/types";
+import { Bid, BidSubmission, BidStatus } from "@/types";
 import { useAuth } from "./AuthContext";
+import { bidsAPI } from "@/services/api";
 
 const STORAGE_KEYS = {
   BIDS: "bids",
   BID_SUBMISSIONS: "bid_submissions",
 };
 
-const MOCK_BIDS: Bid[] = [
-  {
-    id: "bid-1",
-    projectName: "Downtown Office Renovation",
-    description: "Complete renovation of 10,000 sq ft office space including electrical, plumbing, and HVAC upgrades.",
-    dueDate: "2025-11-15",
-    status: "pending",
-    budget: "$250,000 - $300,000",
-    contractorCount: 5,
-    submittedCount: 2,
-    createdAt: "2025-10-01T10:00:00.000Z",
-  },
-  {
-    id: "bid-2",
-    projectName: "Residential Complex Wiring",
-    description: "Electrical installation for new 50-unit residential complex with smart home integration.",
-    dueDate: "2025-11-01",
-    status: "submitted",
-    budget: "$180,000",
-    contractorCount: 8,
-    submittedCount: 6,
-    createdAt: "2025-09-15T14:00:00.000Z",
-  },
-  {
-    id: "bid-3",
-    projectName: "Hospital Wing Expansion",
-    description: "Medical grade electrical systems for new hospital wing including backup power systems.",
-    dueDate: "2025-10-25",
-    status: "awarded",
-    budget: "$500,000",
-    contractorCount: 12,
-    submittedCount: 10,
-    createdAt: "2025-09-01T09:00:00.000Z",
-  },
-];
-
-const MOCK_BID_SUBMISSIONS: BidSubmission[] = [
-  {
-    id: "sub-1",
-    bidId: "bid-1",
-    contractorId: "1",
-    contractorName: "John Smith",
-    contractorCompany: "Premier Electric Solutions",
-    amount: 275000,
-    notes: "We can complete this project within 8 weeks with our experienced team. Includes all materials and labor.",
-    submittedAt: "2025-10-05T10:00:00.000Z",
-    documents: ["proposal.pdf", "insurance-cert.pdf"],
-  },
-  {
-    id: "sub-2",
-    bidId: "bid-1",
-    contractorId: "2",
-    contractorName: "Mike Johnson",
-    contractorCompany: "Voltage Masters Inc",
-    amount: 265000,
-    notes: "Competitive pricing with 10-year warranty on all work. Can start immediately.",
-    submittedAt: "2025-10-06T14:30:00.000Z",
-    documents: ["quote.pdf"],
-  },
-];
+// Mock data removed - app now uses 100% real API data from backend
 
 export const [BidsProvider, useBids] = createContextHook(() => {
   const { user } = useAuth();
@@ -82,17 +24,60 @@ export const [BidsProvider, useBids] = createContextHook(() => {
 
   const loadData = async () => {
     try {
+      setIsLoading(true);
       const [storedBids, storedSubmissions] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.BIDS),
         AsyncStorage.getItem(STORAGE_KEYS.BID_SUBMISSIONS),
       ]);
 
-      setBids(storedBids ? JSON.parse(storedBids) : MOCK_BIDS);
-      setBidSubmissions(storedSubmissions ? JSON.parse(storedSubmissions) : MOCK_BID_SUBMISSIONS);
+      let initialBids = storedBids ? JSON.parse(storedBids) : [];
+      let initialSubmissions = storedSubmissions ? JSON.parse(storedSubmissions) : [];
+
+      // Fetch from API if logged in
+      if (user) {
+        try {
+          const [bidsResponse, submissionsResponse] = await Promise.all([
+            bidsAPI.getAll(),
+            bidsAPI.getMyBids() // This unified route in backend now returns relevant job apps/bids
+          ]);
+
+          if (bidsResponse.success && bidsResponse.data) {
+            const rawData = bidsResponse.data.bids || (Array.isArray(bidsResponse.data) ? bidsResponse.data : []);
+            initialBids = rawData.map((bid: any) => ({
+              id: bid.id || bid.bid_id,
+              projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
+              description: bid.notes || bid.description || "No description provided",
+              dueDate: bid.due_date || bid.dueDate || bid.created_at,
+              status: (bid.status || "pending") as BidStatus,
+              budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
+              contractorCount: bid.contractor_count || bid.contractorCount || 0,
+              submittedCount: bid.submitted_count || bid.submittedCount || 0,
+              createdAt: bid.created_at || bid.createdAt,
+            }));
+          }
+
+          if (submissionsResponse.success && submissionsResponse.data) {
+            const rawSubs = Array.isArray(submissionsResponse.data) ? submissionsResponse.data : [];
+            initialSubmissions = rawSubs.map((sub: any) => ({
+              id: sub.id,
+              bidId: sub.bid_id || sub.job_id,
+              contractorId: sub.contractor_id,
+              amount: sub.amount || sub.proposed_rate,
+              status: sub.status,
+              submittedAt: sub.created_at
+            }));
+          }
+        } catch (apiError) {
+          console.error("Failed to fetch data from API:", apiError);
+        }
+      }
+
+      setBids(initialBids);
+      setBidSubmissions(initialSubmissions);
     } catch (error) {
       console.error("Failed to load bids data:", error);
-      setBids(MOCK_BIDS);
-      setBidSubmissions(MOCK_BID_SUBMISSIONS);
+      setBids([]);
+      setBidSubmissions([]);
     } finally {
       setIsLoading(false);
     }
@@ -171,12 +156,13 @@ export const [BidsProvider, useBids] = createContextHook(() => {
       id: `sub-${Date.now()}`,
       bidId,
       contractorId: user.id,
-      contractorName: user.name,
-      contractorCompany: user.company,
+      contractorName: user.fullName,
+      contractorCompany: user.company || "",
       amount: submissionData.amount,
       notes: submissionData.notes,
       submittedAt: new Date().toISOString(),
       documents: submissionData.documents || [],
+      createdBy: user.id, // Always set to current user id
     };
 
     const updatedSubmissions = [...bidSubmissions, newSubmission];

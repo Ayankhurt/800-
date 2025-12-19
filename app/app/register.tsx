@@ -28,10 +28,10 @@ interface SignupData {
   email: string;
   password: string;
   confirmPassword: string;
-  
+
   // Step 2: Role
   role: AppRole | null;
-  
+
   // Step 3: Role-specific profile info
   // GC fields
   companyName?: string;
@@ -43,13 +43,13 @@ interface SignupData {
   companyLogo?: string;
   location?: string;
   portfolio?: string;
-  
+
   // Sub fields
   certifications?: string;
-  
+
   // PM fields
   projectType?: string;
-  
+
   // TS fields
   // (uses tradeSpecialization, certifications, yearsExperience, portfolio, location)
 }
@@ -65,7 +65,7 @@ export default function RegisterScreen() {
     confirmPassword: "",
     role: null,
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [honeypot, setHoneypot] = useState("");
@@ -96,13 +96,13 @@ export default function RegisterScreen() {
   };
 
   const validateStep1 = (): boolean => {
-    if (!formData.firstName || !formData.lastName || !formData.password || !formData.confirmPassword) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
       setError("Please fill in all required fields");
       return false;
     }
 
-    // Email is optional but if provided, must be valid
-    if (formData.email && !validateEmail(formData.email)) {
+    // Email is required and must be valid
+    if (!validateEmail(formData.email)) {
       setError("Please enter a valid email address");
       return false;
     }
@@ -169,7 +169,7 @@ export default function RegisterScreen() {
 
   const handleNext = () => {
     setError("");
-    
+
     if (currentStep === 1) {
       if (!validateStep1()) return;
       setCurrentStep(2);
@@ -240,7 +240,7 @@ export default function RegisterScreen() {
 
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`;
-      
+
       // Build signup data based on role
       const signupPayload: any = {
         fullName,
@@ -345,7 +345,7 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Email (Optional)</Text>
+        <Text style={styles.label}>Email *</Text>
         <TextInput
           style={styles.input}
           placeholder="your@email.com"
@@ -913,7 +913,7 @@ export default function RegisterScreen() {
 
   const renderStep5 = () => {
     const roleLabel = APP_ROLES.find((r) => r.value === formData.role)?.label || "User";
-    
+
     return (
       <View style={styles.stepContainer}>
         <View style={styles.confirmationIconContainer}>
@@ -921,7 +921,7 @@ export default function RegisterScreen() {
         </View>
         <Text style={styles.confirmationTitle}>Thank You for Signing Up!</Text>
         <Text style={styles.confirmationSubtitle}>
-          {formData.role === "VIEWER" 
+          {formData.role === "VIEWER"
             ? "You have read-only access to the platform."
             : `Your ${roleLabel} profile is being reviewed. We'll notify you once it's approved.`}
         </Text>

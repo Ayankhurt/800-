@@ -41,10 +41,10 @@ export default function JobDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
-  
+
   const jobId = Array.isArray(id) ? id[0] : id;
   console.log('Job Details Screen - Raw ID:', id, 'Processed ID:', jobId, 'Type:', typeof jobId);
-  
+
   const {
     getJobById,
     getApplicationsByJobId,
@@ -53,7 +53,7 @@ export default function JobDetailsScreen() {
     sendMessage,
     deleteJob,
   } = useJobs();
-  
+
   const jobs = useJobs().jobs;
 
   const { requestEstimate, createAppointment } = useAppointments();
@@ -82,14 +82,27 @@ export default function JobDetailsScreen() {
 
   const fetchJobDetails = async () => {
     if (!jobId) return;
-    
+
     try {
       setIsLoading(true);
       console.log("[API] GET /jobs/:id", jobId);
       const response = await jobsAPI.getById(jobId);
-      
+
       if (response.success && response.data) {
-        setApiJob(response.data);
+        const d = response.data;
+        // Map backend fields to frontend UI names
+        const mappedJob = {
+          ...d,
+          trade: d.trade_type || d.trade || "General",
+          postedByName: d.project_manager ? `${d.project_manager.first_name} ${d.project_manager.last_name}` : "System User",
+          postedByCompany: d.project_manager?.company || "Professional Services",
+          postedBy: d.projects_manager_id || d.postedBy,
+          createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+          startDate: d.start_date || d.start_date_range || d.startDate || null,
+          timeline: d.timeline,
+          description: d.description || d.descriptions || "",
+        };
+        setApiJob(mappedJob);
       }
     } catch (error: any) {
       console.log("[API ERROR]", error);
@@ -101,25 +114,28 @@ export default function JobDetailsScreen() {
 
   const fetchApplications = async () => {
     if (!jobId || !user) return;
-    
+
     // Only fetch if user is PM or ADMIN
     if (user.role !== "PM" && user.role !== "ADMIN") {
       return;
     }
-    
+
     try {
       console.log("[API] GET /jobs/:jobId/applications", jobId);
       const response = await jobsAPI.getApplications(jobId);
-      
+
       if (response.success && response.data) {
         const mappedApplications = Array.isArray(response.data) ? response.data.map((app: any) => ({
           id: app.id || app.application_id,
           jobId: app.job_id || app.jobId,
           applicantId: app.applicant_id || app.applicantId,
-          applicantName: app.applicant_name || app.applicantName,
+          applicantName: app.contractor ? `${app.contractor.first_name} ${app.contractor.last_name}` : (app.applicant_name || app.applicantName || "Contractor"),
+          applicantCompany: app.contractor?.company || app.applicantCompany || "",
           status: app.status || "pending",
           appliedAt: app.applied_at || app.appliedAt,
           coverLetter: app.cover_letter || app.coverLetter,
+          proposedRate: app.proposed_rate || app.proposedRate,
+          availableFrom: app.available_from || app.availableFrom,
         })) : [];
         setApiApplications(mappedApplications);
       }
@@ -138,7 +154,7 @@ export default function JobDetailsScreen() {
   // Use API data if available, otherwise fallback to context
   const job = apiJob || getJobById(jobId as string);
   const applications = apiApplications.length > 0 ? apiApplications : getApplicationsByJobId(jobId as string);
-  
+
   console.log('Job Details - Found job:', job ? job.title : 'NOT FOUND', 'All jobs count:', jobs?.length);
   // Visible for PM only (hide for VIEWER), Admin sees everything
   const isAdmin = user?.role === "ADMIN";
@@ -207,24 +223,24 @@ export default function JobDetailsScreen() {
           },
           headerTintColor: Colors.text,
           headerShadowVisible: false,
-          headerRight: () => 
+          headerRight: () =>
             // Visible for PM only (job poster, hide for VIEWER)
             (isJobPoster && user?.role === "PM") ? (
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={() => setShowInviteModal(true)}
-              >
-                <UserPlus size={20} color={Colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={handleDeleteJob}
-              >
-                <Trash2 size={20} color={Colors.error} />
-              </TouchableOpacity>
-            </View>
-          ) : null,
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={() => setShowInviteModal(true)}
+                >
+                  <UserPlus size={20} color={Colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleDeleteJob}
+                >
+                  <Trash2 size={20} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            ) : null,
         }}
       />
 
@@ -269,14 +285,14 @@ export default function JobDetailsScreen() {
                   ]}
                 >
                   <Text style={styles.urgencyText}>
-                    {job.urgency.toUpperCase()}
+                    {job.urgency?.toUpperCase() || 'MEDIUM'}
                   </Text>
                 </View>
               </View>
               <Text style={styles.company}>{job.postedByCompany}</Text>
               <Text style={styles.postedBy}>Posted by {job.postedByName}</Text>
               <Text style={styles.postedDate}>
-                Posted on {new Date(job.createdAt).toLocaleDateString()}
+                Posted on {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Recently"}
               </Text>
             </View>
 
@@ -297,11 +313,11 @@ export default function JobDetailsScreen() {
                 <Calendar size={20} color={Colors.primary} />
                 <Text style={styles.detailLabel}>Start Date</Text>
                 <Text style={styles.detailValue}>
-                  {new Date(job.startDate).toLocaleDateString()}
+                  {job.startDate ? new Date(job.startDate).toLocaleDateString() : (job.timeline || "Not specified")}
                 </Text>
               </View>
 
-              {job.payRate && (
+              {!!job.payRate && (
                 <View style={styles.detailCard}>
                   <DollarSign size={20} color={Colors.primary} />
                   <Text style={styles.detailLabel}>Pay Rate</Text>
@@ -319,12 +335,12 @@ export default function JobDetailsScreen() {
                 <Clock size={20} color={Colors.primary} />
                 <Text style={styles.detailLabel}>Status</Text>
                 <Text style={styles.detailValue}>
-                  {job.status.replace('_', ' ').toUpperCase()}
+                  {job.status?.replace('_', ' ').toUpperCase() || 'OPEN'}
                 </Text>
               </View>
             </View>
 
-            {job.budget && (
+            {!!job.budget && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Budget</Text>
                 <Text style={styles.budget}>{job.budget}</Text>
@@ -440,7 +456,7 @@ export default function JobDetailsScreen() {
                         setIsUpdatingStatus(true);
                         console.log("[API] PUT /jobs/applications/:applicationId/status", application.id, "accepted");
                         const response = await jobsAPI.updateApplicationStatus(application.id, "accepted");
-                        
+
                         if (response.success) {
                           Alert.alert("Success", "Application accepted");
                           // Refresh applications list
@@ -463,7 +479,7 @@ export default function JobDetailsScreen() {
                         setIsUpdatingStatus(true);
                         console.log("[API] PUT /jobs/applications/:applicationId/status", application.id, "rejected");
                         const response = await jobsAPI.updateApplicationStatus(application.id, "rejected");
-                        
+
                         if (response.success) {
                           Alert.alert("Success", "Application declined");
                           // Refresh applications list
@@ -482,9 +498,9 @@ export default function JobDetailsScreen() {
                       }
                     }}
                     onMessage={() => {
-                      router.push({ 
-                        pathname: "/messages", 
-                        params: { userId: application.applicantId } 
+                      router.push({
+                        pathname: "/messages",
+                        params: { userId: application.applicantId }
                       } as any);
                     }}
                   />
@@ -538,15 +554,17 @@ export default function JobDetailsScreen() {
         onClose={() => setShowApplyModal(false)}
         onSubmit={async (applicationData) => {
           if (!user || !jobId) return;
-          
+
           try {
             setIsApplying(true);
             console.log("[API] POST /jobs/:jobId/apply", jobId, applicationData);
             const response = await jobsAPI.apply(jobId, {
               cover_letter: applicationData.coverLetter || applicationData.cover_letter,
+              proposed_rate: parseFloat(applicationData.proposedRate || applicationData.proposed_rate || "0"),
+              available_start_date: applicationData.availableFrom || applicationData.available_start_date,
               resume_url: applicationData.resumeUrl || applicationData.resume_url,
             });
-            
+
             if (response.success) {
               Alert.alert("Success", "Application submitted successfully");
               setShowApplyModal(false);
@@ -702,7 +720,7 @@ function ApplicationCard({
       <Text style={styles.coverLetterLabel}>Cover Letter:</Text>
       <Text style={styles.coverLetterText}>{application.coverLetter}</Text>
 
-      {application.proposedRate && (
+      {!!application.proposedRate && (
         <View style={styles.proposedRateContainer}>
           <DollarSign size={16} color={Colors.primary} />
           <Text style={styles.proposedRateText}>
@@ -1370,7 +1388,7 @@ function InviteModal({
             style={[
               styles.sendInvitesButton,
               (sending || selectedUsers.length === 0) &&
-                styles.sendInvitesButtonDisabled,
+              styles.sendInvitesButtonDisabled,
             ]}
             onPress={handleSendInvites}
             disabled={sending || selectedUsers.length === 0}

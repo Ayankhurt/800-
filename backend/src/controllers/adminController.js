@@ -2,6 +2,7 @@ import { supabase } from "../config/supabaseClient.js";
 import { createClient } from "@supabase/supabase-js";
 import { formatResponse } from "../utils/formatResponse.js";
 import logger from "../utils/logger.js";
+import { notificationService } from "../services/notificationService.js";
 
 // Helper function to log admin actions
 const logAdminAction = async (adminId, actionType, resourceType, resourceId, metadata = null) => {
@@ -102,6 +103,57 @@ export const getDashboardStats = async (req, res) => {
   } catch (err) {
     logger.error('API error:', { endpoint: req.path, error: err });
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
+  }
+};
+
+// ==================== BULK ACTIONS = { NEW } ====================
+
+export const bulkVerifyUsers = async (req, res) => {
+  try {
+    const { user_ids } = req.body;
+    if (!user_ids || !Array.isArray(user_ids)) return res.status(400).json(formatResponse(false, "user_ids array required"));
+
+    const { error } = await supabase.from("users").update({ verification_status: 'verified' }).in("id", user_ids);
+    if (error) throw error;
+
+    await notificationService.sendBulk(user_ids, "Profile Verified", "Your account has been verified by the administrator.", "success");
+    await logAdminAction(req.user.id, 'bulk_verify', 'user', 'multiple', { count: user_ids.length });
+
+    return res.json(formatResponse(true, `${user_ids.length} users verified successfully`));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+export const bulkSuspendUsers = async (req, res) => {
+  try {
+    const { user_ids, reason } = req.body;
+    if (!user_ids || !Array.isArray(user_ids)) return res.status(400).json(formatResponse(false, "user_ids array required"));
+
+    const { error } = await supabase.from("users").update({ is_active: false }).in("id", user_ids);
+    if (error) throw error;
+
+    await notificationService.sendBulk(user_ids, "Account Suspended", `Your account has been suspended. Reason: ${reason || 'Bulk action'}`, "warning");
+    await logAdminAction(req.user.id, 'bulk_suspend', 'user', 'multiple', { count: user_ids.length, reason });
+
+    return res.json(formatResponse(true, `${user_ids.length} users suspended successfully`));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+export const bulkDeleteUsers = async (req, res) => {
+  try {
+    const { user_ids } = req.body;
+    if (!user_ids || !Array.isArray(user_ids)) return res.status(400).json(formatResponse(false, "user_ids array required"));
+
+    const { error } = await supabase.from("users").delete().in("id", user_ids);
+    if (error) throw error;
+
+    await logAdminAction(req.user.id, 'bulk_delete', 'user', 'multiple', { count: user_ids.length });
+    return res.json(formatResponse(true, `${user_ids.length} users deleted successfully`));
+  } catch (err) {
+    return res.status(500).json(formatResponse(false, err.message));
   }
 };
 
@@ -571,8 +623,8 @@ export const getProjectById = async (req, res) => {
       .from("projects")
       .select(`
         *,
-        owner:users!projects_owner_id_fkey (*),
-        contractor:users!projects_contractor_id_fkey (*),
+        owner:users!fk_projects_owner_id (*),
+        contractor:users!fk_projects_contractor_id (*),
         milestones:project_milestones (*)
       `)
       .eq("id", id)
@@ -644,7 +696,7 @@ export const getAllJobs = async (req, res) => {
       .from("jobs")
       .select(`
         *,
-        posted_by:users!jobs_project_manager_id_fkey (id, first_name, last_name, email),
+        posted_by:users!fk_jobs_project_manager_id (id, first_name, last_name, email),
         job_applications(count)
       `, { count: 'exact' })
       .range(offset, offset + limit - 1)
@@ -1881,6 +1933,7 @@ export const suspendUser = async (req, res) => {
 
     try {
       await logAdminAction(req.user.id, 'suspend_user', 'user', id, { reason, duration });
+      await notificationService.send(id, 'Account Suspended', `Your account has been suspended. Reason: ${reason || 'Violation of terms'}.`, 'error');
     } catch (e) { }
 
     return res.json(formatResponse(true, "User suspended", data));
@@ -1907,6 +1960,7 @@ export const unsuspendUser = async (req, res) => {
 
     try {
       await logAdminAction(req.user.id, 'unsuspend_user', 'user', id, null);
+      await notificationService.send(id, 'Account Reinstated', 'Your account has been unsuspended. Welcome back!', 'success');
     } catch (e) { }
 
     return res.json(formatResponse(true, "User unsuspended", data));
@@ -1938,6 +1992,7 @@ export const adminVerifyUser = async (req, res) => {
 
     try {
       await logAdminAction(req.user.id, 'verify_user', 'user', id, null);
+      await notificationService.send(id, 'Account Verified', 'Congratulations! Your account has been verified.', 'success');
     } catch (e) { }
 
     return res.json(formatResponse(true, "User manually verified", data));
@@ -3016,72 +3071,55 @@ export const sendNotificationToUser = async (req, res) => {
     const { id } = req.params;
     const { message, type = 'info', title } = req.body;
 
-    logger.info(`[Notification] Request to user ${id}. Message: ${message}, Type: ${type}`);
+    if (!message) {
+      return res.status(400).json(formatResponse(false, "Message is required"));
+    }
+
+    const notifTitle = title || (type.charAt(0).toUpperCase() + type.slice(1));
+    const data = await notificationService.send(id, notifTitle, message, type);
+
+    if (data) {
+      await logAdminAction(req.user.id, 'send_notification', 'user', id, { message, type });
+      return res.json(formatResponse(true, "Notification sent successfully", data));
+    } else {
+      return res.status(500).json(formatResponse(false, "Failed to send notification"));
+    }
+  } catch (err) {
+    logger.error('Send notification error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
+  }
+};
+
+export const broadcastNotification = async (req, res) => {
+  try {
+    const { message, title, type = 'info', target_role } = req.body;
 
     if (!message) {
-      return res.status(400).json(formatResponse(false, "Message is required", null));
+      return res.status(400).json(formatResponse(false, "Message is required"));
     }
 
-    // Determine title
-    let notifTitle = title;
-    if (!notifTitle) {
-      notifTitle = type === 'warning' ? 'Warning' : type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information';
+    // Get targets
+    let query = supabase.from('users').select('id');
+    if (target_role && target_role !== 'all') {
+      query = query.eq('role', target_role);
+    }
+    const { data: users, error: userError } = await query;
+    if (userError) throw userError;
+
+    if (!users || users.length === 0) {
+      return res.status(404).json(formatResponse(false, "No target users found"));
     }
 
-    // Create a FRESH Admin Client to guarantee Service Role RLS bypass
-    // This fixes intermittent RLS 42501 errors caused by singleton session pollution
-    const adminClient = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    const userIds = users.map(u => u.id);
+    const targetTitle = title || "System Announcement";
 
-    // Insert notification using fresh client
-    const { data, error } = await adminClient
-      .from('notifications')
-      .insert({
-        user_id: id,
-        title: notifTitle,
-        content: message,
-        type: type,
-        is_read: false,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    await notificationService.sendBulk(userIds, targetTitle, message, type);
 
-    if (error) {
-      logger.error('[Notification] DB Insert failed:', error);
-      throw error;
-    }
+    await logAdminAction(req.user.id, 'broadcast_notification', 'system', 'all', { target_role, count: userIds.length });
 
-    logger.info('[Notification] Successfully created:', data.id);
-
-    // Log admin action safely (don't fail request if logging fails)
-    try {
-      if (req.user && req.user.id) {
-        await logAdminAction(req.user.id, 'send_notification', 'user', id, { message, type, notification_id: data.id });
-      } else {
-        logger.warn('[Notification] No user ID for audit log');
-      }
-    } catch (logErr) {
-      logger.error('[Notification] Audit log failed:', logErr);
-    }
-
-    return res.json(formatResponse(true, "Notification sent successfully", data));
-
+    return res.json(formatResponse(true, `Notification broadcasted to ${userIds.length} users`));
   } catch (err) {
-    logger.error('[CRITICAL] sendNotificationToUser error:', err);
-    // Explicitly check for 42501 (RLS) and report it clearly
-    if (err.code === '42501') {
-      return res.status(500).json(formatResponse(false, "System Configuration Error: RLS Policy Violation. Check Service Key.", null));
-    }
-    const errorDetails = process.env.NODE_ENV === 'development' ? err.message : "Internal server error";
-    return res.status(500).json(formatResponse(false, `Failed to send notification: ${errorDetails}`, null));
+    logger.error('Broadcast notification error:', err);
+    return res.status(500).json(formatResponse(false, err.message));
   }
 };

@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabaseClient.js';
 import { formatResponse } from '../utils/formatResponse.js';
+import { notificationService } from '../services/notificationService.js';
 
 export const getAppointments = async (req, res) => {
   try {
@@ -8,14 +9,22 @@ export const getAppointments = async (req, res) => {
 
     let query = supabase
       .from('appointments')
-      .select('*');
+      .select(`
+        *,
+        creator:users!appointments_created_by_fkey(id, first_name, last_name, company_name),
+        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name)
+      `);
 
     // Filter by user
     query = query.or(`created_by.eq.${userId},attendee_id.eq.${userId}`);
 
     // Admins can see all
     if (role === 'admin') {
-      query = supabase.from('appointments').select('*');
+      query = supabase.from('appointments').select(`
+        *,
+        creator:users!appointments_created_by_fkey(id, first_name, last_name, company_name),
+        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name)
+      `);
     }
 
     const { data, error } = await query.order('start_time', { ascending: true });
@@ -60,6 +69,17 @@ export const createAppointment = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // Notify attendee
+    if (attendee_id) {
+      await notificationService.send(
+        attendee_id,
+        "New Appointment",
+        `You have a new appointment: "${title}" scheduled for ${new Date(start_time).toLocaleString()}`,
+        "appointment",
+        { appointment_id: data.id }
+      );
+    }
 
     return res.status(201).json(formatResponse(true, 'Appointment created successfully', data));
   } catch (error) {

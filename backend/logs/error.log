@@ -93,3 +93,145 @@
 2025-12-16 03:41:31 [error]: Cancel transaction error: Could not find the 'description' column of 'transactions' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
 2025-12-16 03:56:39 [error]: Cancel transaction error: invalid input value for enum payment_status: "cancelled" {"service":"bidroom-backend","code":"22P02","details":null,"hint":null}
 2025-12-16 03:56:41 [error]: Cancel transaction error: invalid input value for enum payment_status: "cancelled" {"service":"bidroom-backend","code":"22P02","details":null,"hint":null}
+2025-12-16 20:52:11 [error]: User profile not found after trigger: Cannot coerce the result to a single JSON object {"service":"bidroom-backend","code":"PGRST116","details":"The result contains 0 rows","hint":null}
+2025-12-16 21:03:36 [error]: User profile creation error: invalid input value for enum user_role: "PM" {"service":"bidroom-backend","code":"22P02","details":null,"hint":null}
+2025-12-16 21:16:34 [error]: AuthApiError: A user with this email address has already been registered
+    at handleError (C:\Users\Taha\Desktop\800\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async _handleRequest (C:\Users\Taha\Desktop\800\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\Taha\Desktop\800\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\Taha\Desktop\800\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/Taha/Desktop/800/800-/backend/src/controllers/authController.js:38:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":422,"code":"email_exists"}
+2025-12-17 16:27:08 [error]: User profile creation error: new row violates row-level security policy for table "users" {"service":"bidroom-backend","code":"42501","details":null,"hint":null}
+2025-12-17 17:18:10 [error]: User profile creation error: new row violates row-level security policy for table "users" {"service":"bidroom-backend","code":"42501","details":null,"hint":null}
+2025-12-19 23:22:52 [error]: Auto-sync failed: Could not find the table 'public.users' in the schema cache {"service":"bidroom-backend","code":"PGRST205","details":null,"hint":"Perhaps you meant the table 'public.user'"}
+2025-12-19 23:23:23 [error]: Auto-sync failed: Could not find the table 'public.users' in the schema cache {"service":"bidroom-backend","code":"PGRST205","details":null,"hint":"Perhaps you meant the table 'public.user'"}
+2025-12-19 23:32:48 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:35:56 [error]: Get bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_project_manager_id_fkey' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:35:57 [error]: Get all bids error: Could not find a relationship between 'bids' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'bids' and 'users' using the hint 'bids_project_manager_id_fkey' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:36:06 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:36:07 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:50:39 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-19 23:50:40 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-20 01:17:21 [error]: getJobs Error: Could not find a relationship between 'jobs' and 'users' in the schema cache {"service":"bidroom-backend","code":"PGRST200","details":"Searched for a foreign key relationship between 'jobs' and 'users' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'user' instead of 'users'."}
+2025-12-20 01:37:54 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:38:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:40:55 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:38:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:42:07 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:38:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:44:42 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:38:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:49:45 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:47:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:54:04 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:47:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 01:58:04 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:47:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 02:01:54 [error]: User profile creation error: duplicate key value violates unique constraint "users_pkey" {"service":"bidroom-backend","code":"23505","details":"Key (id)=(bad4a042-5793-4e4f-b868-478fd5244ff8) already exists.","hint":null}
+2025-12-20 02:05:15 [error]: User profile creation error: duplicate key value violates unique constraint "users_pkey" {"service":"bidroom-backend","code":"23505","details":"Key (id)=(9c775500-a66b-4577-a191-f8e2786736c7) already exists.","hint":null}
+2025-12-20 02:06:24 [error]: AuthApiError: Database error creating new user
+    at handleError (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:66:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:109:9)
+    at async _request (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\lib\fetch.js:91:18)
+    at async GoTrueAdminApi.createUser (C:\Users\HP\Desktop\800$\800-\backend\node_modules\@supabase\auth-js\dist\main\GoTrueAdminApi.js:114:20)
+    at async signup (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/authController.js:47:50) {"service":"bidroom-backend","__isAuthError":true,"name":"AuthApiError","status":500,"code":"unexpected_failure"}
+2025-12-20 02:11:18 [error]: [NotificationService] Failed to send to ba79282f-f6e2-44aa-8e96-70807a540049: {"service":"bidroom-backend"}
+2025-12-20 02:16:22 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:16:22 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:16:24 [error]: Mark notification as read error: Could not find the 'is_read' column of 'notifications' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-20 02:16:24 [error]: Mark notification as read error: Could not find the 'is_read' column of 'notifications' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-20 02:16:25 [error]: Mark notification as read error: Could not find the 'is_read' column of 'notifications' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-20 02:16:25 [error]: Mark notification as read error: Could not find the 'is_read' column of 'notifications' in the schema cache {"service":"bidroom-backend","code":"PGRST204","details":null,"hint":null}
+2025-12-20 02:16:44 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:16:44 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:31:17 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:31:17 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:31:19 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:31:19 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 02:59:05 [error]: [NotificationService] Failed to send to 115b3d7c-1da1-4305-ac1f-6a710df0bd63: {"service":"bidroom-backend"}
+2025-12-20 03:11:28 [error]: [NotificationService] Failed to send to 115b3d7c-1da1-4305-ac1f-6a710df0bd63: {"service":"bidroom-backend"}
+2025-12-20 03:31:54 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 03:31:54 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 03:40:30 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 03:40:30 [error]: Get unread count error: {"service":"bidroom-backend"}
+2025-12-20 03:48:31 [error]: TypeError: Cannot read properties of undefined (reading 'id')
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/bidController.js:405:33)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:295:15
+    at processParams (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:291:5)
+    at Function.handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:186:3) {"service":"bidroom-backend"}
+2025-12-20 03:48:53 [error]: TypeError: Cannot read properties of undefined (reading 'id')
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/bidController.js:405:33)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:295:15
+    at processParams (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:291:5)
+    at Function.handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:186:3) {"service":"bidroom-backend"}
+2025-12-20 03:53:48 [error]: TypeError: Cannot read properties of undefined (reading 'id')
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/bidController.js:405:33)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:295:15
+    at processParams (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:291:5)
+    at Function.handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:186:3) {"service":"bidroom-backend"}
+2025-12-20 03:54:20 [error]: TypeError: Cannot read properties of undefined (reading 'id')
+    at getAllBids (file:///C:/Users/HP/Desktop/800$/800-/backend/src/controllers/bidController.js:405:33)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:295:15
+    at processParams (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:291:5)
+    at Function.handle (C:\Users\HP\Desktop\800$\800-\backend\node_modules\router\index.js:186:3) {"service":"bidroom-backend"}

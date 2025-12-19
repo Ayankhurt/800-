@@ -182,26 +182,40 @@ export const authAPI = {
     projectType?: string;
   }) => {
     try {
-      // Map frontend field names to backend field names
-      // Backend expects: full_name, role_code (not fullName, role)
-      const backendData: any = {
-        password: data.password,
-        full_name: data.fullName, // Map fullName to full_name
-        role_code: data.role, // Map role to role_code
+      // Backend expects: first_name, last_name, role (NOT full_name, role_code)
+
+      // Split fullName into first_name and last_name
+      const nameParts = data.fullName.trim().split(/\s+/);
+      const first_name = nameParts[0];
+      const last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+
+      // Map frontend role codes to backend database enum values
+      const roleMapping: Record<string, string> = {
+        'PM': 'project_manager',
+        'GC': 'general_contractor',
+        'SUB': 'subcontractor',
+        'TS': 'trade_specialist',
+        'VIEWER': 'viewer',
+        'ADMIN': 'admin'
       };
 
-      // Add email if provided (optional)
-      if (data.email) {
-        backendData.email = data.email;
-      }
+      const mappedRole = roleMapping[data.role] || data.role.toLowerCase();
 
-      // Add role-specific fields
-      if (data.companyName) backendData.companyName = data.companyName;
-      if (data.tradeSpecialization) backendData.tradeSpecialization = data.tradeSpecialization;
-      if (data.yearsExperience) backendData.yearsExperience = data.yearsExperience;
-      if (data.licenseNumber) backendData.licenseNumber = data.licenseNumber;
-      if (data.licenseType) backendData.licenseType = data.licenseType;
-      if (data.insuranceDetails) backendData.insuranceDetails = data.insuranceDetails;
+      const backendData: any = {
+        email: data.email,
+        password: data.password,
+        first_name: first_name,
+        last_name: last_name,
+        role: mappedRole, // Use mapped database enum value
+      };
+
+      // Add role-specific optional fields
+      if (data.companyName) backendData.company_name = data.companyName;
+      if (data.tradeSpecialization) backendData.trade_specialization = data.tradeSpecialization;
+      if (data.yearsExperience) backendData.years_experience = data.yearsExperience;
+      if (data.licenseNumber) backendData.license_number = data.licenseNumber;
+      if (data.licenseType) backendData.license_type = data.licenseType;
+      if (data.insuranceDetails) backendData.insurance_provider = data.insuranceDetails;
       if (data.location) backendData.location = data.location;
       if (data.portfolio) backendData.portfolio = data.portfolio;
       if (data.certifications) backendData.certifications = data.certifications;
@@ -292,6 +306,195 @@ export const authAPI = {
     } finally {
       // Always clear token from secure storage and axios headers
       await setAuthToken(null);
+    }
+  },
+
+  // OAuth Sync - Exchange Supabase OAuth token for backend JWT
+  oauthSync: async (data: { supabaseUser: any; supabaseToken: string }) => {
+    try {
+      console.log("[OAuth] Syncing with backend...");
+      const response = await apiClient.post("/auth/oauth-sync", {
+        supabaseUser: data.supabaseUser,
+        supabaseToken: data.supabaseToken,
+      });
+      console.log("[OAuth] Backend sync successful");
+      return response.data;
+    } catch (error: any) {
+      console.error("[OAuth] Backend sync failed:", error);
+      throw error;
+    }
+  },
+
+  // Change Password
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    try {
+      const response = await apiClient.post("/auth/change-password", {
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Change password API error:", error);
+      throw error;
+    }
+  },
+
+  // Forgot Password
+  forgotPassword: async (email: string) => {
+    try {
+      const response = await apiClient.post("/auth/forgot-password", {
+        email,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Forgot password API error:", error);
+      throw error;
+    }
+  },
+
+  // Reset Password
+  resetPassword: async (token: string, newPassword: string) => {
+    try {
+      const response = await apiClient.post("/auth/reset-password", {
+        token,
+        new_password: newPassword,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Reset password API error:", error);
+      throw error;
+    }
+  },
+
+  // Refresh Token
+  refreshToken: async (refreshToken: string) => {
+    try {
+      const response = await apiClient.post("/auth/refresh-token", {
+        refresh_token: refreshToken,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Refresh token API error:", error);
+      throw error;
+    }
+  },
+
+  // Update Profile (via Auth endpoint)
+  updateProfile: async (data: any) => {
+    try {
+      const response = await apiClient.put("/auth/update-profile", data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Update profile API error:", error);
+      throw error;
+    }
+  },
+
+  // Get User Sessions
+  getSessions: async () => {
+    try {
+      const response = await apiClient.get("/auth/sessions");
+      return response.data;
+    } catch (error: any) {
+      console.error("Get sessions API error:", error);
+      throw error;
+    }
+  },
+
+  // Delete Session
+  deleteSession: async (sessionId: string) => {
+    try {
+      const response = await apiClient.delete(`/auth/sessions/${sessionId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Delete session API error:", error);
+      throw error;
+    }
+  },
+
+  // Verify Email
+  verifyEmail: async (token: string) => {
+    try {
+      const response = await apiClient.get(`/auth/verify-email?token=${token}`);
+      return response.data;
+    } catch (error: any) {
+      console.error("Verify email API error:", error);
+      throw error;
+    }
+  },
+
+  // Resend Verification Email
+  resendVerification: async (email: string) => {
+    try {
+      const response = await apiClient.post("/auth/resend-verification", {
+        email,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Resend verification API error:", error);
+      throw error;
+    }
+  },
+
+  // Verify OTP (for MFA)
+  verifyOtp: async (email: string, otp: string) => {
+    try {
+      const response = await apiClient.post("/auth/verify-otp", {
+        email,
+        otp,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Verify OTP API error:", error);
+      throw error;
+    }
+  },
+
+  // Setup MFA
+  setupMFA: async () => {
+    try {
+      const response = await apiClient.post("/auth/mfa/setup");
+      return response.data;
+    } catch (error: any) {
+      console.error("Setup MFA API error:", error);
+      throw error;
+    }
+  },
+
+  // Verify MFA Setup
+  verifyMFASetup: async (code: string) => {
+    try {
+      const response = await apiClient.post("/auth/mfa/verify-setup", {
+        code,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Verify MFA setup API error:", error);
+      throw error;
+    }
+  },
+
+  // Disable MFA
+  disableMFA: async (code?: string) => {
+    try {
+      const response = await apiClient.post("/auth/mfa/disable", {
+        code,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Disable MFA API error:", error);
+      throw error;
+    }
+  },
+
+  // Toggle MFA
+  toggleMFA: async () => {
+    try {
+      const response = await apiClient.post("/auth/toggle-mfa");
+      return response.data;
+    } catch (error: any) {
+      console.error("Toggle MFA API error:", error);
+      throw error;
     }
   },
 };
@@ -1243,6 +1446,18 @@ export const bidsAPI = {
     }
   },
 
+  getMyBids: async () => {
+    try {
+      const response = await apiClient.get("/bids/my-bids");
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { data: [], success: false, message: "Endpoint not available" };
+      }
+      throw error;
+    }
+  },
+
   getMySubmissions: async () => {
     try {
       const response = await apiClient.get("/bids/submissions/my");
@@ -1829,6 +2044,60 @@ export const progressUpdatesAPI = {
   },
 };
 
+// Appointments API
+export const appointmentsAPI = {
+  getAll: async () => {
+    try {
+      console.log("[API] GET /appointments");
+      const response = await apiClient.get("/appointments");
+      console.log("[API] GET /appointments success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { data: [], success: false, message: "Endpoint not available" };
+      }
+      throw error;
+    }
+  },
+
+  getById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/appointments/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  create: async (data: any) => {
+    try {
+      console.log("[API] POST /appointments", data);
+      const response = await apiClient.post("/appointments", data);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  update: async (id: string, data: any) => {
+    try {
+      const response = await apiClient.patch(`/appointments/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  delete: async (id: string) => {
+    try {
+      const response = await apiClient.delete(`/appointments/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+};
+
 // Contractors API
 export const contractorsAPI = {
   getAll: async () => {
@@ -1915,28 +2184,18 @@ export const userAPI = {
     }
   },
 
-  updateProfile: async (data: {
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    companyName?: string;
-    avatar?: string;
-  }) => {
+  updateProfile: async (data: any) => {
     try {
-      console.log("[API] PUT /users/update", data);
-      // Map frontend field names to backend field names
-      const backendData: any = {};
-      if (data.fullName) backendData.full_name = data.fullName;
-      if (data.email) backendData.email = data.email;
-      if (data.phone) backendData.phone = data.phone;
-      if (data.companyName) backendData.company_name = data.companyName;
-      if (data.avatar) backendData.avatar = data.avatar;
+      console.log("[API] PUT /users/profile", data);
 
-      const response = await apiClient.put("/users/update", backendData);
-      console.log("[API] PUT /users/update success:", response.data);
+      // Data should already be in backend format (first_name, last_name, etc.)
+      // from the calling code
+      const response = await apiClient.put("/users/profile", data);
+      console.log("[API] PUT /users/profile success:", response.data);
       return response.data;
     } catch (error: any) {
       console.error("[API] Update profile API error:", error);
+      console.error("[API] Error response:", error.response?.data);
       throw error;
     }
   },

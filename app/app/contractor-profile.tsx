@@ -45,9 +45,9 @@ import Endorsements from "@/components/Endorsements";
 import CertificationsAndAwards from "@/components/CertificationsAndAwards";
 import ExperienceTimeline from "@/components/ExperienceTimeline";
 import BeforeAfterComparison from "@/components/BeforeAfterComparison";
-import { 
-  calculateTrustScore, 
-  getTrustLevelColor, 
+import {
+  calculateTrustScore,
+  getTrustLevelColor,
   getTrustLevelLabel
 } from "@/utils/trust";
 import { Contractor } from "@/types";
@@ -61,7 +61,7 @@ function TrustScoreCard({ contractor }: { contractor: Contractor }) {
     <View style={[styles.trustScoreCard, { borderColor: color + "30" }]}>
       <View style={[styles.trustScoreBadge, { backgroundColor: color }]}>
         <Shield size={24} color={Colors.white} />
-        <Text style={styles.trustScoreValue}>{trustScore.score}</Text>
+        <Text style={styles.trustScoreValue}>{Number.isNaN(trustScore.score) ? 0 : trustScore.score}</Text>
       </View>
       <View style={styles.trustScoreInfo}>
         <Text style={styles.trustScoreLabel}>Trust Score</Text>
@@ -100,68 +100,62 @@ export default function ContractorProfileScreen() {
 
   const fetchContractor = async () => {
     if (!contractorId) return;
-    
+
     try {
       setIsLoading(true);
       console.log("[API] GET /contractors/:id", contractorId);
       const response = await contractorsAPI.getById(contractorId);
-      
+
       if (response.success && response.data) {
         // Map backend contractor format to frontend Contractor type
         const contractorData = response.data;
+        const firstName = contractorData.first_name || contractorData.firstName || "";
+        const lastName = contractorData.last_name || contractorData.lastName || "";
+        const fullName = (firstName + " " + lastName).trim() || contractorData.name || "Unknown";
+
         setContractor({
-          id: contractorData.id || contractorData.contractor_id,
-          name: contractorData.name || contractorData.full_name || contractorData.fullName || "Unknown",
-          company: contractorData.company || contractorData.company_name || contractorData.companyName || "",
-          trade: contractorData.trade || contractorData.trade_type || contractorData.tradeType || "All",
-          location: contractorData.location || contractorData.address || "",
-          phone: contractorData.phone || contractorData.phone_number || contractorData.phoneNumber || "",
+          id: contractorData.id || contractorData.user_id,
+          name: fullName,
+          company: contractorData.company_name || contractorData.company || "",
+          trade: contractorData.trade_specialization || contractorData.trade || "All",
+          location: contractorData.location || "Location not specified",
+          phone: contractorData.phone || "",
           email: contractorData.email || "",
-          rating: contractorData.rating || contractorData.average_rating || contractorData.averageRating || 0,
-          reviewCount: contractorData.reviewCount || contractorData.review_count || 0,
-          verified: contractorData.verified || contractorData.is_verified || contractorData.isVerified || false,
-          featured: contractorData.featured || contractorData.is_featured || contractorData.isFeatured || false,
-          topRated: contractorData.topRated || contractorData.top_rated || contractorData.isTopRated || false,
-          completedProjects: contractorData.completedProjects || contractorData.completed_projects || 0,
+          rating: Number(contractorData.trust_score || contractorData.rating || 0) / 20,
+          reviewCount: contractorData.review_count || 0,
+          verified: contractorData.verification_status === 'verified' || !!contractorData.verified,
+          featured: !!contractorData.featured,
+          topRated: !!contractorData.top_rated,
+          completedProjects: contractorData.completed_projects || 0,
           verifications: contractorData.verifications || [],
           reviews: contractorData.reviews || [],
           portfolio: contractorData.portfolio || [],
-          certifications: contractorData.certifications || [],
-          awards: contractorData.awards || [],
-          endorsements: contractorData.endorsements || [],
-          experienceTimeline: contractorData.experienceTimeline || contractorData.experience_timeline || [],
-          beforeAfterProjects: contractorData.beforeAfterProjects || contractorData.before_after_projects || [],
-          trustIndicators: contractorData.trustIndicators || contractorData.trust_indicators,
+          trustIndicators: (contractorData.trustIndicators && Object.keys(contractorData.trustIndicators).length > 0) ? contractorData.trustIndicators : undefined,
           availability: contractorData.availability,
-        } as Contractor);
+        } as any);
       } else if (response.data) {
-        // Same mapping for non-success responses
         const contractorData = response.data;
+        const firstName = contractorData.first_name || contractorData.firstName || "";
+        const lastName = contractorData.last_name || contractorData.lastName || "";
+        const fullName = (firstName + " " + lastName).trim() || contractorData.name || "Unknown";
+
         setContractor({
-          id: contractorData.id || contractorData.contractor_id,
-          name: contractorData.name || contractorData.full_name || contractorData.fullName || "Unknown",
-          company: contractorData.company || contractorData.company_name || contractorData.companyName || "",
-          trade: contractorData.trade || contractorData.trade_type || contractorData.tradeType || "All",
-          location: contractorData.location || contractorData.address || "",
-          phone: contractorData.phone || contractorData.phone_number || contractorData.phoneNumber || "",
+          id: contractorData.id || contractorData.user_id,
+          name: fullName,
+          company: contractorData.company_name || contractorData.company || "",
+          trade: contractorData.trade_specialization || contractorData.trade || "All",
+          location: contractorData.location || "Location not specified",
+          phone: contractorData.phone || "",
           email: contractorData.email || "",
-          rating: contractorData.rating || contractorData.average_rating || contractorData.averageRating || 0,
-          reviewCount: contractorData.reviewCount || contractorData.review_count || 0,
-          verified: contractorData.verified || contractorData.is_verified || contractorData.isVerified || false,
-          featured: contractorData.featured || contractorData.is_featured || contractorData.isFeatured || false,
-          topRated: contractorData.topRated || contractorData.top_rated || contractorData.isTopRated || false,
-          completedProjects: contractorData.completedProjects || contractorData.completed_projects || 0,
+          rating: Number(contractorData.trust_score || contractorData.rating || 0) / 20,
+          reviewCount: contractorData.review_count || 0,
+          verified: contractorData.verification_status === 'verified' || !!contractorData.verified,
           verifications: contractorData.verifications || [],
           reviews: contractorData.reviews || [],
           portfolio: contractorData.portfolio || [],
-          certifications: contractorData.certifications || [],
-          awards: contractorData.awards || [],
-          endorsements: contractorData.endorsements || [],
-          experienceTimeline: contractorData.experienceTimeline || contractorData.experience_timeline || [],
-          beforeAfterProjects: contractorData.beforeAfterProjects || contractorData.before_after_projects || [],
-          trustIndicators: contractorData.trustIndicators || contractorData.trust_indicators,
+          trustIndicators: (contractorData.trustIndicators && Object.keys(contractorData.trustIndicators).length > 0) ? contractorData.trustIndicators : undefined,
           availability: contractorData.availability,
-        } as Contractor);
+        } as any);
       }
     } catch (error: any) {
       console.log("[API ERROR]", error);
@@ -205,11 +199,11 @@ export default function ContractorProfileScreen() {
   }
 
   // Safely extract contractor properties with fallbacks
-  const name = contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown";
-  const company = contractor?.company || contractor?.company_name || contractor?.companyName || "";
-  const trade = contractor?.trade || contractor?.trade_type || contractor?.tradeType || "All";
-  const location = contractor?.location || contractor?.address || "Location not specified";
-  const phone = contractor?.phone || contractor?.phone_number || contractor?.phoneNumber || "";
+  const name = contractor?.name || "Unknown";
+  const company = contractor?.company || "";
+  const trade = contractor?.trade || "All";
+  const location = contractor?.location || "Location not specified";
+  const phone = contractor?.phone || "";
   const email = contractor?.email || "";
   const rating = contractor?.rating || contractor?.average_rating || contractor?.averageRating || 0;
   const reviewCount = contractor?.reviewCount || contractor?.review_count || 0;
@@ -242,7 +236,7 @@ export default function ContractorProfileScreen() {
           headerShadowVisible: false,
           headerRight: () => (
             <View style={{ flexDirection: "row" as const, gap: 12, marginRight: 8 }}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   if (isSaved(contractor.id)) {
                     unsaveContractor(contractor.id);
@@ -253,8 +247,8 @@ export default function ContractorProfileScreen() {
                   }
                 }}
               >
-                <Heart 
-                  size={22} 
+                <Heart
+                  size={22}
                   color={isSaved(contractor.id) ? Colors.error : Colors.text}
                   fill={isSaved(contractor.id) ? Colors.error : "none"}
                 />
@@ -313,7 +307,7 @@ export default function ContractorProfileScreen() {
           </View>
 
           <Text style={styles.name}>{name}</Text>
-          {company && <Text style={styles.company}>{company}</Text>}
+          {!!company && <Text style={styles.company}>{company}</Text>}
 
           <View style={styles.ratingContainer}>
             <Star size={20} color={Colors.warning} fill={Colors.warning} />
@@ -330,13 +324,13 @@ export default function ContractorProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
-          {phone && (
+          {!!phone && (
             <View style={styles.contactItem}>
               <Phone size={18} color={Colors.textSecondary} />
               <Text style={styles.contactText}>{phone}</Text>
             </View>
           )}
-          {email && (
+          {!!email && (
             <View style={styles.contactItem}>
               <Mail size={18} color={Colors.textSecondary} />
               <Text style={styles.contactText}>{email}</Text>
@@ -351,8 +345,8 @@ export default function ContractorProfileScreen() {
         {contractor.verifications && contractor.verifications.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Verifications</Text>
-            <VerificationBadge 
-              verifications={contractor.verifications} 
+            <VerificationBadge
+              verifications={contractor.verifications}
               size="large"
               showDetails
             />
@@ -366,21 +360,21 @@ export default function ContractorProfileScreen() {
               <View style={styles.indicatorCard}>
                 <TrendingUp size={20} color={Colors.info} />
                 <Text style={styles.indicatorValue}>
-                  {contractor.trustIndicators.responseRate}%
+                  {contractor.trustIndicators.responseRate ?? 0}%
                 </Text>
                 <Text style={styles.indicatorLabel}>Response Rate</Text>
               </View>
               <View style={styles.indicatorCard}>
                 <Clock size={20} color={Colors.success} />
                 <Text style={styles.indicatorValue}>
-                  {contractor.trustIndicators.responseTime}h
+                  {contractor.trustIndicators.responseTime ?? 24}h
                 </Text>
                 <Text style={styles.indicatorLabel}>Avg Response</Text>
               </View>
               <View style={styles.indicatorCard}>
                 <CheckCircle size={20} color={Colors.primary} />
                 <Text style={styles.indicatorValue}>
-                  {contractor.trustIndicators.onTimeRate}%
+                  {contractor.trustIndicators.onTimeRate ?? 0}%
                 </Text>
                 <Text style={styles.indicatorLabel}>On-Time Rate</Text>
               </View>
@@ -405,7 +399,7 @@ export default function ContractorProfileScreen() {
             </View>
             <View style={styles.statCard}>
               <Clock size={24} color={Colors.info} />
-              <Text style={styles.statValue}>98%</Text>
+              <Text style={styles.statValue}>{contractor.trustIndicators?.onTimeRate ?? '100'}%</Text>
               <Text style={styles.statLabel}>On-Time Delivery</Text>
             </View>
           </View>
@@ -419,7 +413,7 @@ export default function ContractorProfileScreen() {
 
         {(contractor.certifications || contractor.awards) && (
           <View style={styles.section}>
-            <CertificationsAndAwards 
+            <CertificationsAndAwards
               certifications={contractor.certifications}
               awards={contractor.awards}
             />
@@ -447,8 +441,8 @@ export default function ContractorProfileScreen() {
         {contractor.reviews && contractor.reviews.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Reviews & Ratings</Text>
-            <ReviewsList 
-              reviews={contractor.reviews || []} 
+            <ReviewsList
+              reviews={contractor.reviews || []}
               averageRating={rating}
               totalReviews={reviewCount}
             />
@@ -522,7 +516,7 @@ export default function ContractorProfileScreen() {
         onClose={() => setShowRequestModal(false)}
         onSubmit={async (data) => {
           if (!user) return;
-          
+
           try {
             await createAppointment({
               title: `Estimate Request - ${data.projectName}`,
@@ -535,13 +529,13 @@ export default function ContractorProfileScreen() {
               location: data.location,
               notes: data.description,
             });
-            
+
             Alert.alert(
               "Success",
               `Estimate request sent to ${name}`,
               [{ text: "OK" }]
             );
-            
+
             setShowRequestModal(false);
           } catch (error) {
             console.error("Failed to create appointment:", error);
@@ -571,7 +565,7 @@ export default function ContractorProfileScreen() {
         onClose={() => setShowVideoConsultModal(false)}
         onSubmit={async (data) => {
           if (!user) return;
-          
+
           try {
             await requestConsultation({
               contractorId: contractor.id,
@@ -582,13 +576,13 @@ export default function ContractorProfileScreen() {
               topic: data.topic,
               notes: data.notes,
             });
-            
+
             Alert.alert(
               "Request Sent",
               `Video consultation request sent to ${name}`,
               [{ text: "OK" }]
             );
-            
+
             setShowVideoConsultModal(false);
           } catch (error) {
             console.error("Failed to request consultation:", error);
@@ -660,7 +654,7 @@ function RequestEstimateModal({
             <Text style={styles.modalInfoValue}>
               {contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown"}
             </Text>
-            {(contractor?.company || contractor?.company_name) && (
+            {!!(contractor?.company || contractor?.company_name) && (
               <Text style={styles.modalInfoCompany}>
                 {contractor?.company || contractor?.company_name || contractor?.companyName}
               </Text>
@@ -829,7 +823,7 @@ function VideoConsultModal({
             <Text style={styles.modalInfoValue}>
               {contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown"}
             </Text>
-            {(contractor?.company || contractor?.company_name) && (
+            {!!(contractor?.company || contractor?.company_name) && (
               <Text style={styles.modalInfoCompany}>
                 {contractor?.company || contractor?.company_name || contractor?.companyName}
               </Text>
@@ -1031,7 +1025,7 @@ function ReportModal({
             <Text style={styles.label}>Description *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Please describe the issue..."  
+              placeholder="Please describe the issue..."
               value={description}
               onChangeText={setDescription}
               multiline

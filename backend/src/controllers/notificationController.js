@@ -59,20 +59,22 @@ import logger from "../utils/logger.js";
 export const getUserNotifications = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { limit = 50, offset = 0, is_read } = req.query;
+        const { limit = 50, offset = 0, is_read, read } = req.query;
 
-        logger.info(`[DEBUG] getUserNotifications - UserID: ${userId}, Query Params:`, req.query);
+        // Handle both 'is_read' (backend default) and 'read' (frontend convention)
+        const readStatus = is_read !== undefined ? is_read : read;
 
+        logger.info(`[DEBUG] getUserNotifications - UserID: ${userId}, limit: ${limit}, offset: ${offset}, is_read/read: ${readStatus}`);
 
         let query = supabase
             .from('notifications')
             .select('*', { count: 'exact' })
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .range(offset, offset + parseInt(limit) - 1);
+            .range(parseInt(offset), parseInt(offset) + Math.max(1, parseInt(limit)) - 1);
 
-        if (is_read !== undefined) {
-            query = query.eq('is_read', is_read === 'true');
+        if (readStatus !== undefined && readStatus !== '') {
+            query = query.eq('is_read', readStatus === 'true');
         }
 
         const { data, count, error } = await query;
@@ -82,10 +84,21 @@ export const getUserNotifications = async (req, res) => {
             throw error;
         }
 
+        // Get unread count separately for a global count
+        const { count: unreadCount } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('is_read', false);
+
+        logger.info(`[DEBUG] Found ${data?.length || 0} notifications for user ${userId}. Total: ${count}, Unread: ${unreadCount}`);
+
         return res.json(formatResponse(true, "Notifications retrieved", {
-            notifications: data || [],
+            data: data || [], // standard PaginatedResponse key
+            notifications: data || [], // mapping compatibility
             total: count || 0,
-            unread: data?.filter(n => !n.is_read).length || 0
+            unread: unreadCount || 0,
+            count: unreadCount || 0 // Added for compatibility with getUnreadCount expected key
         }));
     } catch (err) {
         logger.error('Get user notifications error:', err);
@@ -235,6 +248,7 @@ export const getUnreadCount = async (req, res) => {
         }
 
         return res.json(formatResponse(true, "Unread count retrieved", {
+            count: count || 0,
             unread: count || 0
         }));
     } catch (err) {

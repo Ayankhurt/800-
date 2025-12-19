@@ -1,5 +1,7 @@
 import { supabase } from "../config/supabaseClient.js";
 import { formatResponse } from "../utils/formatResponse.js";
+import { notificationService } from "../services/notificationService.js";
+import logger from "../utils/logger.js";
 import { v4 as uuidv4 } from 'uuid';
 
 // ==========================================
@@ -15,8 +17,8 @@ export const getMyProjects = async (req, res) => {
             .from("projects")
             .select(`
         *,
-        owner:users!projects_owner_id_fkey (id, first_name, last_name, avatar_url),
-        contractor:users!projects_contractor_id_fkey (id, first_name, last_name, avatar_url)
+        owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url),
+        contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url)
       `)
             .order("updated_at", { ascending: false });
 
@@ -39,26 +41,29 @@ export const getMyProjects = async (req, res) => {
 export const createProject = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { title, description, budget, location, category, startDate, endDate, status } = req.body;
+        const { title, description, budget, location, category, startDate, endDate, status, contractorId } = req.body;
 
         const { data, error } = await supabase
             .from("projects")
             .insert({
-                project_id: uuidv4(), // required by DB constraint
                 owner_id: userId,
+                contractor_id: contractorId || null,
                 title,
                 description,
-                total_amount: budget, // Map budget to total_amount here
+                budget: budget || 0,
                 location,
                 category,
                 start_date: startDate,
                 end_date: endDate,
-                status: status || 'open'
+                status: status || 'pending'
             })
             .select()
             .single();
 
         if (error) throw error;
+
+        // Notify Owner
+        await notificationService.send(userId, "Project Created", `New project "${title}" has been created.`, "success");
 
         return res.status(201).json(formatResponse(true, "Project created successfully", data));
     } catch (err) {
@@ -125,8 +130,8 @@ export const getProjectById = async (req, res) => {
             .from("projects")
             .select(`
         *,
-        owner:users!projects_owner_id_fkey (id, first_name, last_name, avatar_url, phone, email),
-        contractor:users!projects_contractor_id_fkey (id, first_name, last_name, avatar_url, phone, email),
+        owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url, phone, email),
+        contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url, phone, email),
         milestones:project_milestones (*),
         change_orders:change_orders (*),
         progress_updates:progress_updates (*)
@@ -223,7 +228,7 @@ export const updateMilestoneStatus = async (req, res) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, proof_url, rejection_reason } = req.body;
 
         const { data: milestone } = await supabase
             .from("project_milestones")
@@ -238,16 +243,29 @@ export const updateMilestoneStatus = async (req, res) => {
 
         if (!isOwner && !isContractor) return res.status(403).json(formatResponse(false, "Unauthorized", null));
 
-        // Logic checks
-        if (isContractor && ['approved', 'rejected'].includes(status)) {
-            return res.status(403).json(formatResponse(false, "Only owner can approve/reject milestones", null));
+        // State Machine Logic
+        const updateData = { status };
+
+        if (isContractor) {
+            if (status === 'submitted') {
+                updateData.submitted_at = new Date();
+                if (proof_url) updateData.proof_url = proof_url; // Use field if needed or progress_updates
+            } else if (['approved', 'rejected'].includes(status)) {
+                return res.status(403).json(formatResponse(false, "Only owner can approve/reject milestones", null));
+            }
         }
 
-        const updateData = { status };
-        if (status === 'submitted') updateData.submitted_at = new Date();
-        if (status === 'approved') {
-            updateData.approved_at = new Date();
-            updateData.approved_by = userId;
+        if (isOwner) {
+            if (status === 'approved') {
+                updateData.approved_at = new Date();
+                updateData.approved_by = userId;
+
+                // Trigger financial release logic here in producton
+                // await releaseMilestonePayment(milestone.project_id, milestone.id, milestone.payment_amount);
+            }
+            if (status === 'rejected') {
+                updateData.rejection_reason = rejection_reason || 'No reason provided';
+            }
         }
 
         const { data, error } = await supabase
@@ -259,7 +277,18 @@ export const updateMilestoneStatus = async (req, res) => {
 
         if (error) throw error;
 
-        return res.json(formatResponse(true, "Milestone updated", data));
+        // Notify Contractor of Status Change
+        if (isOwner && milestone.project.contractor_id) {
+            const title = status === 'approved' ? "Milestone Approved" : "Milestone Rejected";
+            const type = status === 'approved' ? "success" : "warning";
+            const msg = status === 'approved'
+                ? `Milestone "${milestone.title}" has been approved. Payment release initiated.`
+                : `Milestone "${milestone.title}" was rejected. Reason: ${rejection_reason || 'See details'}`;
+
+            await notificationService.send(milestone.project.contractor_id, title, msg, type, { milestone_id: id });
+        }
+
+        return res.json(formatResponse(true, `Milestone ${status} successfully`, data));
     } catch (err) {
         return res.status(500).json(formatResponse(false, err.message, null));
     }

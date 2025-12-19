@@ -1,6 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://800-phi.vercel.app';
+// Switched back to local development as requested
+const API_URL = 'http://localhost:5000';
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://800-phi.vercel.app';
 
 // Create axios instance
 const apiClient = axios.create({

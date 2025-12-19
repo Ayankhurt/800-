@@ -1,6 +1,6 @@
 // User routes
 import express from "express";
-import { authenticateUser } from "../middlewares/auth.js"; // Ensure correct import name
+import { auth } from "../middlewares/auth.js"; // Fixed: use 'auth' instead of 'authenticateUser'
 import {
     getProfile, updateProfile,
     updateContractorProfile,
@@ -13,25 +13,25 @@ import {
 const router = express.Router();
 
 // Basic Profile
-router.get("/me", authenticateUser, getProfile);
-router.get("/profile", authenticateUser, getProfile);
-router.put("/profile", authenticateUser, updateProfile);
+router.get("/me", auth, getProfile);
+router.get("/profile", auth, getProfile);
+router.put("/profile", auth, updateProfile);
 
 // Contractor Profile
-router.put("/contractor-profile", authenticateUser, updateContractorProfile);
+router.put("/contractor-profile", auth, updateContractorProfile);
 
 // Portfolio
-router.post("/portfolio", authenticateUser, addPortfolioItem);
-router.delete("/portfolio/:id", authenticateUser, deletePortfolioItem);
+router.post("/portfolio", auth, addPortfolioItem);
+router.delete("/portfolio/:id", auth, deletePortfolioItem);
 
 // Certifications
-router.post("/certifications", authenticateUser, addCertification);
+router.post("/certifications", auth, addCertification);
 
 // Settings
-router.put("/settings", authenticateUser, updateSettings);
+router.put("/settings", auth, updateSettings);
 
 // Notifications
-router.get("/notifications", authenticateUser, getNotifications);
-router.put("/notifications/:id/read", authenticateUser, markNotificationRead);
+router.get("/notifications", auth, getNotifications);
+router.put("/notifications/:id/read", auth, markNotificationRead);
 
 export default router;

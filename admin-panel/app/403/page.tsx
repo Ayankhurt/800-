@@ -32,12 +32,17 @@ export default function ForbiddenPage() {
               Go to Dashboard
             </Button>
             <Button
-              onClick={() => router.push('/')}
-              variant="outline"
+              onClick={() => {
+                // Clear localStorage and reload to force logout
+                localStorage.removeItem('token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+              }}
+              variant="destructive"
               className="w-full"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
+              Sign Out
             </Button>
           </div>
         </CardContent>

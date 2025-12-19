@@ -88,6 +88,10 @@ import {
   createAdminUser,
   updateAdminUser,
   sendNotificationToUser,
+  broadcastNotification,
+  bulkVerifyUsers,
+  bulkSuspendUsers,
+  bulkDeleteUsers,
   getProjectsDashboard
 } from "../controllers/adminController.js";
 
@@ -165,9 +169,13 @@ router.put("/users/:id/role", requireAdmin, updateUserRole); // New Role Update 
 router.post("/users/:id/suspend", suspendUser);
 router.post("/users/:id/unsuspend", requireSuperAdmin, unsuspendUser); // Protected
 router.post("/users/verify", adminVerifyUser);
-router.post("/verify-user", adminVerifyUser); // Fix for frontend calling /verify-user
-router.post("/users/:id/notify", sendNotificationToUser); // Send notification to user
-router.post("/notifications/bulk", sendBulkNotifications); // Send bulk notifications
+router.post("/verify-user", adminVerifyUser);
+router.post("/users/bulk-verify", bulkVerifyUsers);
+router.post("/users/bulk-suspend", bulkSuspendUsers);
+router.post("/users/bulk-delete", requireSuperAdmin, bulkDeleteUsers);
+router.post("/users/:id/notify", sendNotificationToUser);
+router.post("/notifications/broadcast", broadcastNotification); // Broadcast to all or role
+router.post("/notifications/bulk", sendBulkNotifications); // Send to specific list
 router.get("/users/:id/sessions", getUserSessions);
 
 // ==================== PROJECTS MANAGEMENT ====================

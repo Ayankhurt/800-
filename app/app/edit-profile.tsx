@@ -101,17 +101,36 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    
+
     try {
-      console.log("[API] PUT /users/update", { name, email, phone, company });
-      
-      // Call API to update profile
-      const response = await userAPI.updateProfile({
-        fullName: name,
+      console.log("[API] Updating profile", { name, email, phone, company });
+
+      // Split fullName into first and last name
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+
+      // Map frontend fields to backend expected format
+      const backendData = {
+        first_name: firstName,
+        last_name: lastName,
         email: email,
         phone: phone,
-        companyName: company,
-      });
+        company_name: company || undefined,
+        bio: bio || undefined,
+      };
+
+      // Remove undefined fields
+      Object.keys(backendData).forEach(key =>
+        backendData[key as keyof typeof backendData] === undefined && delete backendData[key as keyof typeof backendData]
+      );
+
+      console.log("[API] PUT /users/profile with data:", backendData);
+
+      // Call API to update profile
+      const response = await userAPI.updateProfile(backendData);
+
+      console.log("[API] Update profile response:", response);
 
       if (response.success) {
         // Also update local context
@@ -131,6 +150,7 @@ export default function EditProfileScreen() {
       }
     } catch (error: any) {
       console.error("[API] Failed to save profile:", error);
+      console.error("[API] Error response:", error.response?.data);
       Alert.alert("Error", error.response?.data?.message || error.message || "Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
@@ -196,7 +216,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <User size={18} color={Colors.textSecondary} />
@@ -277,7 +297,7 @@ export default function EditProfileScreen() {
         {(user?.role === "Subcontractor" || user?.role === "Trade Specialist") && (
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Professional Information</Text>
-            
+
             <View style={styles.inputGroup}>
               <View style={styles.inputLabel}>
                 <Building2 size={18} color={Colors.textSecondary} />

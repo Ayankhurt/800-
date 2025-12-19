@@ -44,8 +44,8 @@ export const getQuotes = async (req, res) => {
             .from("quotes")
             .select(`
         *,
-        contractor:users!quotes_contractor_id_fkey (id, first_name, last_name, company_name),
-        client:users!quotes_client_id_fkey (id, first_name, last_name)
+        contractor:users!fk_quotes_contractor_id (id, first_name, last_name, company_name),
+        client:users!fk_quotes_client_id (id, first_name, last_name)
       `)
             .order("created_at", { ascending: false });
 

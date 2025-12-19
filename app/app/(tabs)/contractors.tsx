@@ -87,7 +87,7 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
           </View>
         </View>
       </View>
-      
+
       <View style={styles.badgesContainer}>
         {featured && (
           <View style={styles.featuredBadge}>
@@ -119,7 +119,7 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
           )}
         </View>
       )}
-      
+
       <View style={styles.contractorDetails}>
         <View style={styles.detailRow}>
           <View style={styles.tradeBadge}>
@@ -142,7 +142,7 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
           <Phone size={16} color={Colors.primary} />
           <Text style={styles.actionButtonTextSecondary}>Call</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionButton}
           onPress={onRequestEstimate}
         >
@@ -190,27 +190,35 @@ export default function ContractorsScreen() {
         }
         return;
       }
-      
+
       try {
         setIsLoading(true);
         console.log("[API] GET /contractors/search", { query: searchQuery });
         const response = await contractorsAPI.search(searchQuery);
-        
+
         if (response.success && response.data) {
-          const mappedContractors = Array.isArray(response.data) ? response.data.map((contractor: any) => ({
-            id: contractor.id || contractor.contractor_id,
-            name: contractor.name || contractor.full_name || contractor.fullName,
-            company: contractor.company || contractor.company_name || contractor.companyName,
-            trade: contractor.trade || contractor.trade_type || "All",
-            location: contractor.location || contractor.address,
-            rating: contractor.rating || contractor.average_rating || 0,
-            reviewCount: contractor.review_count || contractor.reviewCount || 0,
-            verified: contractor.verified || contractor.is_verified || false,
-            featured: contractor.featured || contractor.is_featured || false,
-            topRated: contractor.top_rated || contractor.topRated || false,
-            completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
-            verifications: contractor.verifications || [],
-          })) : [];
+          const rawList = Array.isArray(response.data) ? response.data : (response.data.contractors || []);
+          const mappedContractors = rawList.map((contractor: any) => {
+            const user = contractor.users || contractor.user || {};
+            const firstName = user.first_name || contractor.first_name || "";
+            const lastName = user.last_name || contractor.last_name || "";
+            const fullName = firstName ? `${firstName} ${lastName}`.trim() : (contractor.name || contractor.full_name || "Unknown");
+
+            return {
+              id: contractor.user_id || contractor.id || contractor.contractor_id,
+              name: fullName,
+              company: contractor.company || contractor.company_name || contractor.companyName,
+              trade: contractor.trade_specialization || contractor.trade || contractor.trade_type || "All",
+              location: user.location || contractor.location || contractor.address || "",
+              rating: contractor.rating || contractor.average_rating || 0,
+              reviewCount: contractor.review_count || contractor.reviewCount || 0,
+              verified: (user.verification_status === 'verified') || contractor.verified || contractor.is_verified || false,
+              featured: contractor.featured || contractor.is_featured || false,
+              topRated: contractor.top_rated || contractor.topRated || false,
+              completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
+              verifications: contractor.verifications || [],
+            };
+          });
           setApiContractors(mappedContractors);
         }
       } catch (error: any) {
@@ -231,28 +239,36 @@ export default function ContractorsScreen() {
 
   const fetchContractors = async () => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       console.log("[API] GET /contractors");
       const response = await contractorsAPI.getAll();
-      
+
       if (response.success && response.data) {
         // Map backend contractor format to frontend Contractor type
-        const mappedContractors = Array.isArray(response.data) ? response.data.map((contractor: any) => ({
-          id: contractor.id || contractor.contractor_id,
-          name: contractor.name || contractor.full_name || contractor.fullName,
-          company: contractor.company || contractor.company_name || contractor.companyName,
-          trade: contractor.trade || contractor.trade_type || "All",
-          location: contractor.location || contractor.address,
-          rating: contractor.rating || contractor.average_rating || 0,
-          reviewCount: contractor.review_count || contractor.reviewCount || 0,
-          verified: contractor.verified || contractor.is_verified || false,
-          featured: contractor.featured || contractor.is_featured || false,
-          topRated: contractor.top_rated || contractor.topRated || false,
-          completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
-          verifications: contractor.verifications || [],
-        })) : [];
+        const rawList = Array.isArray(response.data) ? response.data : (response.data.contractors || []);
+        const mappedContractors = rawList.map((contractor: any) => {
+          const user = contractor.users || contractor.user || {};
+          const firstName = user.first_name || contractor.first_name || "";
+          const lastName = user.last_name || contractor.last_name || "";
+          const fullName = firstName ? `${firstName} ${lastName}`.trim() : (contractor.name || contractor.full_name || "Unknown");
+
+          return {
+            id: contractor.user_id || contractor.id || contractor.contractor_id,
+            name: fullName,
+            company: contractor.company || contractor.company_name || contractor.companyName,
+            trade: contractor.trade_specialization || contractor.trade || contractor.trade_type || "All",
+            location: user.location || contractor.location || contractor.address || "",
+            rating: contractor.rating || contractor.average_rating || 0,
+            reviewCount: contractor.review_count || contractor.reviewCount || 0,
+            verified: (user.verification_status === 'verified') || contractor.verified || contractor.is_verified || false,
+            featured: contractor.featured || contractor.is_featured || false,
+            topRated: contractor.top_rated || contractor.topRated || false,
+            completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
+            verifications: contractor.verifications || [],
+          };
+        });
         setApiContractors(mappedContractors);
       }
     } catch (error: any) {
@@ -297,7 +313,7 @@ export default function ContractorsScreen() {
     const matchesVerified = !filters.verified || verified;
     const matchesFeatured = !filters.featured || featured;
     const matchesTopRated = !filters.topRated || topRated;
-    
+
     return matchesSearch && matchesTrade && matchesRating && matchesLocation && matchesVerified && matchesFeatured && matchesTopRated;
   });
 
@@ -330,7 +346,7 @@ export default function ContractorsScreen() {
           ),
         }}
       />
-      
+
       <View style={styles.searchSection}>
         <View style={styles.searchBar}>
           <Search size={20} color={Colors.textSecondary} />
@@ -342,7 +358,7 @@ export default function ContractorsScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -452,11 +468,11 @@ export default function ContractorsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           renderItem={({ item }) => (
-            <ContractorCard 
-              contractor={item} 
+            <ContractorCard
+              contractor={item}
               onPress={() => {
                 router.push(`/contractor-profile?id=${item.id}`);
-              }} 
+              }}
               onRequestEstimate={() => {
                 setSelectedContractor(item);
                 setShowRequestModal(true);
@@ -520,7 +536,7 @@ export default function ContractorsScreen() {
         }}
         onSubmit={async (data) => {
           if (!user || !selectedContractor) return;
-          
+
           try {
             await createAppointment({
               title: `Estimate Request - ${data.projectName}`,
@@ -533,13 +549,13 @@ export default function ContractorsScreen() {
               location: data.location,
               notes: data.description,
             });
-            
+
             Alert.alert(
               "Success",
               `Estimate request sent to ${selectedContractor.name}`,
               [{ text: "OK" }]
             );
-            
+
             setShowRequestModal(false);
             setSelectedContractor(null);
           } catch (error) {

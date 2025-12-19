@@ -42,32 +42,34 @@ export default function JobsScreen() {
   useEffect(() => {
     const fetchJobs = async () => {
       if (!user) return;
-      
+
       setIsLoading(true);
       try {
         console.log("[API] GET /jobs");
         const response = await jobsAPI.getAll();
-        
+
         if (response.success && response.data) {
-          // Map backend job format to frontend Job type
-          const mappedJobs = Array.isArray(response.data) ? response.data.map((job: any) => ({
+          // Backend returns {jobs: [...], total, page, pages} - need to access .jobs
+          const jobsArray = response.data.jobs || response.data;
+          const mappedJobs = Array.isArray(jobsArray) ? jobsArray.map((job: any) => ({
             id: job.id || job.job_id,
             title: job.title || job.job_title,
             description: job.description,
-            trade: job.trade || job.category || "All",
+            trade: job.trade_type || job.trade || "All",
             location: job.location,
             status: job.status || "open",
             urgency: (job.urgency || "medium") as JobUrgency,
             startDate: job.start_date || job.startDate,
             endDate: job.end_date || job.endDate,
-            budget: job.budget,
+            budget: job.budget_min ? `$${job.budget_min}` : null,
             payRate: job.pay_rate || job.payRate,
-            postedBy: job.posted_by || job.postedBy || user.id,
-            postedByName: job.posted_by_name || job.postedByName || user.fullName,
-            postedByCompany: job.posted_by_company || job.postedByCompany || user.company,
+            postedBy: job.posted_by || job.postedBy || user?.id || '',
+            postedByName: job.posted_by_name || job.postedByName || user?.fullName || '',
+            postedByCompany: job.posted_by_company || job.postedByCompany || user?.company || '',
             applicationsCount: job.applications_count || job.applicationsCount || 0,
             createdAt: job.created_at || job.createdAt,
             updatedAt: job.updated_at || job.updatedAt,
+            requirements: job.requirements || [],
           })) : [];
           setApiJobs(mappedJobs);
         }
@@ -82,8 +84,8 @@ export default function JobsScreen() {
     fetchJobs();
   }, [user]);
 
-  // Use API jobs if available, otherwise fallback to context jobs
-  const jobs = apiJobs.length > 0 ? apiJobs : contextJobs;
+  // Use API jobs only - no mock data fallback
+  const jobs = apiJobs;
 
   // Visible for PM only (hide for VIEWER), Admin sees everything
   const isAdmin = user?.role === "ADMIN";
@@ -93,11 +95,11 @@ export default function JobsScreen() {
   useEffect(() => {
     const searchJobs = async () => {
       if (!user || !searchQuery.trim()) return;
-      
+
       try {
         console.log("[API] GET /jobs/search", { query: searchQuery });
         const response = await jobsAPI.search(searchQuery);
-        
+
         if (response.success && response.data) {
           const mappedJobs = Array.isArray(response.data) ? response.data.map((job: any) => ({
             id: job.id || job.job_id,
@@ -136,24 +138,26 @@ export default function JobsScreen() {
           try {
             const response = await jobsAPI.getAll();
             if (response.success && response.data) {
-              const mappedJobs = Array.isArray(response.data) ? response.data.map((job: any) => ({
+              const jobsArray = response.data.jobs || response.data;
+              const mappedJobs = Array.isArray(jobsArray) ? jobsArray.map((job: any) => ({
                 id: job.id || job.job_id,
                 title: job.title || job.job_title,
                 description: job.description,
-                trade: job.trade || job.category || "All",
+                trade: job.trade_type || job.trade || "All",
                 location: job.location,
                 status: job.status || "open",
                 urgency: (job.urgency || "medium") as JobUrgency,
                 startDate: job.start_date || job.startDate,
                 endDate: job.end_date || job.endDate,
-                budget: job.budget,
+                budget: job.budget_min ? `$${job.budget_min}` : null,
                 payRate: job.pay_rate || job.payRate,
-                postedBy: job.posted_by || job.postedBy || user.id,
-                postedByName: job.posted_by_name || job.postedByName || user.fullName,
-                postedByCompany: job.posted_by_company || job.postedByCompany || user.company,
+                postedBy: job.posted_by || job.postedBy || user?.id || '',
+                postedByName: job.posted_by_name || job.postedByName || user?.fullName || '',
+                postedByCompany: job.posted_by_company || job.postedByCompany || user?.company || '',
                 applicationsCount: job.applications_count || job.applicationsCount || 0,
                 createdAt: job.created_at || job.createdAt,
                 updatedAt: job.updated_at || job.updatedAt,
+                requirements: job.requirements || [],
               })) : [];
               setApiJobs(mappedJobs);
             }
@@ -334,8 +338,8 @@ export default function JobsScreen() {
               {searchQuery || selectedTrade !== "All"
                 ? "Try adjusting your filters"
                 : canPostJobs
-                ? "Be the first to post a job!"
-                : "Check back later for new opportunities"}
+                  ? "Be the first to post a job!"
+                  : "Check back later for new opportunities"}
             </Text>
           </View>
         ) : (
@@ -354,28 +358,32 @@ export default function JobsScreen() {
         onClose={() => setShowPostModal(false)}
         onSubmit={async (jobData) => {
           if (!user) return;
-          
+
           try {
             setIsLoading(true);
             console.log("[API] POST /jobs", jobData);
-            
-            // Map frontend job format to backend format
+
+            // Map frontend job format to backend format  
+            // Backend expects: trade_type, budget_min, budget_max
             const backendData = {
               title: jobData.title,
               description: jobData.description,
-              trade: jobData.trade,
+              trade_type: jobData.trade, // Changed from 'trade' to 'trade_type'
               location: jobData.location,
               start_date: jobData.startDate,
               end_date: jobData.endDate || null,
-              budget: jobData.budget || null,
+              // Parse budget string to numbers
+              budget_min: jobData.budget ? parseInt(jobData.budget.replace(/[^0-9]/g, '')) : null,
+              budget_max: jobData.budget ? parseInt(jobData.budget.replace(/[^0-9]/g, '')) : null,
               pay_rate: jobData.payRate || null,
               urgency: jobData.urgency,
               status: jobData.status || "open",
-              requirements: jobData.requirements || [],
+              requirements: jobData.requirements || {},  // Changed from array to object
             };
 
+            console.log("[API] Mapped backend payload:", backendData);
             const response = await jobsAPI.create(backendData);
-            
+
             if (response.success) {
               Alert.alert("Success", "Job posted successfully!");
               setShowPostModal(false);
@@ -453,9 +461,7 @@ function PostJobModal({
       await onSubmit({
         ...formData,
         status: "open",
-        requirements: formData.requirements
-          .split("\n")
-          .filter((r) => r.trim()),
+        requirements: {}, // Backend expects object, not array
       });
       setFormData({
         title: "",

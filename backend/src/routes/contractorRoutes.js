@@ -16,6 +16,7 @@ import { requirePermission } from "../middlewares/rbac.js";
 const router = express.Router();
 
 // Public routes
+router.get("/", searchContractors);
 router.get("/search", searchContractors);
 router.get("/:id", getContractorProfile);
 router.get("/:contractor_id/portfolio", getPortfolioItems);

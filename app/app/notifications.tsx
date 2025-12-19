@@ -166,15 +166,19 @@ export default function NotificationsScreen() {
       setIsLoading(true);
       console.log("[API] GET /notifications");
       const response = await notificationsAPI.getAll();
+      console.log("[DEBUG] Notifications Response:", JSON.stringify(response));
 
       if (response.success && response.data) {
         // Handle response.data being { notifications: [] } or just []
         const rawNotifications = Array.isArray(response.data)
           ? response.data
-          : (response.data.notifications || []);
+          : (response.data.notifications || response.data.data || []);
+
+        console.log(`[DEBUG] Raw Notifications found: ${rawNotifications.length}`);
 
         const mappedNotifications = Array.isArray(rawNotifications) ? rawNotifications.map((notif: any) => ({
           id: notif.id || notif.notification_id,
+          userId: notif.user_id || notif.userId,
           type: (notif.type || notif.notification_type || "system_alert") as NotificationType,
           title: notif.title || notif.subject,
           message: notif.message || notif.body || notif.content,
@@ -187,6 +191,7 @@ export default function NotificationsScreen() {
           bidId: notif.bid_id || notif.bidId,
           projectId: notif.project_id || notif.projectId,
         })) : [];
+        console.log(`[DEBUG] Mapped Notifications: ${mappedNotifications.length}`);
         setApiNotifications(mappedNotifications);
       }
     } catch (error: any) {

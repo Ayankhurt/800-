@@ -1,8 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -25,7 +23,6 @@ import { ScrollArea } from '../ui/scroll-area';
 interface TopNavProps {
   currentUser: AuthUser;
   onLogout: () => void;
-  onMenuClick?: () => void;
 }
 
 const getRoleDisplay = (role: string) => {
@@ -51,10 +48,9 @@ const getTimeAgo = (date: string) => {
   return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-export function TopNav({ currentUser, onLogout, onMenuClick }: TopNavProps) {
+export function TopNav({ currentUser, onLogout }: TopNavProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Fetch notifications
   const { data: notificationsData } = useQuery({
@@ -109,59 +105,20 @@ export function TopNav({ currentUser, onLogout, onMenuClick }: TopNavProps) {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 lg:gap-8 flex-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden -ml-2"
-            onClick={onMenuClick}
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-
-          <h1 className={`text-blue-600 font-bold ${showMobileSearch ? 'hidden' : 'block'} sm:block whitespace-nowrap`}>
-            {showMobileSearch ? '' : <span className="hidden sm:inline">Bidroom Admin</span>}
-            {showMobileSearch ? '' : <span className="sm:hidden">Admin</span>}
-          </h1>
-
-          {/* Desktop Search */}
-          <div className="relative hidden md:block w-64 lg:w-96">
+      <div className="px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-8">
+          <h1 className="text-blue-600">Bidroom Admin</h1>
+          <div className="relative w-96">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Search users, projects, or transactions..."
               className="pl-10"
             />
           </div>
-
-          {/* Mobile Search Toggle */}
-          <div className={`flex-1 md:hidden ${showMobileSearch ? 'block' : 'hidden'}`}>
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="pl-10 w-full"
-                autoFocus
-                onBlur={() => setShowMobileSearch(false)}
-              />
-            </div>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2 lg:gap-4">
-          {/* Mobile Search Icon */}
-          {!showMobileSearch && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setShowMobileSearch(true)}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-          )}
+        <div className="flex items-center gap-4">
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -247,9 +204,9 @@ export function TopNav({ currentUser, onLogout, onMenuClick }: TopNavProps) {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col items-start hidden sm:flex">
+                <div className="flex flex-col items-start">
                   <span>{currentUser?.name || 'User'}</span>
-                  <span className="text-gray-500 text-xs">{getRoleDisplay(currentUser?.role || 'admin')}</span>
+                  <span className="text-gray-500">{getRoleDisplay(currentUser?.role || 'admin')}</span>
                 </div>
               </Button>
             </DropdownMenuTrigger>

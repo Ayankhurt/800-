@@ -7,7 +7,8 @@ export interface Notification {
   type: string;
   title: string;
   content: string; // Changed from message to content
-  is_read: boolean; // Changed from read to is_read
+  is_read?: boolean;
+  is_reads?: boolean;
   read_at?: string;
   created_at: string;
   updated_at?: string;

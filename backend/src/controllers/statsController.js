@@ -19,7 +19,7 @@ export const getUserDashboardStats = async (req, res) => {
     const { data: userCreatedJobs } = await supabase
       .from('jobs')
       .select('id', { count: 'exact', head: false })
-      .eq('created_by', userId);
+      .eq('projects_manager_id', userId);
 
     const { data: userApplications } = await supabase
       .from('job_applications')
@@ -75,13 +75,32 @@ export const getUserDashboardStats = async (req, res) => {
       milestonesCompletedCount = count || 0;
     }
 
-    logger.info(`[getUserDashboardStats] Stats retrieved - Jobs: ${totalJobs}, Projects: ${activeProjects}, Bids: ${bidsSubmitted}, Milestones: ${milestonesCompletedCount}`);
+    // Get bids received (for PM/GC)
+    let bidsReceived = 0;
+    if (req.user.role === 'PM' || req.user.role === 'GC' || req.user.role === 'project_manager' || req.user.role === 'general_contractor') {
+      const { count } = await supabase
+        .from('job_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('job_id', createdJobIds.length > 0 ? createdJobIds[0] : null); // Simple variant for now, or use IN
+
+      // Better: Count applications for all user's jobs
+      if (createdJobIds.length > 0) {
+        const { count: totalRec } = await supabase
+          .from('job_applications')
+          .select('*', { count: 'exact', head: true })
+          .in('job_id', createdJobIds);
+        bidsReceived = totalRec || 0;
+      }
+    }
+
+    logger.info(`[getUserDashboardStats] Stats retrieved - Jobs: ${totalJobs}, Projects: ${activeProjects}, Bids Submitted: ${bidsSubmitted}, Bids Received: ${bidsReceived}`);
 
     return res.json(
       formatResponse(true, 'User dashboard stats retrieved', {
         totalJobs: totalJobs || 0,
         activeProjects: activeProjects || 0,
         bidsSubmitted: bidsSubmitted || 0,
+        bidsReceived: bidsReceived || 0, // NEW
         milestonesCompleted: milestonesCompletedCount || 0,
       })
     );
@@ -95,7 +114,7 @@ export const getAdminDashboardStats = async (req, res) => {
   try {
     // Get total users
     const { count: totalUsers } = await supabase
-      .from('profiles')
+      .from('users')
       .select('*', { count: 'exact', head: true });
 
     // Get pending approvals (projects pending approval)
@@ -115,9 +134,9 @@ export const getAdminDashboardStats = async (req, res) => {
       .from('projects')
       .select('*', { count: 'exact', head: true });
 
-    // Get finance summary
+    // Get finance summary - FIXED: use transactions as primary source of truth for completed revenue
     const { data: payments } = await supabase
-      .from('payments')
+      .from('transactions')
       .select('amount, status');
 
     const totalRevenue = (payments || [])
@@ -125,7 +144,7 @@ export const getAdminDashboardStats = async (req, res) => {
       .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
     const pendingPayments = (payments || [])
-      .filter(p => p.status === 'pending')
+      .filter(p => p.status === 'pending' || p.status === 'processing')
       .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
     const { data: payouts } = await supabase

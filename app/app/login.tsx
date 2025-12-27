@@ -1,8 +1,24 @@
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 import { router } from "expo-router";
 import { LogIn } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +29,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 
 // Simple SVG-like icon components for Google and GitHub
@@ -28,10 +45,20 @@ const GitHubIcon = () => (
   </View>
 );
 
+import { authAPI } from "@/services/api";
 export default function LoginScreen() {
-  const { login, loginWithOAuth, loading } = useAuth();
+  const { login, loginWithOAuth, loading, isAuthenticated, colors } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [showMFA, setShowMFA] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,23 +70,35 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError("");
 
-    if (!email || !password) {
-      setError("Please fill in all fields");
-      return;
-    }
+    if (showMFA) {
+      if (!mfaCode || mfaCode.length < 6) {
+        setError("Please enter a valid 6-digit code");
+        return;
+      }
+    } else {
+      if (!email || !password) {
+        setError("Please fill in all fields");
+        return;
+      }
 
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
+      if (!validateEmail(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
-      const result = await login(email, password);
+      // Pass mfaCode if we are in MFA mode
+      const result = await login(email, password, showMFA ? mfaCode : undefined);
 
       if (result.success) {
         // Navigation handled by AuthContext
+      } else if (result.requiresMFA) {
+        setShowMFA(true);
+        setError("");
+        // Keep loading false to allow UI update? No, js runs.
       } else {
         setError(result.error || "Login failed. Please try again.");
       }
@@ -89,16 +128,37 @@ export default function LoginScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email || !validateEmail(email)) {
+      Alert.alert("Email Required", "Please enter your valid email address in the email field first.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await authAPI.forgotPassword(email);
+      if (response.success) {
+        Alert.alert("Success", "Password reset link has been sent to your email.");
+      } else {
+        Alert.alert("Error", response.message || "Failed to send reset link.");
+      }
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "An error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -110,97 +170,139 @@ export default function LoginScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <LogIn size={36} color={Colors.primary} strokeWidth={2.5} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + "15" }]}>
+              <LogIn size={36} color={colors.primary} strokeWidth={2.5} />
             </View>
-            <Text style={styles.title}>Welcome to BidRoom</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>Welcome to BidRoom</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Sign in to manage your construction projects
             </Text>
           </View>
 
           {/* Form Card */}
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {error ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", borderColor: colors.error + "40" }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             ) : null}
 
             <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    error && (email === "" || !validateEmail(email)) && styles.inputError
-                  ]}
-                  placeholder="your@email.com"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setError("");
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  editable={!isSubmitting}
-                />
-              </View>
+              {!showMFA ? (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+                        error && (email === "" || !validateEmail(email)) && [styles.inputError, { borderColor: colors.error }]
+                      ]}
+                      placeholder="your@email.com"
+                      placeholderTextColor={colors.textTertiary}
+                      value={email}
+                      onChangeText={(text) => {
+                        setEmail(text);
+                        setError("");
+                      }}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      autoComplete="email"
+                      editable={!isSubmitting}
+                    />
+                  </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    error && password === "" && styles.inputError
-                  ]}
-                  placeholder="Enter your password"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setError("");
-                  }}
-                  secureTextEntry
-                  autoComplete="password"
-                  editable={!isSubmitting}
-                />
-              </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+                        error && password === "" && [styles.inputError, { borderColor: colors.error }]
+                      ]}
+                      placeholder="Enter your password"
+                      placeholderTextColor={colors.textTertiary}
+                      value={password}
+                      onChangeText={(text) => {
+                        setPassword(text);
+                        setError("");
+                      }}
+                      secureTextEntry
+                      autoComplete="password"
+                      editable={!isSubmitting}
+                    />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: colors.text }]}>Two-Factor Authentication Code</Text>
+                  <Text style={[styles.mfaInstruction, { color: colors.textSecondary }]}>
+                    Enter the 6-digit code from your authenticator app or use one of your backup recovery codes.
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+                      error && mfaCode === "" && [styles.inputError, { borderColor: colors.error }]
+                    ]}
+                    placeholder="000000"
+                    placeholderTextColor={colors.textTertiary}
+                    value={mfaCode}
+                    onChangeText={(text) => {
+                      setMfaCode(text);
+                      setError("");
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    editable={!isSubmitting}
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowMFA(false);
+                      setMfaCode("");
+                    }}
+                    style={styles.cancelButton}
+                  >
+                    <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Back to Login</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <TouchableOpacity
-                style={[styles.loginButton, isSubmitting && styles.buttonDisabled]}
+                style={[styles.loginButton, { backgroundColor: colors.primary }, isSubmitting && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={isSubmitting}
                 activeOpacity={0.8}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color={Colors.white} />
+                  <ActivityIndicator color={colors.white} />
                 ) : (
-                  <Text style={styles.loginButtonText}>Sign In</Text>
+                  <Text style={[styles.loginButtonText, { color: colors.white }]}>
+                    {showMFA ? "Verify & Sign In" : "Sign In"}
+                  </Text>
                 )}
               </TouchableOpacity>
 
               {/* OR Divider */}
               <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
               </View>
 
               {/* Google Button */}
               <TouchableOpacity
-                style={styles.googleButton}
+                style={[styles.googleButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => handleSocialLogin('google')}
                 disabled={isSubmitting}
                 activeOpacity={0.8}
               >
                 <View style={styles.socialButtonContent}>
                   <View style={styles.googleIconContainer}>
-                    <Text style={styles.googleIcon}>G</Text>
+                    <Text style={[styles.googleIcon, { color: "#4285F4" }]}>G</Text>
                   </View>
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                  <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
                 </View>
               </TouchableOpacity>
 
@@ -220,8 +322,8 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {/* Apple - Coming Soon */}
-              <View style={styles.appleButtonDisabled}>
-                <Text style={styles.appleButtonText}>
+              <View style={[styles.appleButtonDisabled, { backgroundColor: colors.border + "20", borderColor: colors.border }]}>
+                <Text style={[styles.appleButtonText, { color: colors.textTertiary }]}>
                   Apple - Coming Soon
                 </Text>
               </View>
@@ -235,17 +337,18 @@ export default function LoginScreen() {
                 disabled={isSubmitting}
                 activeOpacity={0.7}
               >
-                <Text style={styles.registerButtonText}>
+                <Text style={[styles.registerButtonText, { color: colors.textSecondary }]}>
                   Don't have an account?{" "}
-                  <Text style={styles.registerButtonTextBold}>Sign Up</Text>
+                  <Text style={[styles.registerButtonTextBold, { color: colors.primary }]}>Sign Up</Text>
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.forgotPassword}
+                onPress={handleForgotPassword}
                 activeOpacity={0.7}
               >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -258,7 +361,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   keyboardView: {
     flex: 1,
@@ -276,7 +379,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   header: {
     alignItems: "center",
@@ -286,13 +389,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: Colors.primary,
+        shadowColor: staticColors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -308,19 +411,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center",
     paddingHorizontal: 16,
     lineHeight: 20,
   },
   formCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 16,
     padding: 24,
     width: "100%",
@@ -349,40 +452,40 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   input: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     minHeight: 50,
   },
   inputError: {
-    borderColor: Colors.error,
+    borderColor: staticColors.error,
     borderWidth: 1.5,
   },
   errorBanner: {
-    backgroundColor: Colors.error + "15",
+    backgroundColor: staticColors.error + "15",
     borderWidth: 1,
-    borderColor: Colors.error + "40",
+    borderColor: staticColors.error + "40",
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
   },
   errorText: {
-    color: Colors.error,
+    color: staticColors.error,
     fontSize: 14,
     textAlign: "center",
     fontWeight: "500" as const,
   },
   loginButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -392,7 +495,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
     ...Platform.select({
       ios: {
-        shadowColor: Colors.primary,
+        shadowColor: staticColors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -410,7 +513,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginButtonText: {
-    color: Colors.white,
+    color: staticColors.white,
     fontSize: 16,
     fontWeight: "700" as const,
     letterSpacing: 0.5,
@@ -423,11 +526,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: staticColors.border,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontSize: 13,
     fontWeight: "500" as const,
   },
@@ -525,9 +628,9 @@ const styles = StyleSheet.create({
   },
   // Apple - Disabled
   appleButtonDisabled: {
-    backgroundColor: Colors.border + "20",
+    backgroundColor: staticColors.border + "20",
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -536,7 +639,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   appleButtonText: {
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     fontSize: 14,
     fontWeight: "500" as const,
   },
@@ -550,11 +653,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   registerButtonText: {
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontSize: 14,
   },
   registerButtonTextBold: {
-    color: Colors.primary,
+    color: staticColors.primary,
     fontWeight: "700" as const,
   },
   forgotPassword: {
@@ -562,8 +665,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   forgotPasswordText: {
-    color: Colors.primary,
+    color: staticColors.primary,
     fontSize: 14,
     fontWeight: "600" as const,
+  },
+  mfaInstruction: {
+    fontSize: 13,
+    color: staticColors.textSecondary,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  cancelButton: {
+    marginTop: 12,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  cancelButtonText: {
+    color: staticColors.textSecondary,
+    fontSize: 14,
+    fontWeight: "500" as const,
   },
 });

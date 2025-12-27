@@ -36,32 +36,32 @@ import { adminAPI } from "@/services/api";
 
 // Available roles for admin to assign (excluding EDITOR)
 const ALL_ROLES = [
-  { code: "ADMIN", label: "Admin" },
-  { code: "SUPER", label: "Super Admin" },
-  { code: "FIN", label: "Finance" },
-  { code: "MOD", label: "Moderator" },
-  { code: "SUPPORT", label: "Support" },
-  { code: "PM", label: "Project Manager" },
-  { code: "GC", label: "General Contractor" },
-  { code: "SUB", label: "Subcontractor" },
-  { code: "TS", label: "Trade Specialist" },
-  { code: "VIEWER", label: "Viewer" },
+  { code: "admin", label: "Admin" },
+  { code: "super_admin", label: "Super Admin" },
+  { code: "finance_manager", label: "Finance" },
+  { code: "moderator", label: "Moderator" },
+  { code: "support_agent", label: "Support" },
+  { code: "project_manager", label: "Project Manager" },
+  { code: "general_contractor", label: "General Contractor" },
+  { code: "subcontractor", label: "Subcontractor" },
+  { code: "trade_specialist", label: "Trade Specialist" },
+  { code: "viewer", label: "Viewer" },
 ];
 
 // Get available roles based on current user's role
 const getAvailableRoles = (currentUserRole: string | undefined) => {
   const role = (currentUserRole || "").toUpperCase();
-  
+
   // SUPER admin can change ADMIN roles but not SUPER admin roles
   if (role === "SUPER") {
     return ALL_ROLES.filter((r) => r.code !== "SUPER");
   }
-  
+
   // Regular ADMIN cannot assign ADMIN or SUPER roles
   if (role === "ADMIN") {
     return ALL_ROLES.filter((r) => r.code !== "ADMIN" && r.code !== "SUPER");
   }
-  
+
   // Default: return all roles
   return ALL_ROLES;
 };
@@ -70,17 +70,17 @@ const getAvailableRoles = (currentUserRole: string | undefined) => {
 const canChangeRole = (currentUserRole: string | undefined, targetUserRole: string | undefined) => {
   const currentRole = (currentUserRole || "").toUpperCase();
   const targetRole = (targetUserRole || "").toUpperCase();
-  
+
   // SUPER admin can change ADMIN roles and all other roles except SUPER admin roles
   if (currentRole === "SUPER") {
     return targetRole !== "SUPER";
   }
-  
+
   // ADMIN cannot change ADMIN or SUPER admin roles
   if (currentRole === "ADMIN") {
     return targetRole !== "ADMIN" && targetRole !== "SUPER";
   }
-  
+
   return false;
 };
 
@@ -356,11 +356,11 @@ export default function UserDetailsScreen() {
             } catch (error: any) {
               console.error(`[UserDetails] Failed to ${action}:`, error);
               let errorMessage = `Failed to ${actionName.toLowerCase()} user`;
-              
+
               if (error.response) {
                 const status = error.response.status;
                 const data = error.response.data;
-                
+
                 if (data?.message) {
                   errorMessage = data.message;
                   // Special handling for unsuspend when user is not suspended
@@ -368,7 +368,7 @@ export default function UserDetailsScreen() {
                     errorMessage = "This user is not currently suspended. Refreshing user data...";
                     // Refresh user data to sync state
                     setTimeout(() => {
-                      fetchUserDetails().catch(() => {});
+                      fetchUserDetails().catch(() => { });
                     }, 1000);
                   }
                 } else if (status === 400) {
@@ -376,7 +376,7 @@ export default function UserDetailsScreen() {
                   if (action === "unsuspend") {
                     errorMessage = "User is not suspended. Refreshing user data...";
                     setTimeout(() => {
-                      fetchUserDetails().catch(() => {});
+                      fetchUserDetails().catch(() => { });
                     }, 1000);
                   } else {
                     errorMessage = `Invalid request: ${data?.error || "Bad request"}`;
@@ -395,14 +395,14 @@ export default function UserDetailsScreen() {
               } else if (error.message) {
                 errorMessage = error.message;
               }
-              
+
               Alert.alert("Error", errorMessage, [
                 {
                   text: "OK",
                   onPress: () => {
                     // Refresh user data to sync state after error (especially for unsuspend)
                     if (action === "unsuspend") {
-                      fetchUserDetails().catch(() => {});
+                      fetchUserDetails().catch(() => { });
                     }
                   },
                 },
@@ -431,7 +431,7 @@ export default function UserDetailsScreen() {
     // Check permissions
     const currentUserRole = (user?.role || "").toString().toUpperCase();
     const targetUserRole = ((userDetails?.role || userDetails?.role_code) || "").toString().toUpperCase();
-    
+
     if (!canChangeRole(currentUserRole, targetUserRole)) {
       Alert.alert("Permission Denied", "You don't have permission to change this user's role.");
       setShowRoleModal(false);
@@ -488,7 +488,7 @@ export default function UserDetailsScreen() {
               console.log(`[UserDetails] Calling changeUserRole API for userId: ${userId}, roleCode: ${selectedRole}`);
               const response = await adminAPI.changeUserRole(userId, selectedRole);
               console.log(`[UserDetails] changeUserRole response:`, response);
-              
+
               Alert.alert("Success", "User role changed successfully", [
                 {
                   text: "OK",
@@ -550,7 +550,7 @@ export default function UserDetailsScreen() {
       console.log(`[UserDetails] Calling lockUser API for userId: ${userId}, reason: ${lockReason}`);
       const response = await adminAPI.lockUser(userId, lockReason.trim());
       console.log(`[UserDetails] lockUser response:`, response);
-      
+
       // Refresh user details to get updated status from backend
       Alert.alert("Success", "User locked successfully", [
         {
@@ -593,7 +593,8 @@ export default function UserDetailsScreen() {
 
   const getStatusInfo = () => {
     const status = userDetails?.status?.toLowerCase();
-    const isVerified = userDetails?.email_verified;
+    const isActive = userDetails?.is_active !== undefined ? userDetails.is_active : true;
+    const isVerified = userDetails?.verification_status === "verified";
 
     if (status === "locked") {
       return {
@@ -603,7 +604,7 @@ export default function UserDetailsScreen() {
       };
     }
 
-    if (status === "suspended" || status === "inactive") {
+    if (isActive === false || status === "suspended" || status === "inactive") {
       return {
         label: "Suspended",
         color: "#8E8E93",
@@ -628,16 +629,16 @@ export default function UserDetailsScreen() {
 
   // Get role badge color
   const getRoleBadgeColor = (role: string) => {
-    const roleUpper = role.toUpperCase();
-    if (roleUpper === "ADMIN" || roleUpper === "SUPER") {
+    const roleLower = role.toLowerCase();
+    if (roleLower === "admin" || roleLower === "super_admin") {
       return { bg: Colors.error + "15", border: Colors.error, text: Colors.error };
-    } else if (roleUpper === "GC") {
+    } else if (roleLower === "general_contractor") {
       return { bg: "#FF9500" + "15", border: "#FF9500", text: "#FF9500" };
-    } else if (roleUpper === "PM") {
+    } else if (roleLower === "project_manager") {
       return { bg: "#007AFF" + "15", border: "#007AFF", text: "#007AFF" };
-    } else if (roleUpper === "SUB" || roleUpper === "TS") {
+    } else if (roleLower === "subcontractor" || roleLower === "trade_specialist") {
       return { bg: "#AF52DE" + "15", border: "#AF52DE", text: "#AF52DE" };
-    } else if (roleUpper === "VIEWER") {
+    } else if (roleLower === "viewer") {
       return { bg: "#5AC8FA" + "15", border: "#5AC8FA", text: "#5AC8FA" };
     }
     return { bg: Colors.primaryLight, border: Colors.primary, text: Colors.primary };
@@ -1021,7 +1022,7 @@ export default function UserDetailsScreen() {
               Current role: <Text style={{ fontWeight: "700" }}>{userDetails?.role || userDetails?.role_code || "N/A"}</Text>
             </Text>
             <Text style={[styles.modalSubtitle, { marginTop: 8 }]}>Select a new role:</Text>
-            
+
             <ScrollView style={styles.roleListContainer} showsVerticalScrollIndicator={false}>
               {getAvailableRoles(user?.role).map((role) => {
                 const isSelected = selectedRole === role.code;

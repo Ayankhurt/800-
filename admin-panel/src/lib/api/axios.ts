@@ -1,8 +1,21 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Switched back to local development as requested
-const API_URL = 'http://localhost:5000';
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://800-phi.vercel.app';
+const getAdminApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // If regular IP address
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+        return `http://${hostname}:5000`;
+      }
+      // If tunnel/other, fallback to the target LAN IP
+      return 'http://192.168.1.110:5000';
+    }
+  }
+  return 'http://localhost:5000';
+};
+
+const API_URL = getAdminApiUrl();
 
 // Create axios instance
 const apiClient = axios.create({

@@ -1,7 +1,13 @@
 import React from "react";
 import { Image, ImageProps, View, StyleSheet } from "react-native";
 import { User } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+
+const staticColors = {
+  background: "#F8FAFC",
+  textSecondary: "#64748B",
+  border: "#E2E8F0",
+};
 
 interface SafeImageProps extends Omit<ImageProps, "source"> {
   uri?: string | null;
@@ -14,12 +20,22 @@ export default function SafeImage({
   fallbackIcon,
   ...rest
 }: SafeImageProps) {
+  const { colors = staticColors } = useAuth();
   const hasValidUri = uri && uri.trim().length > 0;
 
   if (!hasValidUri) {
     return (
-      <View style={[styles.fallbackContainer, style]}>
-        {fallbackIcon || <User size={24} color={Colors.textSecondary} />}
+      <View
+        style={[
+          styles.fallbackContainer,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+          },
+          style,
+        ]}
+      >
+        {fallbackIcon || <User size={24} color={colors.textSecondary} />}
       </View>
     );
   }
@@ -38,10 +54,8 @@ export default function SafeImage({
 
 const styles = StyleSheet.create({
   fallbackContainer: {
-    backgroundColor: Colors.background,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
 });

@@ -7,9 +7,11 @@ import {
   JobMessage,
   JobNotification,
   ApplicationStatus,
+  UserRole,
 } from "@/types";
 // Mock data removed - app now uses 100% real API data
 import { useAuth } from "./AuthContext";
+import { jobsAPI, messagesAPI, invitesAPI, notificationsAPI } from "@/services/api";
 
 const STORAGE_KEYS = {
   JOBS: "jobs",
@@ -27,261 +29,176 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      loadData();
+    } else {
+      setJobs([]);
+      setApplications([]);
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const loadData = async () => {
     try {
-      const [storedJobs, storedApplications, storedMessages, storedNotifications] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.JOBS),
-        AsyncStorage.getItem(STORAGE_KEYS.APPLICATIONS),
-        AsyncStorage.getItem(STORAGE_KEYS.MESSAGES),
-        AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS),
+      setIsLoading(true);
+      // Fetch from API
+      const [jobsResponse] = await Promise.all([
+        jobsAPI.getAll(),
+        // Since there is no specific 'my-applications' for jobs yet, 
+        // we might rely on fetching all or per-job. 
+        // But for now, let's at least get the jobs list.
       ]);
 
-      setJobs(storedJobs ? JSON.parse(storedJobs) : []);
-      setApplications(storedApplications ? JSON.parse(storedApplications) : []);
-      setMessages(storedMessages ? JSON.parse(storedMessages) : []);
-      setNotifications(storedNotifications ? JSON.parse(storedNotifications) : []);
+      if (jobsResponse.success && jobsResponse.data) {
+        const jobsArray = jobsResponse.data.jobs || (Array.isArray(jobsResponse.data) ? jobsResponse.data : []);
+        const mappedJobs = jobsArray.map((job: any) => ({
+          id: job.id || job.job_id,
+          title: job.title || job.job_title,
+          description: job.description,
+          trade: job.trade_type || job.trade || job.category || "All",
+          location: job.location,
+          status: job.status || "open",
+          urgency: job.urgency || "medium",
+          startDate: job.start_date || job.startDate,
+          endDate: job.end_date || job.endDate,
+          budget: job.budget_min ? `$${job.budget_min}` : (job.budget || null),
+          payRate: job.pay_rate || job.payRate,
+          postedBy: job.posted_by || job.postedBy || job.project_manager_id,
+          postedByName: job.project_manager?.first_name ? `${job.project_manager.first_name} ${job.project_manager.last_name || ''}` : (job.posted_by_name || job.postedByName || "Unknown"),
+          postedByCompany: job.posted_by_company || job.postedByCompany || "",
+          applicationsCount: job.application_count || job.applications_count || job.applicationsCount || 0,
+          createdAt: job.created_at || job.createdAt,
+          updatedAt: job.updated_at || job.updatedAt,
+          requirements: job.requirements || [],
+        }));
+        setJobs(mappedJobs);
+      }
     } catch (error) {
-      console.error("Failed to load jobs data:", error);
-      setJobs([]);
-      setApplications([]);
-      setMessages([]);
-      setNotifications([]);
+      console.error("[JobsContext] Failed to load jobs data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveJobs = useCallback(async (updatedJobs: Job[]) => {
+  const createJob = useCallback(async (jobData: any) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(updatedJobs));
-      setJobs(updatedJobs);
+      const response = await jobsAPI.create(jobData);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
     } catch (error) {
-      console.error("Failed to save jobs:", error);
+      console.error("[JobsContext] Create job failed:", error);
+      return null;
     }
-  }, []);
-
-  const saveApplications = useCallback(async (updatedApplications: JobApplication[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(updatedApplications));
-      setApplications(updatedApplications);
-    } catch (error) {
-      console.error("Failed to save applications:", error);
-    }
-  }, []);
-
-  const saveMessages = useCallback(async (updatedMessages: JobMessage[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(updatedMessages));
-      setMessages(updatedMessages);
-    } catch (error) {
-      console.error("Failed to save messages:", error);
-    }
-  }, []);
-
-  const saveNotifications = useCallback(async (updatedNotifications: JobNotification[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(updatedNotifications));
-      setNotifications(updatedNotifications);
-    } catch (error) {
-      console.error("Failed to save notifications:", error);
-    }
-  }, []);
-
-  const createJob = useCallback(async (jobData: Omit<Job, "id" | "createdAt" | "updatedAt" | "applicationsCount">) => {
-    if (!user) return null;
-
-    const newJob: Job = {
-      ...jobData,
-      id: `job-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      applicationsCount: 0,
-    };
-
-    const updatedJobs = [...jobs, newJob];
-    await saveJobs(updatedJobs);
-
-    return newJob;
-  }, [jobs, saveJobs, user]);
+  }, [loadData]);
 
   const updateJob = useCallback(async (jobId: string, updates: Partial<Job>) => {
-    const updatedJobs = jobs.map(job =>
-      job.id === jobId
-        ? { ...job, ...updates, updatedAt: new Date().toISOString() }
-        : job
-    );
-    await saveJobs(updatedJobs);
-  }, [jobs, saveJobs]);
+    try {
+      const response = await jobsAPI.update(jobId, updates);
+      if (response.success) {
+        await loadData();
+      }
+    } catch (error) {
+      console.error("[JobsContext] Update job failed:", error);
+    }
+  }, [loadData]);
 
   const deleteJob = useCallback(async (jobId: string) => {
-    const updatedJobs = jobs.filter(job => job.id !== jobId);
-    await saveJobs(updatedJobs);
-  }, [jobs, saveJobs]);
-
-  const addNotification = useCallback(async (notification: JobNotification) => {
-    const updatedNotifications = [...notifications, notification];
-    await saveNotifications(updatedNotifications);
-  }, [notifications, saveNotifications]);
-
-  const applyToJob = useCallback(async (
-    jobId: string,
-    applicationData: {
-      coverLetter: string;
-      proposedRate?: string;
-      availableFrom: string;
-    }
-  ) => {
-    if (!user) return null;
-
-    const job = jobs.find(j => j.id === jobId);
-    if (!job) return null;
-
-    const newApplication: JobApplication = {
-      id: `app-${Date.now()}`,
-      jobId,
-      applicantId: user.id,
-      applicantName: user.name,
-      applicantCompany: user.company,
-      applicantRole: user.role,
-      applicantPhone: user.phone,
-      applicantEmail: user.email,
-      coverLetter: applicationData.coverLetter,
-      proposedRate: applicationData.proposedRate,
-      availableFrom: applicationData.availableFrom,
-      status: "pending",
-      appliedAt: new Date().toISOString(),
-    };
-
-    const updatedApplications = [...applications, newApplication];
-    await saveApplications(updatedApplications);
-
-    const updatedJobs = jobs.map(j =>
-      j.id === jobId
-        ? { ...j, applicationsCount: j.applicationsCount + 1 }
-        : j
-    );
-    await saveJobs(updatedJobs);
-
-    const notification: JobNotification = {
-      id: `notif-${Date.now()}`,
-      userId: job.postedBy,
-      jobId,
-      applicationId: newApplication.id,
-      type: "new_application",
-      title: "New Application Received",
-      message: `${user.name} applied to ${job.title}`,
-      read: false,
-      createdAt: new Date().toISOString(),
-    };
-    await addNotification(notification);
-
-    return newApplication;
-  }, [addNotification, applications, jobs, saveApplications, saveJobs, user]);
-
-  const updateApplicationStatus = useCallback(async (
-    applicationId: string,
-    status: ApplicationStatus,
-    responseNote?: string
-  ) => {
-    const application = applications.find(a => a.id === applicationId);
-    if (!application) return;
-
-    const updatedApplications = applications.map(app =>
-      app.id === applicationId
-        ? {
-          ...app,
-          status,
-          respondedAt: new Date().toISOString(),
-          responseNote,
-        }
-        : app
-    );
-    await saveApplications(updatedApplications);
-
-    if (status === "accepted" || status === "rejected") {
-      const job = jobs.find(j => j.id === application.jobId);
-      if (job) {
-        const notification: JobNotification = {
-          id: `notif-${Date.now()}`,
-          userId: application.applicantId,
-          jobId: application.jobId,
-          applicationId,
-          type: status === "accepted" ? "application_accepted" : "application_rejected",
-          title: status === "accepted" ? "Application Accepted!" : "Application Update",
-          message: status === "accepted"
-            ? `Your application for ${job.title} has been accepted`
-            : `Your application for ${job.title} has been reviewed`,
-          read: false,
-          createdAt: new Date().toISOString(),
-        };
-        await addNotification(notification);
+    try {
+      const response = await jobsAPI.delete(jobId);
+      if (response.success) {
+        await loadData();
       }
+    } catch (error) {
+      console.error("[JobsContext] Delete job failed:", error);
     }
-  }, [addNotification, applications, jobs, saveApplications]);
+  }, [loadData]);
 
-  const sendMessage = useCallback(async (
-    jobId: string,
-    receiverId: string,
-    message: string,
-    applicationId?: string
-  ) => {
-    if (!user) return null;
-
-    const newMessage: JobMessage = {
-      id: `msg-${Date.now()}`,
-      jobId,
-      applicationId,
-      senderId: user.id,
-      senderName: user.name,
-      receiverId,
-      message,
-      sentAt: new Date().toISOString(),
-      read: false,
-    };
-
-    const updatedMessages = [...messages, newMessage];
-    await saveMessages(updatedMessages);
-
-    const job = jobs.find(j => j.id === jobId);
-    if (job) {
-      const notification: JobNotification = {
-        id: `notif-${Date.now()}`,
-        userId: receiverId,
-        jobId,
-        applicationId,
-        type: "new_message",
-        title: "New Message",
-        message: `${user.name} sent you a message about ${job.title}`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-      await addNotification(notification);
+  const applyToJob = useCallback(async (jobId: string, data: any) => {
+    try {
+      const response = await jobsAPI.apply(jobId, data);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("[JobsContext] Apply to job failed:", error);
+      return null;
     }
+  }, [loadData]);
 
-    return newMessage;
-  }, [addNotification, jobs, messages, saveMessages, user]);
+  const updateApplicationStatus = useCallback(async (applicationId: string, status: ApplicationStatus) => {
+    try {
+      const response = await jobsAPI.updateApplicationStatus(applicationId, status);
+      if (response.success) {
+        await loadData();
+      }
+    } catch (error) {
+      console.error("[JobsContext] Update application status failed:", error);
+    }
+  }, [loadData]);
+
+  const inviteContractor = useCallback(async (jobId: string, contractorId: string, message?: string) => {
+    try {
+      const response = await invitesAPI.invite({
+        job_id: jobId,
+        contractor_id: contractorId,
+        message
+      });
+      return response.success;
+    } catch (error) {
+      console.error("[JobsContext] Invite contractor failed:", error);
+      return false;
+    }
+  }, []);
+
+  const addNotification = useCallback(async (notificationData: any) => {
+    // This is a local-only or mock implementation if needed
+    // In a real app, notifications are usually sent by the backend as a side effect
+    // But since InviteModal uses it, we'll keep it for compatibility.
+    console.log("[JobsContext] Manual notification add (usually backend handled):", notificationData);
+    setNotifications(prev => [notificationData, ...prev]);
+  }, []);
+
+  const sendMessage = useCallback(async (jobId: string, receiverId: string, content: string, applicationId?: string) => {
+    try {
+      console.log("[JobsContext] Sending message via API...");
+      const response = await messagesAPI.send({
+        receiver_id: receiverId,
+        content,
+        job_id: jobId,
+        // application_id: applicationId, // Backend might not support this yet, but we have it
+      });
+
+      if (response.success) {
+        // Refresh messages if needed, or just update local state
+        const newMessage: JobMessage = {
+          id: response.data?.id || `msg-${Date.now()}`,
+          jobId,
+          applicationId,
+          senderId: user?.id || "",
+          senderName: user?.fullName || "",
+          receiverId,
+          message: content,
+          sentAt: new Date().toISOString(),
+          read: false,
+        };
+        setMessages(prev => [...prev, newMessage]);
+        return newMessage;
+      }
+      return null;
+    } catch (error) {
+      console.error("[JobsContext] Send message failed:", error);
+      return null;
+    }
+  }, [user]);
 
   const markMessageAsRead = useCallback(async (messageId: string) => {
-    const updatedMessages = messages.map(msg =>
-      msg.id === messageId ? { ...msg, read: true } : msg
-    );
-    await saveMessages(updatedMessages);
-  }, [messages, saveMessages]);
-
-  const markNotificationAsRead = useCallback(async (notificationId: string) => {
-    const updatedNotifications = notifications.map(notif =>
-      notif.id === notificationId ? { ...notif, read: true } : notif
-    );
-    await saveNotifications(updatedNotifications);
-  }, [notifications, saveNotifications]);
-
-  const markAllNotificationsAsRead = useCallback(async () => {
-    const updatedNotifications = notifications.map(notif => ({ ...notif, read: true }));
-    await saveNotifications(updatedNotifications);
-  }, [notifications, saveNotifications]);
+    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, read: true } : msg));
+  }, []);
 
   const getJobById = useCallback((jobId: string) => {
     return jobs.find(job => job.id === jobId);
@@ -300,16 +217,12 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   }, [messages]);
 
   const getUnreadNotificationsCount = useCallback(() => {
-    if (!user) return 0;
-    return notifications.filter(notif => notif.userId === user.id && !notif.read).length;
-  }, [notifications, user]);
+    return notifications.filter(notif => !notif.read).length;
+  }, [notifications]);
 
   const getUserNotifications = useCallback(() => {
-    if (!user) return [];
-    return notifications.filter(notif => notif.userId === user.id).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [notifications, user]);
+    return notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [notifications]);
 
   return useMemo(() => ({
     jobs,
@@ -321,18 +234,18 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     updateJob,
     deleteJob,
     applyToJob,
+    inviteContractor,
+    addNotification,
     updateApplicationStatus,
     sendMessage,
     markMessageAsRead,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    addNotification,
     getJobById,
     getApplicationsByJobId,
     getApplicationsByUserId,
     getMessagesByJobId,
     getUnreadNotificationsCount,
     getUserNotifications,
+    refreshJobs: loadData,
   }), [
     jobs,
     applications,
@@ -343,17 +256,17 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     updateJob,
     deleteJob,
     applyToJob,
+    inviteContractor,
+    addNotification,
     updateApplicationStatus,
     sendMessage,
     markMessageAsRead,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    addNotification,
     getJobById,
     getApplicationsByJobId,
     getApplicationsByUserId,
     getMessagesByJobId,
     getUnreadNotificationsCount,
     getUserNotifications,
+    loadData,
   ]);
 });

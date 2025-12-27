@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   Animated,
   StyleSheet,
@@ -6,12 +6,20 @@ import {
   TouchableOpacity,
   View,
   PanResponder,
-  Dimensions,
-} from 'react-native';
-import { CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+} from "react-native";
+import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react-native";
+import { useAuth } from "@/contexts/AuthContext";
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+const staticColors = {
+  primary: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  white: "#FFFFFF",
+};
+
+export type ToastType = "success" | "error" | "warning" | "info";
 
 interface ToastProps {
   type: ToastType;
@@ -28,6 +36,7 @@ const Toast: React.FC<ToastProps> = ({
   onDismiss,
   visible,
 }) => {
+  const { colors = staticColors } = useAuth();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -101,15 +110,15 @@ const Toast: React.FC<ToastProps> = ({
   if (!visible) return null;
 
   const getIcon = () => {
-    const iconProps = { size: 20, color: '#fff' };
+    const iconProps = { size: 20, color: colors.white };
     switch (type) {
-      case 'success':
+      case "success":
         return <CheckCircle {...iconProps} />;
-      case 'error':
+      case "error":
         return <XCircle {...iconProps} />;
-      case 'warning':
+      case "warning":
         return <AlertCircle {...iconProps} />;
-      case 'info':
+      case "info":
         return <Info {...iconProps} />;
       default:
         return <Info {...iconProps} />;
@@ -118,16 +127,16 @@ const Toast: React.FC<ToastProps> = ({
 
   const getBackgroundColor = () => {
     switch (type) {
-      case 'success':
-        return '#10B981'; // Green
-      case 'error':
-        return '#EF4444'; // Red
-      case 'warning':
-        return '#F59E0B'; // Orange
-      case 'info':
-        return Colors.primary; // Blue
+      case "success":
+        return colors.success;
+      case "error":
+        return colors.error;
+      case "warning":
+        return colors.warning;
+      case "info":
+        return colors.primary;
       default:
-        return Colors.primary;
+        return colors.primary;
     }
   };
 
@@ -144,11 +153,11 @@ const Toast: React.FC<ToastProps> = ({
     >
       <View style={[styles.toast, { backgroundColor: getBackgroundColor() }]}>
         <View style={styles.iconContainer}>{getIcon()}</View>
-        <Text style={styles.message} numberOfLines={2}>
+        <Text style={[styles.message, { color: colors.white }]} numberOfLines={2}>
           {message}
         </Text>
         <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.white }]}>✕</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -157,19 +166,19 @@ const Toast: React.FC<ToastProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     left: 16,
     right: 16,
     zIndex: 9999,
   },
   toast: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -184,17 +193,15 @@ const styles = StyleSheet.create({
   message: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
   },
   closeButton: {
     marginLeft: 8,
     padding: 4,
   },
   closeText: {
-    color: '#fff',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
 

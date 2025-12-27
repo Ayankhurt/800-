@@ -10,20 +10,38 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { Stack, router } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { AlertCircle, FileText, Clock, CheckCircle, XCircle, ChevronRight } from "lucide-react-native";
 import { useDisputes } from "@/contexts/DisputesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dispute, DisputeType } from "@/types";
 import { disputesAPI } from "@/services/api";
 
-const DisputeStatusBadge: React.FC<{ status: Dispute["status"] }> = ({ status }) => {
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
+
+const DisputeStatusBadge: React.FC<{ status: Dispute["status"], colors: any }> = ({ status, colors }) => {
   const config = {
-    filed: { bg: "#fef3c7", color: "#92400e", label: "Filed" },
-    under_review: { bg: "#dbeafe", color: "#1e40af", label: "Under Review" },
-    in_mediation: { bg: "#e0e7ff", color: "#3730a3", label: "In Mediation" },
-    resolved: { bg: "#d1fae5", color: "#065f46", label: "Resolved" },
-    closed: { bg: "#f3f4f6", color: "#374151", label: "Closed" },
+    filed: { bg: colors.warning + '20', color: colors.warning, label: "Filed" },
+    under_review: { bg: colors.info + '20', color: colors.info, label: "Under Review" },
+    in_mediation: { bg: colors.secondary + '20', color: colors.secondary, label: "In Mediation" },
+    resolved: { bg: colors.success + '20', color: colors.success, label: "Resolved" },
+    closed: { bg: colors.border, color: colors.textSecondary, label: "Closed" },
   };
 
   const style = config[status];
@@ -35,64 +53,66 @@ const DisputeStatusBadge: React.FC<{ status: Dispute["status"] }> = ({ status })
   );
 };
 
-const DisputeCard: React.FC<{ dispute: Dispute; onPress: () => void }> = ({
+const DisputeCard: React.FC<{ dispute: Dispute; onPress: () => void; colors: any }> = ({
   dispute,
   onPress,
+  colors,
 }) => {
   const getStatusIcon = () => {
     switch (dispute.status) {
       case "filed":
-        return <AlertCircle size={20} color="#f59e0b" />;
+        return <AlertCircle size={20} color={colors.warning} />;
       case "under_review":
-        return <Clock size={20} color="#3b82f6" />;
+        return <Clock size={20} color={colors.info} />;
       case "in_mediation":
-        return <FileText size={20} color="#8b5cf6" />;
+        return <FileText size={20} color={colors.secondary} />;
       case "resolved":
-        return <CheckCircle size={20} color="#10b981" />;
+        return <CheckCircle size={20} color={colors.success} />;
       case "closed":
-        return <XCircle size={20} color="#6b7280" />;
+        return <XCircle size={20} color={colors.textTertiary} />;
     }
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPress}>
       <View style={styles.cardHeader}>
-        <View style={styles.iconContainer}>{getStatusIcon()}</View>
+        <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>{getStatusIcon()}</View>
         <View style={styles.cardContent}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>{dispute.disputeType.replace("_", " ").toUpperCase()}</Text>
-            <DisputeStatusBadge status={dispute.status} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{dispute.disputeType.replace("_", " ").toUpperCase()}</Text>
+            <DisputeStatusBadge status={dispute.status} colors={colors} />
           </View>
-          <Text style={styles.cardDescription} numberOfLines={2}>
+          <Text style={[styles.cardDescription, { color: colors.textSecondary }]} numberOfLines={2}>
             {dispute.description}
           </Text>
           <View style={styles.cardMeta}>
-            <Text style={styles.metaText}>Filed by: {dispute.filedByName}</Text>
-            <Text style={styles.metaText}>
+            <Text style={[styles.metaText, { color: colors.textTertiary }]}>Filed by: {dispute.filedByName}</Text>
+            <Text style={[styles.metaText, { color: colors.textTertiary }]}>
               {new Date(dispute.createdAt).toLocaleDateString()}
             </Text>
           </View>
           {dispute.amountDisputed && (
-            <Text style={styles.amountText}>
+            <Text style={[styles.amountText, { color: colors.error }]}>
               Amount in dispute: ${dispute.amountDisputed.toLocaleString()}
             </Text>
           )}
         </View>
-        <ChevronRight size={20} color="#9ca3af" />
+        <ChevronRight size={20} color={colors.textTertiary} />
       </View>
     </TouchableOpacity>
   );
 };
 
 export default function DisputesPage() {
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const { projectId: initialProjectId } = useLocalSearchParams();
   const { disputes: contextDisputes, fileDispute: contextFileDispute, isLoading: contextLoading } = useDisputes();
   const [apiDisputes, setApiDisputes] = useState<Dispute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showNewDispute, setShowNewDispute] = useState(false);
+  const [showNewDispute, setShowNewDispute] = useState(!!initialProjectId);
   const [newDispute, setNewDispute] = useState({
-    projectId: "",
+    projectId: (initialProjectId as string) || "",
     type: "quality" as DisputeType,
     description: "",
     amount: "",
@@ -105,12 +125,12 @@ export default function DisputesPage() {
 
   const fetchDisputes = async () => {
     if (!user) return;
-    
+
     try {
       setIsLoading(true);
       console.log("[API] GET /disputes");
       const response = await disputesAPI.getAll();
-      
+
       if (response.success && response.data) {
         const mappedDisputes = Array.isArray(response.data) ? response.data.map((dispute: any) => ({
           id: dispute.id || dispute.dispute_id,
@@ -143,16 +163,16 @@ export default function DisputesPage() {
 
   // Visible for Admin only
   const isAdmin = user?.role === "ADMIN";
-  
+
   // Use API disputes if available, otherwise fallback to context
   const disputes = apiDisputes.length > 0 ? apiDisputes : contextDisputes;
-  
+
   // Admin sees all disputes, others see only their own
-  const userDisputes = isAdmin 
-    ? disputes 
+  const userDisputes = isAdmin
+    ? disputes
     : disputes.filter(
-        (d) => d.filedBy === user?.id || d.projectId.includes(user?.id || "")
-      );
+      (d) => d.filedBy === user?.id || d.projectId.includes(user?.id || "")
+    );
 
   const activeDisputes = userDisputes.filter(
     (d) => d.status !== "resolved" && d.status !== "closed"
@@ -169,7 +189,7 @@ export default function DisputesPage() {
     try {
       setIsLoading(true);
       console.log("[API] POST /disputes", newDispute);
-      
+
       const backendData = {
         project_id: newDispute.projectId || null,
         dispute_type: newDispute.type,
@@ -178,7 +198,7 @@ export default function DisputesPage() {
       };
 
       const response = await disputesAPI.create(backendData);
-      
+
       if (response.success) {
         Alert.alert("Success", "Dispute filed successfully");
         setShowNewDispute(false);
@@ -211,151 +231,157 @@ export default function DisputesPage() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Dispute Resolution",
-          headerStyle: { backgroundColor: "#fff" },
-          headerTintColor: "#111827",
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
         }}
       />
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {isLoading && userDisputes.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.loadingText}>Loading disputes...</Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading disputes...</Text>
           </View>
         ) : (
           <>
-        <View style={styles.header}>
-          <Text style={styles.title}>Dispute Management</Text>
-          <Text style={styles.subtitle}>
-            Resolve issues through our structured mediation process
-          </Text>
-        </View>
-
-        <View style={styles.stats}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{activeDisputes.length}</Text>
-            <Text style={styles.statLabel}>Active Disputes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {userDisputes.filter((d) => d.status === "resolved").length}
-            </Text>
-            <Text style={styles.statLabel}>Resolved</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.newDisputeButton}
-          onPress={() => setShowNewDispute(!showNewDispute)}
-        >
-          <Text style={styles.newDisputeButtonText}>
-            {showNewDispute ? "Cancel" : "File New Dispute"}
-          </Text>
-        </TouchableOpacity>
-
-        {showNewDispute && (
-          <View style={styles.formContainer}>
-            <Text style={styles.formTitle}>File a New Dispute</Text>
-
-            <Text style={styles.label}>Dispute Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {(["payment", "quality", "scope", "timeline", "damage", "safety", "contract"] as DisputeType[]).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeButton,
-                    newDispute.type === type && styles.typeButtonActive,
-                  ]}
-                  onPress={() => setNewDispute({ ...newDispute, type })}
-                >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      newDispute.type === type && styles.typeButtonTextActive,
-                    ]}
-                  >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Describe the issue in detail..."
-              multiline
-              numberOfLines={4}
-              value={newDispute.description}
-              onChangeText={(text) => setNewDispute({ ...newDispute, description: text })}
-            />
-
-            <Text style={styles.label}>Amount in Dispute (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              keyboardType="numeric"
-              value={newDispute.amount}
-              onChangeText={(text) => setNewDispute({ ...newDispute, amount: text })}
-            />
-
-            <TouchableOpacity style={styles.submitButton} onPress={handleFileDispute}>
-              <Text style={styles.submitButtonText}>Submit Dispute</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Disputes</Text>
-          {activeDisputes.length === 0 ? (
-            <View style={styles.emptyState}>
-              <CheckCircle size={48} color="#9ca3af" />
-              <Text style={styles.emptyText}>No active disputes</Text>
+            <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <Text style={[styles.title, { color: colors.text }]}>Dispute Management</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                Resolve issues through our structured mediation process
+              </Text>
             </View>
-          ) : (
-            activeDisputes.map((dispute) => (
-              <DisputeCard
-                key={dispute.id}
-                dispute={dispute}
-                onPress={() => router.push(`/dispute-details?id=${dispute.id}`)}
-              />
-            ))
-          )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resolved Disputes</Text>
-          {userDisputes
-            .filter((d) => d.status === "resolved" || d.status === "closed")
-            .map((dispute) => (
-              <DisputeCard
-                key={dispute.id}
-                dispute={dispute}
-                onPress={() => router.push(`/dispute-details?id=${dispute.id}`)}
-              />
-            ))}
-        </View>
+            <View style={styles.stats}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>{activeDisputes.length}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active Disputes</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {userDisputes.filter((d) => d.status === "resolved").length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Resolved</Text>
+              </View>
+            </View>
 
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoTitle}>Dispute Resolution Process</Text>
-          <Text style={styles.infoText}>
-            1. File Dispute - Submit your concern{"\n"}
-            2. Internal Review - Both parties discuss{"\n"}
-            3. Platform Mediation - Our team assists{"\n"}
-            4. Professional Mediation - Third-party review{"\n"}
-            5. Resolution - Agreement reached
-          </Text>
-        </View>
+            <TouchableOpacity
+              style={[styles.newDisputeButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowNewDispute(!showNewDispute)}
+            >
+              <Text style={styles.newDisputeButtonText}>
+                {showNewDispute ? "Cancel" : "File New Dispute"}
+              </Text>
+            </TouchableOpacity>
+
+            {showNewDispute && (
+              <View style={[styles.formContainer, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.formTitle, { color: colors.text }]}>File a New Dispute</Text>
+
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Dispute Type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+                  {(["payment", "quality", "scope", "timeline", "damage", "safety", "contract"] as DisputeType[]).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeButton,
+                        { backgroundColor: colors.surface, borderColor: colors.border },
+                        newDispute.type === type && [styles.typeButtonActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
+                      ]}
+                      onPress={() => setNewDispute({ ...newDispute, type })}
+                    >
+                      <Text
+                        style={[
+                          styles.typeButtonText,
+                          { color: colors.textSecondary },
+                          newDispute.type === type && [styles.typeButtonTextActive, { color: colors.white }],
+                        ]}
+                      >
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Description *</Text>
+                <TextInput
+                  style={[styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Describe the issue in detail..."
+                  placeholderTextColor={colors.textTertiary}
+                  multiline
+                  numberOfLines={4}
+                  value={newDispute.description}
+                  onChangeText={(text) => setNewDispute({ ...newDispute, description: text })}
+                />
+
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Amount in Dispute (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="numeric"
+                  value={newDispute.amount}
+                  onChangeText={(text) => setNewDispute({ ...newDispute, amount: text })}
+                />
+
+                <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.success }]} onPress={handleFileDispute}>
+                  <Text style={styles.submitButtonText}>Submit Dispute</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Disputes</Text>
+              {activeDisputes.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <CheckCircle size={48} color={colors.textTertiary} />
+                  <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No active disputes</Text>
+                </View>
+              ) : (
+                activeDisputes.map((dispute) => (
+                  <DisputeCard
+                    key={dispute.id}
+                    dispute={dispute}
+                    colors={colors}
+                    onPress={() => router.push(`/dispute-details?id=${dispute.id}`)}
+                  />
+                ))
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Resolved Disputes</Text>
+              {userDisputes
+                .filter((d) => d.status === "resolved" || d.status === "closed")
+                .map((dispute) => (
+                  <DisputeCard
+                    key={dispute.id}
+                    dispute={dispute}
+                    colors={colors}
+                    onPress={() => router.push(`/dispute-details?id=${dispute.id}`)}
+                  />
+                ))}
+            </View>
+
+            <View style={[styles.infoContainer, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30' }]}>
+              <Text style={[styles.infoTitle, { color: colors.primary }]}>Dispute Resolution Process</Text>
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                1. File Dispute - Submit your concern{"\n"}
+                2. Internal Review - Both parties discuss{"\n"}
+                3. Platform Mediation - Our team assists{"\n"}
+                4. Professional Mediation - Third-party review{"\n"}
+                5. Resolution - Agreement reached
+              </Text>
+            </View>
           </>
         )}
       </ScrollView>
@@ -366,26 +392,26 @@ export default function DisputesPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
   },
   header: {
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: staticColors.border,
   },
   title: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   stats: {
     flexDirection: "row",
@@ -394,7 +420,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -407,12 +433,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 32,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 13,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   newDisputeButton: {
     margin: 16,
@@ -425,13 +451,13 @@ const styles = StyleSheet.create({
   newDisputeButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#fff",
+    color: staticColors.white,
   },
   formContainer: {
     margin: 16,
     marginTop: 0,
     padding: 16,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -442,13 +468,13 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#374151",
+    color: staticColors.textSecondary,
     marginBottom: 8,
   },
   typeScroll: {
@@ -461,7 +487,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#d1d5db",
     marginRight: 8,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
   },
   typeButtonActive: {
     backgroundColor: "#3b82f6",
@@ -470,10 +496,10 @@ const styles = StyleSheet.create({
   typeButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   typeButtonTextActive: {
-    color: "#fff",
+    color: staticColors.white,
   },
   input: {
     borderWidth: 1,
@@ -482,7 +508,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 14,
     marginBottom: 16,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
   },
   textArea: {
     borderWidth: 1,
@@ -493,7 +519,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     minHeight: 100,
     textAlignVertical: "top",
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
   },
   submitButton: {
     backgroundColor: "#10b981",
@@ -504,7 +530,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#fff",
+    color: staticColors.white,
   },
   section: {
     padding: 16,
@@ -513,11 +539,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 12,
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -552,11 +578,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
   },
   cardDescription: {
     fontSize: 14,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
     lineHeight: 20,
     marginBottom: 8,
   },
@@ -614,4 +640,13 @@ const styles = StyleSheet.create({
     color: "#1e3a8a",
     lineHeight: 22,
   },
+  loadingContainer: {
+    padding: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 14,
+  }
 });

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Sparkles, Zap, Award, Star, Shield } from "lucide-react-native";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type BadgeType =
   | "new_member"
@@ -19,56 +20,56 @@ interface Badge {
   borderColor: string;
 }
 
-const badgeConfig: Record<BadgeType, Badge> = {
+const getBadgeConfig = (colors: any): Record<BadgeType, Badge> => ({
   new_member: {
     type: "new_member",
     label: "New Member",
     icon: Sparkles,
-    backgroundColor: "#dbeafe",
-    textColor: "#1e40af",
-    borderColor: "#93c5fd",
+    backgroundColor: colors.primary + "15",
+    textColor: colors.primary,
+    borderColor: colors.primary + "30",
   },
   quick_responder: {
     type: "quick_responder",
     label: "Quick Responder",
     icon: Zap,
-    backgroundColor: "#fef3c7",
-    textColor: "#92400e",
-    borderColor: "#fcd34d",
+    backgroundColor: colors.warning + "15",
+    textColor: colors.warning,
+    borderColor: colors.warning + "30",
   },
   top_rated: {
     type: "top_rated",
     label: "Top Rated",
     icon: Star,
-    backgroundColor: "#fef3c7",
-    textColor: "#92400e",
-    borderColor: "#fbbf24",
+    backgroundColor: colors.warning + "15",
+    textColor: colors.warning,
+    borderColor: colors.warning + "40",
   },
   verified: {
     type: "verified",
     label: "Verified",
     icon: Shield,
-    backgroundColor: "#d1fae5",
-    textColor: "#065f46",
-    borderColor: "#6ee7b7",
+    backgroundColor: colors.success + "15",
+    textColor: colors.success,
+    borderColor: colors.success + "30",
   },
   featured: {
     type: "featured",
     label: "Featured",
     icon: Award,
-    backgroundColor: "#fce7f3",
-    textColor: "#9f1239",
-    borderColor: "#f9a8d4",
+    backgroundColor: colors.error + "15",
+    textColor: colors.error,
+    borderColor: colors.error + "30",
   },
   pro: {
     type: "pro",
     label: "Pro",
     icon: Award,
-    backgroundColor: "#e0e7ff",
-    textColor: "#3730a3",
-    borderColor: "#a5b4fc",
+    backgroundColor: colors.primary + "15",
+    textColor: colors.primary,
+    borderColor: colors.primary + "30",
   },
-};
+});
 
 interface PromotionalBadgesProps {
   badges: BadgeType[];
@@ -81,6 +82,9 @@ export const PromotionalBadges: React.FC<PromotionalBadgesProps> = ({
   size = "medium",
   showIcon = true,
 }) => {
+  const { colors } = useAuth();
+  const badgeConfig = getBadgeConfig(colors);
+
   const getIconSize = () => {
     switch (size) {
       case "small":
@@ -118,6 +122,7 @@ export const PromotionalBadges: React.FC<PromotionalBadgesProps> = ({
     <View style={styles.container}>
       {badges.map((badgeType) => {
         const badge = badgeConfig[badgeType];
+        if (!badge) return null;
         const Icon = badge.icon;
 
         return (
@@ -204,8 +209,6 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
     gap: 4,

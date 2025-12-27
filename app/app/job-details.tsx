@@ -30,14 +30,32 @@ import {
   Send,
 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useJobs } from "@/contexts/JobsContext";
 import { useAppointments } from "@/contexts/AppointmentsContext";
 import { JobApplication } from "@/types";
 import { jobsAPI, contractorsAPI } from "@/services/api";
 
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
+
 export default function JobDetailsScreen() {
+  const { colors } = useAuth();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -115,10 +133,7 @@ export default function JobDetailsScreen() {
   const fetchApplications = async () => {
     if (!jobId || !user) return;
 
-    // Only fetch if user is PM or ADMIN
-    if (user.role !== "PM" && user.role !== "ADMIN") {
-      return;
-    }
+    // Allow all users to fetch applications (backend now filters correctly)
 
     try {
       console.log("[API] GET /jobs/:jobId/applications", jobId);
@@ -128,7 +143,7 @@ export default function JobDetailsScreen() {
         const mappedApplications = Array.isArray(response.data) ? response.data.map((app: any) => ({
           id: app.id || app.application_id,
           jobId: app.job_id || app.jobId,
-          applicantId: app.applicant_id || app.applicantId,
+          applicantId: app.contractor_id || app.applicant_id || app.applicantId,
           applicantName: app.contractor ? `${app.contractor.first_name} ${app.contractor.last_name}` : (app.applicant_name || app.applicantName || "Contractor"),
           applicantCompany: app.contractor?.company || app.applicantCompany || "",
           status: app.status || "pending",
@@ -168,7 +183,7 @@ export default function JobDetailsScreen() {
 
   if (isLoading && !job) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen
           options={{
             title: "Job Details",
@@ -176,8 +191,8 @@ export default function JobDetailsScreen() {
           }}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading job details...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading job details...</Text>
         </View>
       </View>
     );
@@ -185,7 +200,7 @@ export default function JobDetailsScreen() {
 
   if (!job) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen
           options={{
             title: "Job Details",
@@ -193,17 +208,17 @@ export default function JobDetailsScreen() {
           }}
         />
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Job not found</Text>
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>Job not found</Text>
         </View>
       </View>
     );
   }
 
   const urgencyColors = {
-    low: Colors.success,
-    medium: Colors.warning,
-    high: Colors.secondary,
-    urgent: Colors.error,
+    low: colors.success,
+    medium: colors.warning,
+    high: colors.secondary,
+    urgent: colors.error,
   };
 
   const handleDeleteJob = () => {
@@ -213,15 +228,15 @@ export default function JobDetailsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: job.title,
           headerShown: true,
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
-          headerTintColor: Colors.text,
+          headerTintColor: colors.text,
           headerShadowVisible: false,
           headerRight: () =>
             // Visible for PM only (job poster, hide for VIEWER)
@@ -231,13 +246,13 @@ export default function JobDetailsScreen() {
                   style={styles.headerButton}
                   onPress={() => setShowInviteModal(true)}
                 >
-                  <UserPlus size={20} color={Colors.primary} />
+                  <UserPlus size={20} color={colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.headerButton}
                   onPress={handleDeleteJob}
                 >
-                  <Trash2 size={20} color={Colors.error} />
+                  <Trash2 size={20} color={colors.error} />
                 </TouchableOpacity>
               </View>
             ) : null,
@@ -245,20 +260,20 @@ export default function JobDetailsScreen() {
       />
 
       {(isJobPoster || canManage) && (
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'details' && styles.tabActive]}
+            style={[styles.tab, activeTab === 'details' && [styles.tabActive, { borderBottomColor: colors.primary }]]}
             onPress={() => setActiveTab('details')}
           >
-            <Text style={[styles.tabText, activeTab === 'details' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'details' && [styles.tabTextActive, { color: colors.primary }]]}>
               Details
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'applicants' && styles.tabActive]}
+            style={[styles.tab, activeTab === 'applicants' && [styles.tabActive, { borderBottomColor: colors.primary }]]}
             onPress={() => setActiveTab('applicants')}
           >
-            <Text style={[styles.tabText, activeTab === 'applicants' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'applicants' && [styles.tabTextActive, { color: colors.primary }]]}>
               Applicants ({applications.length})
             </Text>
           </TouchableOpacity>
@@ -270,110 +285,110 @@ export default function JobDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
         }
       >
         {activeTab === 'details' && (
           <>
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
               <View style={styles.titleContainer}>
-                <Text style={styles.title}>{job.title}</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{job.title}</Text>
                 <View
                   style={[
                     styles.urgencyBadge,
-                    { backgroundColor: urgencyColors[job.urgency] },
+                    { backgroundColor: urgencyColors[(job.urgency as keyof typeof urgencyColors) || 'medium'] },
                   ]}
                 >
-                  <Text style={styles.urgencyText}>
+                  <Text style={[styles.urgencyText, { color: colors.white }]}>
                     {job.urgency?.toUpperCase() || 'MEDIUM'}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.company}>{job.postedByCompany}</Text>
-              <Text style={styles.postedBy}>Posted by {job.postedByName}</Text>
-              <Text style={styles.postedDate}>
+              <Text style={[styles.company, { color: colors.textSecondary }]}>{job.postedByCompany}</Text>
+              <Text style={[styles.postedBy, { color: colors.textTertiary }]}>Posted by {job.postedByName}</Text>
+              <Text style={[styles.postedDate, { color: colors.textTertiary }]}>
                 Posted on {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Recently"}
               </Text>
             </View>
 
             <View style={styles.detailsGrid}>
-              <View style={styles.detailCard}>
-                <Briefcase size={20} color={Colors.primary} />
-                <Text style={styles.detailLabel}>Trade</Text>
-                <Text style={styles.detailValue}>{job.trade}</Text>
+              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Briefcase size={20} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Trade</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{job.trade}</Text>
               </View>
 
-              <View style={styles.detailCard}>
-                <MapPin size={20} color={Colors.primary} />
-                <Text style={styles.detailLabel}>Location</Text>
-                <Text style={styles.detailValue}>{job.location}</Text>
+              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <MapPin size={20} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Location</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{job.location}</Text>
               </View>
 
-              <View style={styles.detailCard}>
-                <Calendar size={20} color={Colors.primary} />
-                <Text style={styles.detailLabel}>Start Date</Text>
-                <Text style={styles.detailValue}>
+              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Calendar size={20} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Start Date</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
                   {job.startDate ? new Date(job.startDate).toLocaleDateString() : (job.timeline || "Not specified")}
                 </Text>
               </View>
 
               {!!job.payRate && (
-                <View style={styles.detailCard}>
-                  <DollarSign size={20} color={Colors.primary} />
-                  <Text style={styles.detailLabel}>Pay Rate</Text>
-                  <Text style={styles.detailValue}>{job.payRate}</Text>
+                <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <DollarSign size={20} color={colors.primary} />
+                  <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Pay Rate</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{job.payRate}</Text>
                 </View>
               )}
 
-              <View style={styles.detailCard}>
-                <User size={20} color={Colors.primary} />
-                <Text style={styles.detailLabel}>Applicants</Text>
-                <Text style={styles.detailValue}>{applications.length}</Text>
+              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <User size={20} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Applicants</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{applications.length}</Text>
               </View>
 
-              <View style={styles.detailCard}>
-                <Clock size={20} color={Colors.primary} />
-                <Text style={styles.detailLabel}>Status</Text>
-                <Text style={styles.detailValue}>
+              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Clock size={20} color={colors.primary} />
+                <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>Status</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
                   {job.status?.replace('_', ' ').toUpperCase() || 'OPEN'}
                 </Text>
               </View>
             </View>
 
             {!!job.budget && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Budget</Text>
-                <Text style={styles.budget}>{job.budget}</Text>
+              <View style={[styles.section, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Budget</Text>
+                <Text style={[styles.budget, { color: colors.primary }]}>{job.budget}</Text>
               </View>
             )}
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{job.description}</Text>
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
+              <Text style={[styles.description, { color: colors.textSecondary }]}>{job.description}</Text>
             </View>
 
             {job.requirements.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Requirements</Text>
-                {job.requirements.map((req, index) => (
+              <View style={[styles.section, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Requirements</Text>
+                {job.requirements.map((req: string, index: number) => (
                   <View key={index} style={styles.requirementItem}>
-                    <View style={styles.requirementBullet} />
-                    <Text style={styles.requirementText}>{req}</Text>
+                    <View style={[styles.requirementBullet, { backgroundColor: colors.primary }]} />
+                    <Text style={[styles.requirementText, { color: colors.text }]}>{req}</Text>
                   </View>
                 ))}
               </View>
             )}
 
             {job.status === "open" && !isJobPoster && (
-              <View style={styles.section}>
+              <View style={[styles.section, { backgroundColor: colors.surface }]}>
                 <TouchableOpacity
-                  style={styles.bookAppointmentCard}
+                  style={[styles.bookAppointmentCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}
                   onPress={() => setShowBookAppointmentModal(true)}
                 >
-                  <Calendar size={32} color={Colors.primary} />
+                  <Calendar size={32} color={colors.primary} />
                   <View style={styles.bookAppointmentContent}>
-                    <Text style={styles.bookAppointmentTitle}>Book Estimate Appointment</Text>
-                    <Text style={styles.bookAppointmentText}>
+                    <Text style={[styles.bookAppointmentTitle, { color: colors.text }]}>Book Estimate Appointment</Text>
+                    <Text style={[styles.bookAppointmentText, { color: colors.textSecondary }]}>
                       Schedule a site visit to discuss this job and get an estimate
                     </Text>
                   </View>
@@ -382,22 +397,22 @@ export default function JobDetailsScreen() {
             )}
 
             {(isJobPoster || canManage) && user?.role !== "VIEWER" && (
-              <View style={styles.section}>
+              <View style={[styles.section, { backgroundColor: colors.surface }]}>
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
-                    style={[styles.actionCard, { backgroundColor: Colors.primary }]}
+                    style={[styles.actionCard, { backgroundColor: colors.primary }]}
                     onPress={() => setShowInviteModal(true)}
                   >
-                    <UserPlus size={24} color={Colors.white} />
-                    <Text style={styles.actionCardText}>Invite Users</Text>
+                    <UserPlus size={24} color={colors.white} />
+                    <Text style={[styles.actionCardText, { color: colors.white }]}>Invite Users</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.actionCard, { backgroundColor: Colors.secondary }]}
+                    style={[styles.actionCard, { backgroundColor: colors.secondary }]}
                     onPress={() => setActiveTab('applicants')}
                   >
-                    <User size={24} color={Colors.white} />
-                    <Text style={styles.actionCardText}>View Applicants</Text>
-                    <Text style={styles.actionCardCount}>{applications.length}</Text>
+                    <User size={24} color={colors.white} />
+                    <Text style={[styles.actionCardText, { color: colors.white }]}>View Applicants</Text>
+                    <Text style={[styles.actionCardCount, { color: colors.white }]}>{applications.length}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -409,39 +424,39 @@ export default function JobDetailsScreen() {
           <View style={styles.applicantsContainer}>
             {applications.length === 0 ? (
               <View style={styles.emptyApplicants}>
-                <AlertCircle size={48} color={Colors.textTertiary} />
-                <Text style={styles.emptyApplicantsTitle}>No Applications Yet</Text>
-                <Text style={styles.emptyApplicantsText}>
+                <AlertCircle size={48} color={colors.textTertiary} />
+                <Text style={[styles.emptyApplicantsTitle, { color: colors.text }]}>No Applications Yet</Text>
+                <Text style={[styles.emptyApplicantsText, { color: colors.textSecondary }]}>
                   No one has applied to this job yet. Invite contractors to apply.
                 </Text>
                 <TouchableOpacity
-                  style={styles.inviteButton}
+                  style={[styles.inviteButton, { backgroundColor: colors.primary }]}
                   onPress={() => setShowInviteModal(true)}
                 >
-                  <UserPlus size={20} color={Colors.white} />
-                  <Text style={styles.inviteButtonText}>Invite Contractors</Text>
+                  <UserPlus size={20} color={colors.white} />
+                  <Text style={[styles.inviteButtonText, { color: colors.white }]}>Invite Contractors</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.applicantsList}>
                 <View style={styles.applicantsHeader}>
-                  <Text style={styles.applicantsTitle}>All Applicants</Text>
+                  <Text style={[styles.applicantsTitle, { color: colors.text }]}>All Applicants</Text>
                   <View style={styles.statusCounts}>
                     <View style={styles.statusCount}>
-                      <View style={[styles.statusDot, { backgroundColor: Colors.warning }]} />
-                      <Text style={styles.statusCountText}>
+                      <View style={[styles.statusDot, { backgroundColor: colors.warning }]} />
+                      <Text style={[styles.statusCountText, { color: colors.textSecondary }]}>
                         {applications.filter(a => a.status === 'pending').length} Pending
                       </Text>
                     </View>
                     <View style={styles.statusCount}>
-                      <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
-                      <Text style={styles.statusCountText}>
+                      <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+                      <Text style={[styles.statusCountText, { color: colors.textSecondary }]}>
                         {applications.filter(a => a.status === 'accepted').length} Accepted
                       </Text>
                     </View>
                     <View style={styles.statusCount}>
-                      <View style={[styles.statusDot, { backgroundColor: Colors.error }]} />
-                      <Text style={styles.statusCountText}>
+                      <View style={[styles.statusDot, { backgroundColor: colors.error }]} />
+                      <Text style={[styles.statusCountText, { color: colors.textSecondary }]}>
                         {applications.filter(a => a.status === 'rejected').length} Declined
                       </Text>
                     </View>
@@ -498,11 +513,10 @@ export default function JobDetailsScreen() {
                       }
                     }}
                     onMessage={() => {
-                      router.push({
-                        pathname: "/messages",
-                        params: { userId: application.applicantId }
-                      } as any);
+                      setSelectedApplication(application);
+                      setShowMessageModal(true);
                     }}
+                    colors={colors}
                   />
                 ))}
               </View>
@@ -512,78 +526,43 @@ export default function JobDetailsScreen() {
       </ScrollView>
 
       {canApply && canViewApplyButton && user?.role !== "VIEWER" && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <View style={styles.footerRow}>
             <TouchableOpacity
-              style={styles.applyButton}
+              style={[styles.applyButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowApplyModal(true)}
             >
-              <Text style={styles.applyButtonText}>Apply Now</Text>
+              <Text style={[styles.applyButtonText, { color: colors.white }]}>Apply Now</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.bookAppointmentButtonFooter}
+              style={[styles.bookAppointmentButtonFooter, { backgroundColor: colors.surface, borderColor: colors.primary }]}
               onPress={() => setShowBookAppointmentModal(true)}
             >
-              <Calendar size={18} color={Colors.primary} />
-              <Text style={styles.bookAppointmentButtonText}>Book Estimate</Text>
+              <Calendar size={18} color={colors.primary} />
+              <Text style={[styles.bookAppointmentButtonText, { color: colors.primary }]}>Book Estimate</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
       {hasApplied && !isJobPoster && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <View style={styles.appliedSection}>
             <View style={styles.appliedBanner}>
-              <CheckCircle size={20} color={Colors.success} />
-              <Text style={styles.appliedText}>You have applied to this job</Text>
+              <CheckCircle size={20} color={colors.success} />
+              <Text style={[styles.appliedText, { color: colors.success }]}>You have applied to this job</Text>
             </View>
             <TouchableOpacity
-              style={styles.requestEstimateButton}
+              style={[styles.requestEstimateButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowRequestEstimateModal(true)}
             >
-              <Calendar size={18} color={Colors.white} />
-              <Text style={styles.requestEstimateText}>Request Estimate</Text>
+              <Calendar size={18} color={colors.white} />
+              <Text style={[styles.requestEstimateText, { color: colors.white }]}>Request Estimate</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <ApplyModal
-        visible={showApplyModal}
-        onClose={() => setShowApplyModal(false)}
-        onSubmit={async (applicationData) => {
-          if (!user || !jobId) return;
-
-          try {
-            setIsApplying(true);
-            console.log("[API] POST /jobs/:jobId/apply", jobId, applicationData);
-            const response = await jobsAPI.apply(jobId, {
-              cover_letter: applicationData.coverLetter || applicationData.cover_letter,
-              proposed_rate: parseFloat(applicationData.proposedRate || applicationData.proposed_rate || "0"),
-              available_start_date: applicationData.availableFrom || applicationData.available_start_date,
-              resume_url: applicationData.resumeUrl || applicationData.resume_url,
-            });
-
-            if (response.success) {
-              Alert.alert("Success", "Application submitted successfully");
-              setShowApplyModal(false);
-              // Refresh job details and applications
-              await Promise.all([fetchJobDetails(), fetchApplications()]);
-            } else {
-              Alert.alert("Error", response.message || "Failed to submit application");
-            }
-          } catch (error: any) {
-            console.log("[API ERROR]", error);
-            Alert.alert("Error", error?.response?.data?.message || error?.message || "Something went wrong");
-            // Fallback to context
-            await contextApplyToJob(job.id, applicationData);
-            setShowApplyModal(false);
-          } finally {
-            setIsApplying(false);
-          }
-        }}
-      />
 
       <MessageModal
         visible={showMessageModal}
@@ -604,6 +583,7 @@ export default function JobDetailsScreen() {
           }
         }}
         recipientName={selectedApplication?.applicantName || ""}
+        colors={colors}
       />
 
       <RequestEstimateModal
@@ -625,13 +605,16 @@ export default function JobDetailsScreen() {
         }}
         jobTitle={job.title}
         defaultLocation={job.location}
+        colors={colors}
       />
 
       <InviteModal
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
+        jobId={job.id}
         jobTitle={job.title}
         existingApplicants={applications.map(a => a.applicantId)}
+        colors={colors}
       />
 
       <BookAppointmentModal
@@ -650,12 +633,14 @@ export default function JobDetailsScreen() {
             location: data.location,
             notes: data.notes,
             jobId: job.id,
+            entityType: 'job', // Specify this is a Job
           });
           setShowBookAppointmentModal(false);
         }}
         jobTitle={job.title}
         defaultLocation={job.location}
         jobPoster={job.postedByName}
+        colors={colors}
       />
     </View>
   );
@@ -666,17 +651,19 @@ function ApplicationCard({
   onAccept,
   onReject,
   onMessage,
+  colors,
 }: {
   application: JobApplication;
   onAccept: () => void;
   onReject: () => void;
   onMessage: () => void;
+  colors: any;
 }) {
   const statusColors = {
-    pending: Colors.warning,
-    accepted: Colors.success,
-    rejected: Colors.error,
-    withdrawn: Colors.textTertiary,
+    pending: colors.warning,
+    accepted: colors.success,
+    rejected: colors.error,
+    withdrawn: colors.textTertiary,
   };
 
   const statusText = {
@@ -687,22 +674,22 @@ function ApplicationCard({
   };
 
   return (
-    <View style={styles.applicationCard}>
+    <View style={[styles.applicationCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
       <View style={styles.applicantHeader}>
         <View style={styles.applicantInfo}>
           <View style={styles.applicantRow}>
-            <User size={16} color={Colors.textSecondary} />
-            <Text style={styles.applicantName}>{application.applicantName}</Text>
+            <User size={16} color={colors.textSecondary} />
+            <Text style={[styles.applicantName, { color: colors.text }]}>{application.applicantName}</Text>
           </View>
           <View style={styles.applicantRow}>
-            <Building size={16} color={Colors.textSecondary} />
-            <Text style={styles.applicantDetail}>
+            <Building size={16} color={colors.textSecondary} />
+            <Text style={[styles.applicantDetail, { color: colors.textSecondary }]}>
               {application.applicantCompany}
             </Text>
           </View>
           <View style={styles.applicantRow}>
-            <Phone size={16} color={Colors.textSecondary} />
-            <Text style={styles.applicantDetail}>
+            <Phone size={16} color={colors.textSecondary} />
+            <Text style={[styles.applicantDetail, { color: colors.textSecondary }]}>
               {application.applicantPhone}
             </Text>
           </View>
@@ -713,66 +700,83 @@ function ApplicationCard({
             { backgroundColor: statusColors[application.status] },
           ]}
         >
-          <Text style={styles.statusText}>{statusText[application.status]}</Text>
+          <Text style={[styles.statusText, { color: colors.white }]}>{statusText[application.status]}</Text>
         </View>
       </View>
 
-      <Text style={styles.coverLetterLabel}>Cover Letter:</Text>
-      <Text style={styles.coverLetterText}>{application.coverLetter}</Text>
+      <Text style={[styles.coverLetterLabel, { color: colors.textSecondary }]}>Cover Letter:</Text>
+      <Text style={[styles.coverLetterText, { color: colors.text }]}>{application.coverLetter}</Text>
 
       {!!application.proposedRate && (
         <View style={styles.proposedRateContainer}>
-          <DollarSign size={16} color={Colors.primary} />
-          <Text style={styles.proposedRateText}>
+          <DollarSign size={16} color={colors.primary} />
+          <Text style={[styles.proposedRateText, { color: colors.primary }]}>
             Proposed Rate: {application.proposedRate}
           </Text>
         </View>
       )}
 
-      <View style={styles.applicationMeta}>
-        <Text style={styles.applicationDate}>
-          Applied {new Date(application.appliedAt).toLocaleDateString()}
+      <View style={[styles.applicationMeta, { borderTopColor: colors.border }]}>
+        <Text style={[styles.applicationDate, { color: colors.textTertiary }]}>
+          Applied {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : 'Recently'}
         </Text>
-        <Text style={styles.availableFrom}>
+        <Text style={[styles.availableFrom, { color: colors.textTertiary }]}>
           Available from{" "}
-          {new Date(application.availableFrom).toLocaleDateString()}
+          {application.availableFrom ? new Date(application.availableFrom).toLocaleDateString() : 'TBD'}
         </Text>
       </View>
 
       {application.status === "pending" && (
         <View style={styles.applicationActions}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.acceptButton]}
+            style={[styles.actionButton, styles.acceptButton, { backgroundColor: colors.success }]}
             onPress={onAccept}
           >
-            <CheckCircle size={18} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Accept</Text>
+            <CheckCircle size={18} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Accept</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
+            style={[styles.actionButton, styles.rejectButton, { backgroundColor: colors.error }]}
             onPress={onReject}
           >
-            <XCircle size={18} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Decline</Text>
+            <XCircle size={18} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Decline</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, styles.messageButton]}
+            style={[styles.actionButton, styles.messageButton, { backgroundColor: colors.primary }]}
             onPress={onMessage}
           >
-            <MessageCircle size={18} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Message</Text>
+            <MessageCircle size={18} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Message</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {application.status !== "pending" && (
-        <TouchableOpacity
-          style={[styles.actionButton, styles.messageButton, { marginTop: 12 }]}
-          onPress={onMessage}
-        >
-          <MessageCircle size={18} color={Colors.white} />
-          <Text style={styles.actionButtonText}>Send Message</Text>
-        </TouchableOpacity>
+        <View style={{ gap: 10 }}>
+          {application.status === "accepted" && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colors.success, marginTop: 12 }]}
+              onPress={() => router.push({
+                pathname: "/project-setup",
+                params: {
+                  bidId: jobId,
+                  submissionId: application.id
+                }
+              } as any)}
+            >
+              <CheckCircle size={18} color={colors.white} />
+              <Text style={[styles.actionButtonText, { color: colors.white }]}>Initialize Project</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.messageButton, { backgroundColor: colors.primary }]}
+            onPress={onMessage}
+          >
+            <MessageCircle size={18} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Send Message</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -782,10 +786,12 @@ function ApplyModal({
   visible,
   onClose,
   onSubmit,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
+  colors: any;
 }) {
   const [formData, setFormData] = useState({
     coverLetter: "",
@@ -812,11 +818,11 @@ function ApplyModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Apply to Job</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Apply to Job</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -825,9 +831,9 @@ function ApplyModal({
           contentContainerStyle={styles.modalContentInner}
         >
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Cover Letter *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Cover Letter *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Tell them why you're a great fit for this job..."
               value={formData.coverLetter}
               onChangeText={(text) =>
@@ -836,45 +842,46 @@ function ApplyModal({
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Proposed Rate (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Proposed Rate (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g., $50/hour or $5,000 total"
               value={formData.proposedRate}
               onChangeText={(text) =>
                 setFormData({ ...formData, proposedRate: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Available From</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Available From</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="YYYY-MM-DD"
               value={formData.availableFrom}
               onChangeText={(text) =>
                 setFormData({ ...formData, availableFrom: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting || !formData.coverLetter}
           >
-            <Text style={styles.submitButtonText}>
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Submitting..." : "Submit Application"}
             </Text>
           </TouchableOpacity>
@@ -889,11 +896,13 @@ function MessageModal({
   onClose,
   onSend,
   recipientName,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   onSend: (message: string) => Promise<void>;
   recipientName: string;
+  colors: any;
 }) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -912,34 +921,34 @@ function MessageModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Message {recipientName}</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Message {recipientName}</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.messageModalContent}>
           <TextInput
-            style={[styles.input, styles.messageTextArea]}
+            style={[styles.input, styles.messageTextArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="Type your message..."
             value={message}
             onChangeText={setMessage}
             multiline
             numberOfLines={8}
             textAlignVertical="top"
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             autoFocus
           />
 
           <TouchableOpacity
-            style={[styles.submitButton, sending && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: colors.primary }, sending && styles.submitButtonDisabled]}
             onPress={handleSend}
             disabled={sending || !message.trim()}
           >
-            <MessageCircle size={20} color={Colors.white} />
-            <Text style={styles.submitButtonText}>
+            <MessageCircle size={20} color={colors.white} />
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {sending ? "Sending..." : "Send Message"}
             </Text>
           </TouchableOpacity>
@@ -955,12 +964,14 @@ function RequestEstimateModal({
   onSubmit,
   jobTitle,
   defaultLocation,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
   jobTitle: string;
   defaultLocation: string;
+  colors: any;
 }) {
   const [formData, setFormData] = useState({
     location: defaultLocation,
@@ -989,11 +1000,11 @@ function RequestEstimateModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Request Estimate</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Request Estimate</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -1001,28 +1012,28 @@ function RequestEstimateModal({
           style={styles.modalContent}
           contentContainerStyle={styles.modalContentInner}
         >
-          <View style={styles.estimateJobInfo}>
-            <Text style={styles.estimateJobLabel}>For Job:</Text>
-            <Text style={styles.estimateJobTitle}>{jobTitle}</Text>
+          <View style={[styles.estimateJobInfo, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.estimateJobLabel, { color: colors.textTertiary }]}>For Job:</Text>
+            <Text style={[styles.estimateJobTitle, { color: colors.text }]}>{jobTitle}</Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Site location for estimate"
               value={formData.location}
               onChangeText={(text) =>
                 setFormData({ ...formData, location: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Description *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Describe what needs to be estimated..."
               value={formData.description}
               onChangeText={(text) =>
@@ -1031,46 +1042,47 @@ function RequestEstimateModal({
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Preferred Date (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Preferred Date (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="YYYY-MM-DD"
               value={formData.preferredDate}
               onChangeText={(text) =>
                 setFormData({ ...formData, preferredDate: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Preferred Time (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Preferred Time (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g., 10:00 AM"
               value={formData.preferredTime}
               onChangeText={(text) =>
                 setFormData({ ...formData, preferredTime: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting || !formData.location || !formData.description}
           >
-            <Calendar size={20} color={Colors.white} />
-            <Text style={styles.submitButtonText}>
+            <Calendar size={20} color={colors.white} />
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Requesting..." : "Send Request"}
             </Text>
           </TouchableOpacity>
@@ -1087,6 +1099,7 @@ function BookAppointmentModal({
   jobTitle,
   defaultLocation,
   jobPoster,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -1094,6 +1107,7 @@ function BookAppointmentModal({
   jobTitle: string;
   defaultLocation: string;
   jobPoster: string;
+  colors: any;
 }) {
   const [formData, setFormData] = useState({
     location: defaultLocation,
@@ -1122,11 +1136,11 @@ function BookAppointmentModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Book Estimate Appointment</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Book Estimate Appointment</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -1134,62 +1148,62 @@ function BookAppointmentModal({
           style={styles.modalContent}
           contentContainerStyle={styles.modalContentInner}
         >
-          <View style={styles.estimateJobInfo}>
-            <Text style={styles.estimateJobLabel}>For Job:</Text>
-            <Text style={styles.estimateJobTitle}>{jobTitle}</Text>
-            <Text style={styles.estimateJobSubtitle}>Meeting with: {jobPoster}</Text>
+          <View style={[styles.estimateJobInfo, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.estimateJobLabel, { color: colors.textTertiary }]}>For Job:</Text>
+            <Text style={[styles.estimateJobTitle, { color: colors.text }]}>{jobTitle}</Text>
+            <Text style={[styles.estimateJobSubtitle, { color: colors.textSecondary }]}>Meeting with: {jobPoster}</Text>
           </View>
 
-          <View style={styles.infoCard}>
-            <Calendar size={20} color={Colors.primary} />
-            <Text style={styles.infoCardText}>
+          <View style={[styles.infoCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+            <Calendar size={20} color={colors.primary} />
+            <Text style={[styles.infoCardText, { color: colors.textSecondary }]}>
               Book an appointment to visit the site and provide an estimate. The job poster will be notified.
             </Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Site location for estimate"
               value={formData.location}
               onChangeText={(text) =>
                 setFormData({ ...formData, location: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Date *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Date *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="YYYY-MM-DD"
               value={formData.date}
               onChangeText={(text) =>
                 setFormData({ ...formData, date: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Time *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Time *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g., 10:00 AM"
               value={formData.time}
               onChangeText={(text) =>
                 setFormData({ ...formData, time: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Notes (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Notes (Optional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Any specific details or questions..."
               value={formData.notes}
               onChangeText={(text) =>
@@ -1198,20 +1212,21 @@ function BookAppointmentModal({
               multiline
               numberOfLines={4}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting || !formData.location || !formData.date || !formData.time}
           >
-            <Calendar size={20} color={Colors.white} />
-            <Text style={styles.submitButtonText}>
+            <Calendar size={20} color={colors.white} />
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Booking..." : "Book Appointment"}
             </Text>
           </TouchableOpacity>
@@ -1224,16 +1239,20 @@ function BookAppointmentModal({
 function InviteModal({
   visible,
   onClose,
+  jobId,
   jobTitle,
   existingApplicants,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
+  jobId: string;
   jobTitle: string;
   existingApplicants: string[];
+  colors: any;
 }) {
   const { user } = useAuth();
-  const { addNotification } = useJobs();
+  const { inviteContractor, addNotification } = useJobs();
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1251,16 +1270,32 @@ function InviteModal({
       setLoadingUsers(true);
       console.log("[API] GET /contractors (for invite)");
       const response = await contractorsAPI.getAll();
-      const contractors = response?.data || response || [];
-      const filtered = Array.isArray(contractors) ? contractors.filter(
-        (c: any) =>
-          c.id !== user?.id &&
-          !existingApplicants.includes(c.id) &&
-          (c.role === "SUB" || c.role === "TS" || c.role_code === "SUB" || c.role_code === "TS") &&
-          (searchQuery === "" ||
-            (c.fullName || c.full_name || c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (c.company || c.companyName || c.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()))
-      ) : [];
+      console.log("[InviteModal] API Response success:", response?.success);
+      const contractorsData = response?.data?.contractors || response?.data || response || [];
+      const contractorsArray = Array.isArray(contractorsData) ? contractorsData : [];
+      console.log("[InviteModal] Raw contractors count:", contractorsArray.length);
+      if (contractorsArray.length > 0) {
+        console.log("[InviteModal] First contractor role/id:", contractorsArray[0].role, contractorsArray[0].id);
+      }
+
+      const filtered = contractorsArray.filter(
+        (c: any) => {
+          const role = (c.role || "").toLowerCase();
+          const isContractorRole = role.includes("contractor") ||
+            role.includes("sub") ||
+            role.includes("special") ||
+            role === "ts";
+
+          return c.id !== user?.id &&
+            (!existingApplicants.includes(c.id)) &&
+            isContractorRole &&
+            (searchQuery === "" ||
+              (c.fullName || c.full_name || c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (c.first_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (c.last_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (c.company || c.companyName || c.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+      );
       setAvailableUsers(filtered);
     } catch (error: any) {
       console.log("[API ERROR]", error);
@@ -1290,20 +1325,7 @@ function InviteModal({
     setSending(true);
     try {
       for (const userId of selectedUsers) {
-        const invitedUser = availableUsers.find((u) => u.id === userId);
-        if (invitedUser) {
-          await addNotification({
-            id: `notif-${Date.now()}-${userId}`,
-            userId: userId,
-            jobId: "",
-            type: "new_job",
-            title: "Job Invitation",
-            message: `${user?.fullName || "User"} invited you to apply for ${jobTitle}`,
-            read: false,
-            createdAt: new Date().toISOString(),
-            data: { invitedBy: user?.fullName || "User" },
-          });
-        }
+        await inviteContractor(jobId, userId, `Hi, I'd like to invite you to apply for my job: ${jobTitle}`);
       }
       Alert.alert("Success", `Invited ${selectedUsers.length} contractor(s) to apply`);
       setSelectedUsers([]);
@@ -1319,43 +1341,48 @@ function InviteModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Invite Users to Apply</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Invite Users to Apply</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.inviteModalContent}>
-          <View style={styles.inviteJobInfo}>
-            <Text style={styles.inviteJobLabel}>For Job:</Text>
-            <Text style={styles.inviteJobTitle}>{jobTitle}</Text>
+          <View style={[styles.inviteJobInfo, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.inviteJobLabel, { color: colors.textTertiary }]}>For Job:</Text>
+            <Text style={[styles.inviteJobTitle, { color: colors.text }]}>{jobTitle}</Text>
           </View>
 
           <View style={styles.searchContainer}>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Search contractors..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           {selectedUsers.length > 0 && (
-            <View style={styles.selectedCount}>
-              <Text style={styles.selectedCountText}>
+            <View style={[styles.selectedCount, { backgroundColor: colors.primary + "20" }]}>
+              <Text style={[styles.selectedCountText, { color: colors.primary }]}>
                 {selectedUsers.length} user{selectedUsers.length > 1 ? "s" : ""} selected
               </Text>
             </View>
           )}
 
           <ScrollView style={styles.usersList}>
-            {availableUsers.length === 0 ? (
+            {loadingUsers ? (
               <View style={styles.emptyInviteList}>
-                <AlertCircle size={48} color={Colors.textTertiary} />
-                <Text style={styles.emptyInviteText}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.emptyInviteText, { color: colors.textSecondary }]}>Loading contractors...</Text>
+              </View>
+            ) : availableUsers.length === 0 ? (
+              <View style={styles.emptyInviteList}>
+                <AlertCircle size={48} color={colors.textTertiary} />
+                <Text style={[styles.emptyInviteText, { color: colors.textSecondary }]}>
                   {searchQuery
                     ? "No contractors found matching your search"
                     : "No available contractors to invite"}
@@ -1367,17 +1394,21 @@ function InviteModal({
                   key={inviteUser.id}
                   style={[
                     styles.userCard,
-                    selectedUsers.includes(inviteUser.id) && styles.userCardSelected,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    selectedUsers.includes(inviteUser.id) && [styles.userCardSelected, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }],
                   ]}
                   onPress={() => toggleUser(inviteUser.id)}
                 >
                   <View style={styles.userCardInfo}>
-                    <Text style={styles.userCardName}>{(inviteUser as any).fullName || (inviteUser as any).name || "User"}</Text>
-                    <Text style={styles.userCardCompany}>{inviteUser.company}</Text>
-                    <Text style={styles.userCardRole}>{inviteUser.role}</Text>
+                    <Text style={[styles.userCardName, { color: colors.text }]}>
+                      {(inviteUser as any).fullName || (inviteUser as any).full_name || (inviteUser as any).name ||
+                        ((inviteUser as any).first_name ? `${(inviteUser as any).first_name} ${(inviteUser as any).last_name || ''}`.trim() : "User")}
+                    </Text>
+                    <Text style={[styles.userCardCompany, { color: colors.textSecondary }]}>{(inviteUser as any).company_name || inviteUser.company}</Text>
+                    <Text style={[styles.userCardRole, { color: colors.textTertiary }]}>{inviteUser.role}</Text>
                   </View>
                   {selectedUsers.includes(inviteUser.id) && (
-                    <CheckCircle size={24} color={Colors.primary} />
+                    <CheckCircle size={24} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))
@@ -1387,14 +1418,15 @@ function InviteModal({
           <TouchableOpacity
             style={[
               styles.sendInvitesButton,
+              { backgroundColor: colors.primary },
               (sending || selectedUsers.length === 0) &&
               styles.sendInvitesButtonDisabled,
             ]}
             onPress={handleSendInvites}
             disabled={sending || selectedUsers.length === 0}
           >
-            <Send size={20} color={Colors.white} />
-            <Text style={styles.sendInvitesButtonText}>
+            <Send size={20} color={colors.white} />
+            <Text style={[styles.sendInvitesButtonText, { color: colors.white }]}>
               {sending
                 ? "Sending..."
                 : `Send ${selectedUsers.length > 0 ? selectedUsers.length : ""} Invite${selectedUsers.length !== 1 ? "s" : ""}`}
@@ -1409,7 +1441,7 @@ function InviteModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -1418,10 +1450,10 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   titleContainer: {
     flexDirection: "row",
@@ -1433,7 +1465,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginRight: 12,
   },
   urgencyBadge: {
@@ -1444,17 +1476,17 @@ const styles = StyleSheet.create({
   urgencyText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   company: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginBottom: 4,
   },
   postedBy: {
     fontSize: 14,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   detailsGrid: {
     flexDirection: "row",
@@ -1465,43 +1497,43 @@ const styles = StyleSheet.create({
   detailCard: {
     flex: 1,
     minWidth: "45%",
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     gap: 6,
   },
   detailLabel: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginTop: 4,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   section: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     marginBottom: 1,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 12,
   },
   budget: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   description: {
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   requirementItem: {
     flexDirection: "row",
@@ -1512,7 +1544,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     marginTop: 7,
     marginRight: 12,
   },
@@ -1520,15 +1552,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.text,
+    color: staticColors.text,
   },
   applicationCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   applicantHeader: {
     flexDirection: "row",
@@ -1548,11 +1580,11 @@ const styles = StyleSheet.create({
   applicantName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   applicantDetail: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -1563,18 +1595,18 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   coverLetterLabel: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginBottom: 6,
   },
   coverLetterText: {
     fontSize: 14,
     lineHeight: 20,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 12,
   },
   proposedRateContainer: {
@@ -1586,22 +1618,22 @@ const styles = StyleSheet.create({
   proposedRateText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   applicationMeta: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
   },
   applicationDate: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   availableFrom: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   applicationActions: {
     flexDirection: "row",
@@ -1618,31 +1650,31 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   acceptButton: {
-    backgroundColor: Colors.success,
+    backgroundColor: staticColors.success,
   },
   rejectButton: {
-    backgroundColor: Colors.error,
+    backgroundColor: staticColors.error,
   },
   messageButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
   },
   actionButtonText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   footer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
     padding: 16,
   },
   applyButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -1650,7 +1682,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   appliedSection: {
     gap: 12,
@@ -1665,21 +1697,21 @@ const styles = StyleSheet.create({
   appliedText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.success,
+    color: staticColors.success,
   },
   requestEstimateButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
   },
   requestEstimateText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   emptyState: {
     flex: 1,
@@ -1690,11 +1722,11 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   modalHeader: {
     flexDirection: "row",
@@ -1703,13 +1735,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderBottomColor: staticColors.border,
+    backgroundColor: staticColors.surface,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   modalContent: {
     flex: 1,
@@ -1728,18 +1760,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   textArea: {
     minHeight: 120,
@@ -1750,25 +1782,25 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   estimateJobInfo: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   estimateJobLabel: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginBottom: 4,
   },
   estimateJobTitle: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   submitButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -1782,7 +1814,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   headerActions: {
     flexDirection: "row" as const,
@@ -1794,9 +1826,9 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   tab: {
     flex: 1,
@@ -1806,20 +1838,20 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: Colors.primary,
+    borderBottomColor: staticColors.primary,
   },
   tabText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   tabTextActive: {
-    color: Colors.primary,
+    color: staticColors.primary,
     fontWeight: "700" as const,
   },
   postedDate: {
     fontSize: 13,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginTop: 4,
   },
   actionsRow: {
@@ -1836,12 +1868,12 @@ const styles = StyleSheet.create({
   actionCardText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   actionCardCount: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   applicantsContainer: {
     padding: 16,
@@ -1855,11 +1887,11 @@ const styles = StyleSheet.create({
   emptyApplicantsTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   emptyApplicantsText: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     maxWidth: 280,
   },
@@ -1867,7 +1899,7 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
@@ -1876,7 +1908,7 @@ const styles = StyleSheet.create({
   inviteButtonText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   applicantsList: {
     gap: 12,
@@ -1887,7 +1919,7 @@ const styles = StyleSheet.create({
   applicantsTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 16,
   },
   statusCounts: {
@@ -1907,7 +1939,7 @@ const styles = StyleSheet.create({
   },
   statusCountText: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontWeight: "600" as const,
   },
   inviteModalContent: {
@@ -1915,38 +1947,38 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inviteJobInfo: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   inviteJobLabel: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginBottom: 4,
   },
   inviteJobTitle: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   searchContainer: {
     marginBottom: 16,
   },
   searchInput: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   selectedCount: {
-    backgroundColor: Colors.primary + "20",
+    backgroundColor: staticColors.primary + "20",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -1955,7 +1987,7 @@ const styles = StyleSheet.create({
   selectedCountText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
     textAlign: "center" as const,
   },
   usersList: {
@@ -1970,7 +2002,7 @@ const styles = StyleSheet.create({
   },
   emptyInviteText: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     maxWidth: 280,
   },
@@ -1978,16 +2010,16 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   userCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "10",
+    borderColor: staticColors.primary,
+    backgroundColor: staticColors.primary + "10",
   },
   userCardInfo: {
     flex: 1,
@@ -1996,22 +2028,22 @@ const styles = StyleSheet.create({
   userCardName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   userCardCompany: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   userCardRole: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   sendInvitesButton: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
   },
@@ -2021,16 +2053,16 @@ const styles = StyleSheet.create({
   sendInvitesButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   bookAppointmentCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: staticColors.primary + "10",
     borderRadius: 12,
     padding: 20,
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: staticColors.primary + "30",
     gap: 16,
   },
   bookAppointmentContent: {
@@ -2039,12 +2071,12 @@ const styles = StyleSheet.create({
   bookAppointmentTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   bookAppointmentText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 20,
   },
   footerRow: {
@@ -2057,37 +2089,37 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
   },
   bookAppointmentButtonText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   infoCard: {
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
     gap: 12,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: staticColors.primary + "10",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: staticColors.primary + "30",
   },
   infoCardText: {
     flex: 1,
     fontSize: 13,
     lineHeight: 20,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   estimateJobSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginTop: 4,
   },
   loadingContainer: {
@@ -2099,6 +2131,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
 });

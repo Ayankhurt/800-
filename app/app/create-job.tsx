@@ -1,5 +1,22 @@
-import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+
+const staticColors = {
+    primary: "#2563EB",
+    secondary: "#F97316",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    white: "#FFFFFF",
+    black: "#000000",
+    background: "#F8FAFC",
+    surface: "#FFFFFF",
+    text: "#0F172A",
+    textSecondary: "#64748B",
+    textTertiary: "#94A3B8",
+    border: "#E2E8F0",
+    info: "#3B82F6",
+    primaryLight: "#EFF6FF",
+};
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -20,7 +37,7 @@ import { ArrowLeft, Briefcase } from 'lucide-react-native';
 
 export default function CreateJobScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, colors } = useAuth();
     const toast = useToast();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,15 +166,15 @@ export default function CreateJobScreen() {
                     headerShown: true,
                     headerTitle: 'Create Job',
                     headerStyle: {
-                        backgroundColor: Colors.surface,
+                        backgroundColor: colors.surface,
                     },
                     headerTitleStyle: {
-                        color: Colors.text,
+                        color: colors.text,
                         fontWeight: '700',
                     },
                     headerLeft: () => (
                         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                            <ArrowLeft size={24} color={Colors.text} />
+                            <ArrowLeft size={24} color={colors.text} />
                         </TouchableOpacity>
                     ),
                 }}
@@ -166,7 +183,7 @@ export default function CreateJobScreen() {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <View style={styles.iconContainer}>
-                        <Briefcase size={32} color={Colors.primary} />
+                        <Briefcase size={32} color={colors.primary} />
                     </View>
                     <Text style={styles.headerTitle}>Post a New Job</Text>
                     <Text style={styles.headerSubtitle}>
@@ -183,7 +200,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={[styles.input, errors.title && styles.inputError]}
                             placeholder="e.g., Office Renovation"
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.title}
                             onChangeText={(value) => handleInputChange('title', value)}
                             editable={!isSubmitting}
@@ -199,7 +216,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={[styles.textArea, errors.description && styles.inputError]}
                             placeholder="Describe the job in detail..."
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.description}
                             onChangeText={(value) => handleInputChange('description', value)}
                             multiline
@@ -221,7 +238,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={[styles.input, errors.location && styles.inputError]}
                             placeholder="e.g., New York, NY"
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.location}
                             onChangeText={(value) => handleInputChange('location', value)}
                             editable={!isSubmitting}
@@ -237,7 +254,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={[styles.input, errors.budget && styles.inputError]}
                             placeholder="e.g., $50,000 - $75,000"
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.budget}
                             onChangeText={(value) => handleInputChange('budget', value)}
                             keyboardType="default"
@@ -254,7 +271,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={[styles.input, errors.timeline && styles.inputError]}
                             placeholder="e.g., 3 months"
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.timeline}
                             onChangeText={(value) => handleInputChange('timeline', value)}
                             editable={!isSubmitting}
@@ -268,7 +285,7 @@ export default function CreateJobScreen() {
                         <TextInput
                             style={styles.textArea}
                             placeholder="List any specific requirements or qualifications..."
-                            placeholderTextColor={Colors.textTertiary}
+                            placeholderTextColor={colors.textTertiary}
                             value={formData.requirements}
                             onChangeText={(value) => handleInputChange('requirements', value)}
                             multiline
@@ -314,7 +331,7 @@ export default function CreateJobScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: staticColors.background,
     },
     scrollView: {
         flex: 1,
@@ -327,15 +344,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 32,
         paddingHorizontal: 24,
-        backgroundColor: Colors.surface,
+        backgroundColor: staticColors.surface,
         borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+        borderBottomColor: staticColors.border,
     },
     iconContainer: {
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: Colors.primary + '15',
+        backgroundColor: staticColors.primary + '15',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
@@ -343,12 +360,12 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: Colors.text,
+        color: staticColors.text,
         marginBottom: 8,
     },
     headerSubtitle: {
         fontSize: 14,
-        color: Colors.textSecondary,
+        color: staticColors.textSecondary,
         textAlign: 'center',
     },
     form: {
@@ -360,55 +377,55 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 16,
         fontWeight: '600',
-        color: Colors.text,
+        color: staticColors.text,
         marginBottom: 8,
     },
     required: {
-        color: Colors.error,
+        color: staticColors.error,
     },
     input: {
-        backgroundColor: Colors.surface,
+        backgroundColor: staticColors.surface,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: staticColors.border,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
         fontSize: 16,
-        color: Colors.text,
+        color: staticColors.text,
     },
     inputError: {
-        borderColor: Colors.error,
+        borderColor: staticColors.error,
         borderWidth: 2,
     },
     textArea: {
-        backgroundColor: Colors.surface,
+        backgroundColor: staticColors.surface,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: staticColors.border,
         borderRadius: 12,
         paddingVertical: 12,
         paddingHorizontal: 16,
         fontSize: 16,
-        color: Colors.text,
+        color: staticColors.text,
         minHeight: 120,
     },
     charCount: {
         fontSize: 12,
-        color: Colors.textTertiary,
+        color: staticColors.textTertiary,
         marginTop: 4,
         textAlign: 'right',
     },
     errorText: {
         fontSize: 12,
-        color: Colors.error,
+        color: staticColors.error,
         marginTop: 4,
     },
     submitButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: staticColors.primary,
         borderRadius: 12,
         paddingVertical: 16,
         alignItems: 'center',
         marginTop: 8,
-        shadowColor: Colors.primary,
+        shadowColor: staticColors.primary,
         shadowOffset: {
             width: 0,
             height: 4,
@@ -427,7 +444,7 @@ const styles = StyleSheet.create({
     },
     footNote: {
         fontSize: 12,
-        color: Colors.textTertiary,
+        color: staticColors.textTertiary,
         marginTop: 16,
         textAlign: 'center',
     },

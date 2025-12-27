@@ -60,15 +60,38 @@ export default function FinanceScreen() {
   const fetchFinanceData = async () => {
     try {
       setLoading(true);
-      console.log("[API] GET /payments");
-      console.log("[API] GET /payouts");
-      const [paymentsRes, payoutsRes] = await Promise.all([
+      console.log("[API] GET /admin/transactions");
+      console.log("[API] GET /admin/payouts");
+      console.log("[API] GET /admin/dashboard/stats");
+
+      const [paymentsRes, payoutsRes, analyticsRes] = await Promise.all([
         adminAPI.getAllPayments(),
         adminAPI.getAllPayouts(),
+        adminAPI.getAnalytics().catch(() => null),
       ]);
 
-      setPayments(Array.isArray(paymentsRes?.data || paymentsRes) ? (paymentsRes?.data || paymentsRes) : []);
-      setPayouts(Array.isArray(payoutsRes?.data || payoutsRes) ? (payoutsRes?.data || payoutsRes) : []);
+      const paymentsData = Array.isArray(paymentsRes?.data || paymentsRes) ? (paymentsRes?.data || paymentsRes) : [];
+      const payoutsData = Array.isArray(payoutsRes?.data || payoutsRes) ? (payoutsRes?.data || payoutsRes) : [];
+
+      setPayments(paymentsData);
+      setPayouts(payoutsData);
+
+      if (analyticsRes?.success && analyticsRes?.data) {
+        setFinanceData(analyticsRes.data);
+      } else {
+        // Calculate local totals as fallback
+        const totalPayments = paymentsData.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+        const totalPayouts = payoutsData.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+        const pendingPayouts = payoutsData
+          .filter((p: any) => p.status?.toLowerCase() === "pending")
+          .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+
+        setFinanceData({
+          total_revenue: totalPayments, // Map to fields expected by UI
+          total_payouts: totalPayouts,
+          pending_balance: pendingPayouts,
+        });
+      }
     } catch (error: any) {
       console.log("[API ERROR]", error);
       Alert.alert("Error", error?.response?.data?.message || error?.message || "Something went wrong");
@@ -167,9 +190,9 @@ export default function FinanceScreen() {
     );
   }
 
-  const totalPayments = financeData?.total_payments || financeData?.total_earnings || 0;
-  const totalPayouts = financeData?.total_payouts || 0;
-  const pendingPayouts = financeData?.pending_balance || 0;
+  const totalPayments = financeData?.total_revenue || financeData?.totalRevenue || financeData?.total_payments || financeData?.total_earnings || 0;
+  const totalPayouts = financeData?.total_payouts || financeData?.totalPayouts || 0;
+  const pendingPayouts = financeData?.pending_payouts || financeData?.pending_balance || 0;
   const pendingPayoutsList = payouts.filter((p) => p.status?.toLowerCase() === "pending");
 
   return (

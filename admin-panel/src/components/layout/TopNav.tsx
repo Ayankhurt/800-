@@ -93,7 +93,7 @@ export function TopNav({ currentUser, onLogout }: TopNavProps) {
   // Fixed: Access notifications correctly from backend response
   const notifications = notificationsData?.data?.notifications || [];
   const unreadCount = unreadCountData?.data?.unread || 0;
-  const unreadNotifications = notifications.filter((n: any) => !n.is_read);
+  const unreadNotifications = notifications.filter((n: any) => !(n.is_reads || n.is_read));
 
   const initials = currentUser?.name
     ? currentUser.name
@@ -146,14 +146,14 @@ export function TopNav({ currentUser, onLogout }: TopNavProps) {
                         <DropdownMenuItem
                           className="flex flex-col items-start p-3 cursor-pointer"
                           onClick={() => {
-                            if (!notification.is_read) {
+                            if (!(notification.is_reads || notification.is_read)) {
                               markAsReadMutation.mutate(notification.id);
                             }
                           }}
                         >
                           <div className="flex items-start justify-between w-full">
                             <div className="flex-1">
-                              <p className={`text-sm font-medium ${!notification.is_read ? 'font-semibold' : ''}`}>
+                              <p className={`text-sm font-medium ${!(notification.is_reads || notification.is_read) ? 'font-semibold' : ''}`}>
                                 {notification.title || 'Notification'}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
@@ -163,7 +163,7 @@ export function TopNav({ currentUser, onLogout }: TopNavProps) {
                                 {getTimeAgo(notification.created_at)}
                               </p>
                             </div>
-                            {!notification.is_read && (
+                            {!(notification.is_reads || notification.is_read) && (
                               <div className="h-2 w-2 bg-blue-600 rounded-full ml-2 mt-1" />
                             )}
                           </div>
@@ -182,7 +182,7 @@ export function TopNav({ currentUser, onLogout }: TopNavProps) {
                     onClick={() => {
                       // Mark all as read
                       notifications.forEach((n: any) => {
-                        if (!n.is_read) {
+                        if (!(n.is_reads || n.is_read)) {
                           markAsReadMutation.mutate(n.id);
                         }
                       });

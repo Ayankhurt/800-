@@ -11,7 +11,25 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import Colors from "@/constants/colors";
+import { userAPI } from "@/services/api";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 import {
   Sparkles,
   Building2,
@@ -45,10 +63,10 @@ interface ProfileData {
 }
 
 export default function OnboardingScreen() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, colors } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("profile");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const [profileData, setProfileData] = useState<ProfileData>({
     bio: "",
     location: "",
@@ -77,7 +95,7 @@ export default function OnboardingScreen() {
             : "Describe your expertise and what makes you stand out"
         );
       }
-      
+
       if (!profileData.location) {
         newSuggestions.push("Add your location to help clients find you");
       }
@@ -107,12 +125,12 @@ export default function OnboardingScreen() {
       if (!profileData.licenseNumber) {
         newSuggestions.push("Adding a license number increases trust by 60%");
       }
-      
+
       if (!profileData.insuranceAmount) {
         newSuggestions.push("Verified insurance coverage can increase your bids by 40%");
       }
 
-      if (user?.role === "Subcontractor" || user?.role === "Trade Specialist") {
+      if (user?.role === "SUB" || user?.role === "TS") {
         newSuggestions.push("Complete verification to access premium job postings");
       }
     }
@@ -122,24 +140,20 @@ export default function OnboardingScreen() {
 
   const getRoleSuggestions = () => {
     const role = user?.role;
-    
+
     if (role === "GC") {
       return [
         "Highlight your project management credentials",
         "Mention notable projects you've completed",
         "Include team size and capabilities",
       ];
-    }
-    
-    if (role === "Subcontractor" || role === "Trade Specialist") {
+    } else if (role === "SUB" || role === "TS") {
       return [
         "Showcase your specialized skills",
         "List certifications and training",
         "Mention equipment and tools you own",
       ];
-    }
-    
-    if (role === "Project Manager") {
+    } else if (role === "PM") {
       return [
         "Detail your project coordination experience",
         "Include software tools you're proficient in",
@@ -156,19 +170,19 @@ export default function OnboardingScreen() {
 
   const getTradesSuggestions = () => {
     const role = user?.role;
-    
+
     if (role === "GC") {
       return ["General Contractor", "Project Management", "Construction Management"];
     }
-    
+
     if (profileData.trades.includes("Electrical")) {
       return ["Low Voltage", "Solar Installation", "Generator Installation"];
     }
-    
+
     if (profileData.trades.includes("Plumbing")) {
       return ["Gas Lines", "Water Heaters", "Drain Cleaning"];
     }
-    
+
     if (profileData.trades.includes("HVAC")) {
       return ["Duct Work", "Air Quality", "Refrigeration"];
     }
@@ -178,7 +192,7 @@ export default function OnboardingScreen() {
 
   const handleNext = async () => {
     const stepIndex = ONBOARDING_STEPS.findIndex(s => s.id === currentStep);
-    
+
     if (stepIndex < ONBOARDING_STEPS.length - 1) {
       setCurrentStep(ONBOARDING_STEPS[stepIndex + 1].id);
     } else {
@@ -192,8 +206,38 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     setIsLoading(true);
-    
+
     try {
+      console.log("[Onboarding] Completing profile setup...");
+
+      // 1. Update basic profile info
+      const basicProfileData = {
+        bio: profileData.bio,
+        location: profileData.location,
+      };
+
+      await userAPI.updateProfile(basicProfileData);
+
+      // 2. Update contractor-specific info
+      if (user?.role === "GC" || user?.role === "SUB" || user?.role === "TS") {
+        const contractorData = {
+          experience_years: profileData.yearsExperience ? parseInt(profileData.yearsExperience) : undefined,
+          specialties: profileData.specialties,
+          license_number: profileData.licenseNumber,
+          insurance_amount: profileData.insuranceAmount ? parseFloat(profileData.insuranceAmount) : undefined,
+          service_area: profileData.serviceArea,
+          trade_specialization: profileData.trades.join(", "),
+        };
+
+        // Remove undefined values
+        const cleanContractorData = Object.fromEntries(
+          Object.entries(contractorData).filter(([_, v]) => v !== undefined)
+        );
+
+        await userAPI.updateContractorProfile(cleanContractorData);
+      }
+
+      // 3. Update local context state
       await updateUser({
         ...user,
         ...profileData,
@@ -204,23 +248,24 @@ export default function OnboardingScreen() {
         "Your profile has been set up. You can always update it later in settings.",
         [{ text: "Get Started", onPress: () => router.replace("/(tabs)") }]
       );
-    } catch (error) {
-      Alert.alert("Error", "Failed to save profile. Please try again.");
+    } catch (error: any) {
+      console.error("[Onboarding] Error saving profile:", error);
+      Alert.alert("Error", error.response?.data?.message || error.message || "Failed to save profile. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const renderProgressBar = () => {
-    const stepIndex = ONBOARDING_STEPS.findIndex(s => s.id === currentStep);
+    const stepIndex = ONBOARDING_STEPS.findIndex((s) => s.id === currentStep);
     const progress = ((stepIndex + 1) / ONBOARDING_STEPS.length) * 100;
 
     return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+      <View style={[styles.progressContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+          <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
         </View>
-        <Text style={styles.progressText}>
+        <Text style={[styles.progressText, { color: colors.textSecondary }]}>
           Step {stepIndex + 1} of {ONBOARDING_STEPS.length}
         </Text>
       </View>
@@ -231,15 +276,15 @@ export default function OnboardingScreen() {
     if (suggestions.length === 0) return null;
 
     return (
-      <View style={styles.suggestionsCard}>
+      <View style={[styles.suggestionsCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary + "20" }]}>
         <View style={styles.suggestionsHeader}>
-          <Sparkles size={18} color={Colors.primary} />
-          <Text style={styles.suggestionsTitle}>Smart Suggestions</Text>
+          <Sparkles size={18} color={colors.primary} />
+          <Text style={[styles.suggestionsTitle, { color: colors.primary }]}>Smart Suggestions</Text>
         </View>
         {suggestions.map((suggestion, index) => (
           <View key={index} style={styles.suggestionItem}>
-            <CheckCircle size={14} color={Colors.success} />
-            <Text style={styles.suggestionText}>{suggestion}</Text>
+            <CheckCircle size={14} color={colors.success} />
+            <Text style={[styles.suggestionText, { color: colors.text }]}>{suggestion}</Text>
           </View>
         ))}
       </View>
@@ -249,9 +294,9 @@ export default function OnboardingScreen() {
   const renderProfileStep = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <Building2 size={32} color={Colors.primary} />
-        <Text style={styles.stepTitle}>Complete Your Profile</Text>
-        <Text style={styles.stepSubtitle}>
+        <Building2 size={32} color={colors.primary} />
+        <Text style={[styles.stepTitle, { color: colors.text }]}>Complete Your Profile</Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           Help others get to know you and your business
         </Text>
       </View>
@@ -260,14 +305,14 @@ export default function OnboardingScreen() {
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Professional Bio</Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.label, { color: colors.text }]}>Professional Bio</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
             {getRoleSuggestions()[0]}
           </Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder={`Tell others about your ${user?.role === "GC" ? "company and experience" : "skills and expertise"}...`}
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={profileData.bio}
             onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
             multiline
@@ -276,13 +321,13 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.inputWithIcon}>
-            <MapPin size={18} color={Colors.textSecondary} />
+          <Text style={[styles.label, { color: colors.text }]}>Location</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MapPin size={18} color={colors.textSecondary} />
             <TextInput
-              style={[styles.input, styles.inputWithIconText]}
+              style={[styles.input, styles.inputWithIconText, { color: colors.text }]}
               placeholder="City, State"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={profileData.location}
               onChangeText={(text) => setProfileData({ ...profileData, location: text })}
             />
@@ -290,13 +335,13 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Years of Experience</Text>
-          <View style={styles.inputWithIcon}>
-            <Clock size={18} color={Colors.textSecondary} />
+          <Text style={[styles.label, { color: colors.text }]}>Years of Experience</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Clock size={18} color={colors.textSecondary} />
             <TextInput
-              style={[styles.input, styles.inputWithIconText]}
+              style={[styles.input, styles.inputWithIconText, { color: colors.text }]}
               placeholder="e.g., 5, 10, 15+"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={profileData.yearsExperience}
               onChangeText={(text) => setProfileData({ ...profileData, yearsExperience: text })}
               keyboardType="number-pad"
@@ -310,9 +355,9 @@ export default function OnboardingScreen() {
   const renderExpertiseStep = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <Briefcase size={32} color={Colors.primary} />
-        <Text style={styles.stepTitle}>Your Expertise</Text>
-        <Text style={styles.stepSubtitle}>
+        <Briefcase size={32} color={colors.primary} />
+        <Text style={[styles.stepTitle, { color: colors.text }]}>Your Expertise</Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           Select your trades and specialties to get matched with relevant work
         </Text>
       </View>
@@ -321,10 +366,10 @@ export default function OnboardingScreen() {
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Primary Trade(s)</Text>
-          <Text style={styles.hint}>Select all that apply</Text>
-          <ScrollView 
-            horizontal 
+          <Text style={[styles.label, { color: colors.text }]}>Primary Trade(s)</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>Select all that apply</Text>
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.chipsContainer}
           >
@@ -335,7 +380,8 @@ export default function OnboardingScreen() {
                   key={trade}
                   style={[
                     styles.chip,
-                    isSelected && styles.chipSelected,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    isSelected && [styles.chipSelected, { backgroundColor: colors.primary, borderColor: colors.primary }],
                   ]}
                   onPress={() => {
                     if (isSelected) {
@@ -353,7 +399,8 @@ export default function OnboardingScreen() {
                 >
                   <Text style={[
                     styles.chipText,
-                    isSelected && styles.chipTextSelected,
+                    { color: colors.text },
+                    isSelected && [styles.chipTextSelected, { color: colors.white }],
                   ]}>
                     {trade}
                   </Text>
@@ -364,8 +411,8 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Specialties</Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.label, { color: colors.text }]}>Specialties</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
             What makes you unique? Add custom specialties
           </Text>
           <View style={styles.suggestedChips}>
@@ -376,7 +423,8 @@ export default function OnboardingScreen() {
                   key={specialty}
                   style={[
                     styles.chip,
-                    isSelected && styles.chipSelected,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    isSelected && [styles.chipSelected, { backgroundColor: colors.primary, borderColor: colors.primary }],
                   ]}
                   onPress={() => {
                     if (isSelected) {
@@ -394,7 +442,8 @@ export default function OnboardingScreen() {
                 >
                   <Text style={[
                     styles.chipText,
-                    isSelected && styles.chipTextSelected,
+                    { color: colors.text },
+                    isSelected && [styles.chipTextSelected, { color: colors.white }],
                   ]}>
                     {specialty}
                   </Text>
@@ -405,11 +454,11 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Service Area</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Service Area</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="e.g., Within 50 miles of Denver, CO"
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={profileData.serviceArea}
             onChangeText={(text) => setProfileData({ ...profileData, serviceArea: text })}
           />
@@ -421,39 +470,39 @@ export default function OnboardingScreen() {
   const renderVerificationStep = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <Shield size={32} color={Colors.primary} />
-        <Text style={styles.stepTitle}>Build Trust</Text>
-        <Text style={styles.stepSubtitle}>
+        <Shield size={32} color={colors.primary} />
+        <Text style={[styles.stepTitle, { color: colors.text }]}>Build Trust</Text>
+        <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>
           Verification increases your chances of winning bids
         </Text>
       </View>
 
       {renderSuggestions()}
 
-      <View style={styles.trustStats}>
+      <View style={[styles.trustStats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.trustStat}>
-          <Text style={styles.trustStatValue}>60%</Text>
-          <Text style={styles.trustStatLabel}>Higher Trust</Text>
+          <Text style={[styles.trustStatValue, { color: colors.primary }]}>60%</Text>
+          <Text style={[styles.trustStatLabel, { color: colors.textSecondary }]}>Higher Trust</Text>
         </View>
         <View style={styles.trustStat}>
-          <Text style={styles.trustStatValue}>40%</Text>
-          <Text style={styles.trustStatLabel}>More Bids</Text>
+          <Text style={[styles.trustStatValue, { color: colors.primary }]}>40%</Text>
+          <Text style={[styles.trustStatLabel, { color: colors.textSecondary }]}>More Bids</Text>
         </View>
         <View style={styles.trustStat}>
-          <Text style={styles.trustStatValue}>3x</Text>
-          <Text style={styles.trustStatLabel}>More Callbacks</Text>
+          <Text style={[styles.trustStatValue, { color: colors.primary }]}>3x</Text>
+          <Text style={[styles.trustStatLabel, { color: colors.textSecondary }]}>More Callbacks</Text>
         </View>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>License Number (Optional)</Text>
-          <View style={styles.inputWithIcon}>
-            <FileText size={18} color={Colors.textSecondary} />
+          <Text style={[styles.label, { color: colors.text }]}>License Number (Optional)</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <FileText size={18} color={colors.textSecondary} />
             <TextInput
-              style={[styles.input, styles.inputWithIconText]}
+              style={[styles.input, styles.inputWithIconText, { color: colors.text }]}
               placeholder="Enter your license number"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={profileData.licenseNumber}
               onChangeText={(text) => setProfileData({ ...profileData, licenseNumber: text })}
             />
@@ -461,21 +510,21 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Insurance Coverage (Optional)</Text>
-          <View style={styles.inputWithIcon}>
-            <Shield size={18} color={Colors.textSecondary} />
+          <Text style={[styles.label, { color: colors.text }]}>Insurance Coverage (Optional)</Text>
+          <View style={[styles.inputWithIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Shield size={18} color={colors.textSecondary} />
             <TextInput
-              style={[styles.input, styles.inputWithIconText]}
+              style={[styles.input, styles.inputWithIconText, { color: colors.text }]}
               placeholder="e.g., $1M General Liability"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={profileData.insuranceAmount}
               onChangeText={(text) => setProfileData({ ...profileData, insuranceAmount: text })}
             />
           </View>
         </View>
 
-        <View style={styles.verificationInfo}>
-          <Text style={styles.verificationInfoText}>
+        <View style={[styles.verificationInfo, { backgroundColor: colors.info + "15", borderColor: colors.info + "30" }]}>
+          <Text style={[styles.verificationInfoText, { color: colors.text }]}>
             You can upload verification documents later in your profile settings.
             Verified accounts get priority in search results!
           </Text>
@@ -501,9 +550,9 @@ export default function OnboardingScreen() {
   const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {renderProgressBar()}
-      
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -512,28 +561,28 @@ export default function OnboardingScreen() {
         {renderStep()}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={styles.skipButton}
+          style={[styles.skipButton, { borderColor: colors.border }]}
           onPress={handleSkip}
           disabled={isLoading}
         >
-          <Text style={styles.skipButtonText}>Skip for now</Text>
+          <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>Skip for now</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.nextButton}
+          style={[styles.nextButton, { backgroundColor: colors.primary }]}
           onPress={handleNext}
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.surface} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <>
-              <Text style={styles.nextButtonText}>
+              <Text style={[styles.nextButtonText, { color: colors.white }]}>
                 {isLastStep ? "Complete" : "Next"}
               </Text>
-              <ChevronRight size={20} color={Colors.surface} />
+              <ChevronRight size={20} color={colors.white} />
             </>
           )}
         </TouchableOpacity>
@@ -545,7 +594,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -557,25 +606,25 @@ const styles = StyleSheet.create({
   progressContainer: {
     padding: 16,
     paddingTop: 60,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   progressBar: {
     height: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: staticColors.border,
     borderRadius: 2,
     overflow: "hidden",
     marginBottom: 8,
   },
   progressFill: {
     height: "100%",
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 2,
   },
   progressText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontWeight: "600" as const,
     textAlign: "center",
   },
@@ -590,22 +639,22 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     textAlign: "center",
   },
   stepSubtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center",
     lineHeight: 22,
   },
   suggestionsCard: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     borderRadius: 16,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: staticColors.primary + "20",
   },
   suggestionsHeader: {
     flexDirection: "row",
@@ -616,7 +665,7 @@ const styles = StyleSheet.create({
   suggestionsTitle: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   suggestionItem: {
     flexDirection: "row",
@@ -626,7 +675,7 @@ const styles = StyleSheet.create({
   suggestionText: {
     flex: 1,
     fontSize: 13,
-    color: Colors.text,
+    color: staticColors.text,
     lineHeight: 18,
   },
   form: {
@@ -638,21 +687,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   hint: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginTop: -4,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 15,
-    color: Colors.text,
+    color: staticColors.text,
   },
   textArea: {
     height: 120,
@@ -662,9 +711,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -687,30 +736,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   chipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: staticColors.primary,
+    borderColor: staticColors.primary,
   },
   chipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   chipTextSelected: {
-    color: Colors.surface,
+    color: staticColors.white,
   },
   trustStats: {
     flexDirection: "row",
     justifyContent: "space-around",
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   trustStat: {
     alignItems: "center",
@@ -719,23 +768,23 @@ const styles = StyleSheet.create({
   trustStatValue: {
     fontSize: 28,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   trustStatLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontWeight: "600" as const,
   },
   verificationInfo: {
-    backgroundColor: Colors.info + "15",
+    backgroundColor: staticColors.info + "15",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.info + "30",
+    borderColor: staticColors.info + "30",
   },
   verificationInfoText: {
     fontSize: 13,
-    color: Colors.text,
+    color: staticColors.text,
     lineHeight: 20,
   },
   footer: {
@@ -746,29 +795,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     padding: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
   },
   skipButton: {
     flex: 1,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     alignItems: "center",
   },
   skipButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   nextButton: {
     flex: 2,
     flexDirection: "row",
     padding: 16,
     borderRadius: 12,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -776,6 +825,6 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.surface,
+    color: staticColors.white,
   },
 });

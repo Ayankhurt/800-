@@ -66,7 +66,7 @@ export const getDisputes = async (req, res) => {
             .from("disputes")
             .select(`
         *,
-        project:projects (id, title, owner_id, contractor_id),
+        project:projects!disputes_project_id_fkey (id, title, owner_id, contractor_id),
         raised_by_user:users!disputes_raised_by_fkey (id, first_name, last_name, avatar_url)
       `, { count: 'exact' })
             .range(offset, offset + limit - 1)
@@ -109,7 +109,7 @@ export const getDisputeById = async (req, res) => {
             .from("disputes")
             .select(`
         *,
-        project:projects (
+        project:projects!disputes_project_id_fkey (
             *,
             conversations (
                 *,

@@ -6,30 +6,46 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
- Image } from "react-native";
+  Image
+} from "react-native";
 import { Stack, router } from "expo-router";
 import { X, Star, MapPin, Briefcase, DollarSign } from "lucide-react-native";
 import { Contractor } from "@/types";
 import { PromotionalBadges, getBadgesForContractor } from "@/components/PromotionalBadges";
 
 
-interface ContractorComparisonProps {
-  contractors?: Contractor[];
-}
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 
 const ComparisonRow: React.FC<{
   label: string;
   values: (string | number | React.ReactNode)[];
-}> = ({ label, values }) => {
+  colors: any;
+}> = ({ label, values, colors }) => {
   return (
-    <View style={styles.row}>
-      <View style={styles.labelCell}>
-        <Text style={styles.labelText}>{label}</Text>
+    <View style={[styles.row, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
+      <View style={[styles.labelCell, { backgroundColor: colors.background }]}>
+        <Text style={[styles.labelText, { color: colors.textSecondary }]}>{label}</Text>
       </View>
       {values.map((value, index) => (
         <View key={index} style={styles.valueCell}>
           {typeof value === "string" || typeof value === "number" ? (
-            <Text style={styles.valueText}>{value}</Text>
+            <Text style={[styles.valueText, { color: colors.text }]}>{value}</Text>
           ) : (
             value
           )}
@@ -40,6 +56,7 @@ const ComparisonRow: React.FC<{
 };
 
 export default function ContractorComparison() {
+  const { colors } = useAuth();
   const [selectedContractors, setSelectedContractors] = useState<Contractor[]>([
     {
       id: "1",
@@ -102,28 +119,28 @@ export default function ContractorComparison() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Compare Contractors",
-          headerStyle: { backgroundColor: "#fff" },
-          headerTintColor: "#111827",
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
         }}
       />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.table}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerLabelCell}>
-              <Text style={styles.headerLabelText}>Compare</Text>
+          <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            <View style={[styles.headerLabelCell, { backgroundColor: colors.background }]}>
+              <Text style={[styles.headerLabelText, { color: colors.text }]}>Compare</Text>
             </View>
             {selectedContractors.map((contractor) => (
-              <View key={contractor.id} style={styles.contractorHeader}>
+              <View key={contractor.id} style={[styles.contractorHeader, { backgroundColor: colors.surface }]}>
                 <TouchableOpacity
-                  style={styles.removeButton}
+                  style={[styles.removeButton, { backgroundColor: colors.error + "20" }]}
                   onPress={() => removeContractor(contractor.id)}
                 >
-                  <X size={16} color="#ef4444" />
+                  <X size={16} color={colors.error} />
                 </TouchableOpacity>
                 <Image
                   source={
@@ -133,12 +150,12 @@ export default function ContractorComparison() {
                   }
                   style={styles.avatar}
                 />
-                <Text style={styles.contractorName}>{contractor.name}</Text>
-                <Text style={styles.contractorCompany}>{contractor.company}</Text>
+                <Text style={[styles.contractorName, { color: colors.text }]}>{contractor.name}</Text>
+                <Text style={[styles.contractorCompany, { color: colors.textSecondary }]}>{contractor.company}</Text>
                 <View style={styles.ratingContainer}>
                   <Star size={14} color="#fbbf24" fill="#fbbf24" />
-                  <Text style={styles.rating}>{contractor.rating}</Text>
-                  <Text style={styles.reviewCount}>({contractor.reviewCount})</Text>
+                  <Text style={[styles.rating, { color: colors.text }]}>{contractor.rating}</Text>
+                  <Text style={[styles.reviewCount, { color: colors.textSecondary }]}>({contractor.reviewCount})</Text>
                 </View>
                 <View style={styles.badgesContainer}>
                   <PromotionalBadges
@@ -153,51 +170,58 @@ export default function ContractorComparison() {
 
           <ComparisonRow
             label="Location"
+            colors={colors}
             values={selectedContractors.map((c) => (
               <View key={c.id} style={styles.iconRow}>
-                <MapPin size={14} color="#6b7280" />
-                <Text style={styles.valueText}>{c.location}</Text>
+                <MapPin size={14} color={colors.textSecondary} />
+                <Text style={[styles.valueText, { color: colors.text }]}>{c.location}</Text>
               </View>
             ))}
           />
 
           <ComparisonRow
             label="Trade"
+            colors={colors}
             values={selectedContractors.map((c) => c.trade)}
           />
 
           <ComparisonRow
             label="Experience"
+            colors={colors}
             values={selectedContractors.map((c) => `${c.yearsInBusiness} years`)}
           />
 
           <ComparisonRow
             label="Completed Projects"
+            colors={colors}
             values={selectedContractors.map((c) => (
               <View key={c.id} style={styles.iconRow}>
-                <Briefcase size={14} color="#6b7280" />
-                <Text style={styles.valueText}>{c.completedProjects}</Text>
+                <Briefcase size={14} color={colors.textSecondary} />
+                <Text style={[styles.valueText, { color: colors.text }]}>{c.completedProjects}</Text>
               </View>
             ))}
           />
 
           <ComparisonRow
             label="Insurance"
+            colors={colors}
             values={selectedContractors.map((c) => (
               <View key={c.id} style={styles.iconRow}>
-                <DollarSign size={14} color="#10b981" />
-                <Text style={styles.valueText}>{c.insuranceAmount}</Text>
+                <DollarSign size={14} color={colors.success} />
+                <Text style={[styles.valueText, { color: colors.text }]}>{c.insuranceAmount}</Text>
               </View>
             ))}
           />
 
           <ComparisonRow
             label="License"
+            colors={colors}
             values={selectedContractors.map((c) => c.licenseNumber || "N/A")}
           />
 
           <ComparisonRow
             label="Response Time"
+            colors={colors}
             values={selectedContractors.map((c) =>
               c.trustIndicators
                 ? `${c.trustIndicators.responseTime} min`
@@ -207,6 +231,7 @@ export default function ContractorComparison() {
 
           <ComparisonRow
             label="Response Rate"
+            colors={colors}
             values={selectedContractors.map((c) =>
               c.trustIndicators ? `${c.trustIndicators.responseRate}%` : "N/A"
             )}
@@ -214,6 +239,7 @@ export default function ContractorComparison() {
 
           <ComparisonRow
             label="On-Time Rate"
+            colors={colors}
             values={selectedContractors.map((c) =>
               c.trustIndicators ? `${c.trustIndicators.onTimeRate}%` : "N/A"
             )}
@@ -221,6 +247,7 @@ export default function ContractorComparison() {
 
           <ComparisonRow
             label="Repeat Clients"
+            colors={colors}
             values={selectedContractors.map((c) =>
               c.trustIndicators
                 ? `${c.trustIndicators.repeatClientRate}%`
@@ -230,26 +257,27 @@ export default function ContractorComparison() {
 
           <ComparisonRow
             label="Specialties"
+            colors={colors}
             values={selectedContractors.map((c) => (
               <View key={c.id} style={styles.specialtiesContainer}>
                 {c.specialties?.slice(0, 3).map((specialty, idx) => (
-                  <View key={idx} style={styles.specialtyTag}>
-                    <Text style={styles.specialtyText}>{specialty}</Text>
+                  <View key={idx} style={[styles.specialtyTag, { backgroundColor: colors.info + "20" }]}>
+                    <Text style={[styles.specialtyText, { color: colors.info }]}>{specialty}</Text>
                   </View>
                 ))}
               </View>
             ))}
           />
 
-          <View style={styles.actionsRow}>
-            <View style={styles.labelCell} />
+          <View style={[styles.actionsRow, { backgroundColor: colors.background }]}>
+            <View style={[styles.labelCell, { backgroundColor: colors.background }]} />
             {selectedContractors.map((contractor) => (
               <View key={contractor.id} style={styles.valueCell}>
                 <TouchableOpacity
-                  style={styles.contactButton}
+                  style={[styles.contactButton, { backgroundColor: colors.primary }]}
                   onPress={() => router.push(`/contractor-profile?id=${contractor.id}`)}
                 >
-                  <Text style={styles.contactButtonText}>View Profile</Text>
+                  <Text style={[styles.contactButtonText, { color: colors.white }]}>View Profile</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -263,33 +291,33 @@ export default function ContractorComparison() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
   },
   table: {
     minWidth: 800,
   },
   headerRow: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 2,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: staticColors.border,
   },
   headerLabelCell: {
     width: 150,
     padding: 16,
     justifyContent: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
   },
   headerLabelText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
   },
   contractorHeader: {
     width: 220,
     padding: 16,
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
   },
   removeButton: {
     position: "absolute",
@@ -298,7 +326,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#fee2e2",
+    backgroundColor: staticColors.error + "20",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -311,12 +339,12 @@ const styles = StyleSheet.create({
   contractorName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 2,
   },
   contractorCompany: {
     fontSize: 13,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
     marginBottom: 6,
   },
   ratingContainer: {
@@ -328,11 +356,11 @@ const styles = StyleSheet.create({
   rating: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#111827",
+    color: staticColors.text,
   },
   reviewCount: {
     fontSize: 13,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   badgesContainer: {
     marginTop: 4,
@@ -340,19 +368,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    backgroundColor: "#fff",
+    borderBottomColor: staticColors.border,
+    backgroundColor: staticColors.surface,
   },
   labelCell: {
     width: 150,
     padding: 16,
     justifyContent: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
   },
   labelText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#374151",
+    color: staticColors.textSecondary,
   },
   valueCell: {
     width: 220,
@@ -362,7 +390,7 @@ const styles = StyleSheet.create({
   },
   valueText: {
     fontSize: 14,
-    color: "#111827",
+    color: staticColors.text,
     textAlign: "center",
   },
   iconRow: {
@@ -379,21 +407,21 @@ const styles = StyleSheet.create({
   specialtyTag: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: "#dbeafe",
+    backgroundColor: staticColors.info + "20",
     borderRadius: 4,
   },
   specialtyText: {
     fontSize: 11,
-    color: "#1e40af",
+    color: staticColors.info,
     fontWeight: "600" as const,
   },
   actionsRow: {
     flexDirection: "row",
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
     paddingVertical: 16,
   },
   contactButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: staticColors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -401,6 +429,6 @@ const styles = StyleSheet.create({
   contactButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#fff",
+    color: staticColors.white,
   },
 });

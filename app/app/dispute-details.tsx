@@ -23,10 +23,28 @@ import { useDisputes } from "@/contexts/DisputesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
+
 export default function DisputeDetailsPage() {
   const { id } = useLocalSearchParams();
-  const { user } = useAuth();
-  const { disputes, updateDisputeStatus, escalateDispute } = useDisputes();
+  const { user, colors } = useAuth();
+  const { disputes, updateDisputeStatus, escalateDispute, addEvidence } = useDisputes();
   const [resolution, setResolution] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,11 +55,11 @@ export default function DisputeDetailsPage() {
 
   if (!dispute) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ title: "Dispute Not Found" }} />
         <View style={styles.notFound}>
-          <AlertCircle size={48} color="#9ca3af" />
-          <Text style={styles.notFoundText}>Dispute not found</Text>
+          <AlertCircle size={48} color={colors.textTertiary} />
+          <Text style={[styles.notFoundText, { color: colors.textSecondary }]}>Dispute not found</Text>
         </View>
       </View>
     );
@@ -50,32 +68,32 @@ export default function DisputeDetailsPage() {
   const getStatusIcon = () => {
     switch (dispute.status) {
       case "filed":
-        return <AlertCircle size={24} color="#f59e0b" />;
+        return <AlertCircle size={24} color={colors.warning} />;
       case "under_review":
-        return <Clock size={24} color="#3b82f6" />;
+        return <Clock size={24} color={colors.info} />;
       case "in_mediation":
         return <FileText size={24} color="#8b5cf6" />;
       case "resolved":
-        return <CheckCircle size={24} color="#10b981" />;
+        return <CheckCircle size={24} color={colors.success} />;
       case "closed":
-        return <XCircle size={24} color="#6b7280" />;
+        return <XCircle size={24} color={colors.textSecondary} />;
     }
   };
 
   const getStatusColor = () => {
     switch (dispute.status) {
       case "filed":
-        return "#f59e0b";
+        return colors.warning;
       case "under_review":
-        return "#3b82f6";
+        return colors.info;
       case "in_mediation":
         return "#8b5cf6";
       case "resolved":
-        return "#10b981";
+        return colors.success;
       case "closed":
-        return "#6b7280";
+        return colors.textSecondary;
       default:
-        return "#6b7280";
+        return colors.textSecondary;
     }
   };
 
@@ -98,7 +116,7 @@ export default function DisputeDetailsPage() {
       Alert.alert("Error", "Please provide a resolution description");
       return;
     }
-    
+
     if (isAdmin) {
       // Use admin API for resolving
       setLoading(true);
@@ -122,6 +140,42 @@ export default function DisputeDetailsPage() {
     }
   };
 
+  const handleAddEvidence = () => {
+    Alert.alert(
+      "Add Evidence",
+      "What type of evidence would you like to add?",
+      [
+        {
+          text: "Photo",
+          onPress: () => {
+            // In a real app, open image picker
+            addEvidence(dispute.id, { photos: ["added-photo-" + Date.now() + ".jpg"] });
+            Alert.alert("Success", "Photo evidence added");
+          }
+        },
+        {
+          text: "Document",
+          onPress: () => {
+            addEvidence(dispute.id, { documents: ["added-doc-" + Date.now() + ".pdf"] });
+            Alert.alert("Success", "Document evidence added");
+          }
+        },
+        {
+          text: "Message",
+          onPress: () => {
+            Alert.prompt("Add Message", "Enter the message to add as evidence", (msg) => {
+              if (msg) {
+                addEvidence(dispute.id, { messages: [msg] });
+                Alert.alert("Success", "Message evidence added");
+              }
+            });
+          }
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
   const handleReassignDispute = () => {
     Alert.prompt(
       "Reassign Dispute",
@@ -130,7 +184,7 @@ export default function DisputeDetailsPage() {
         { text: "Cancel", style: "cancel" },
         {
           text: "Reassign",
-          onPress: async (userId) => {
+          onPress: async (userId: string | undefined) => {
             if (!userId) {
               Alert.alert("Error", "Please enter a user ID");
               return;
@@ -175,24 +229,24 @@ export default function DisputeDetailsPage() {
   const isResolved = dispute.status === "resolved" || dispute.status === "closed";
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Dispute Details",
-          headerStyle: { backgroundColor: "#fff" },
-          headerTintColor: "#111827",
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
         }}
       />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View style={styles.headerTop}>
             {getStatusIcon()}
             <View style={styles.headerText}>
-              <Text style={styles.disputeType}>
+              <Text style={[styles.disputeType, { color: colors.text }]}>
                 {dispute.disputeType.replace("_", " ").toUpperCase()}
               </Text>
-              <Text style={styles.disputeId}>Case #{dispute.id}</Text>
+              <Text style={[styles.disputeId, { color: colors.textSecondary }]}>Case #{dispute.id}</Text>
             </View>
           </View>
 
@@ -203,71 +257,78 @@ export default function DisputeDetailsPage() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Details</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Filed By:</Text>
-            <Text style={styles.infoValue}>{dispute.filedByName}</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Details</Text>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border + "40" }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Filed By:</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{dispute.filedByName}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Filed On:</Text>
-            <Text style={styles.infoValue}>
-              {new Date(dispute.createdAt).toLocaleDateString()}
+          <View style={[styles.infoRow, { borderBottomColor: colors.border + "40" }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Filed On:</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>
+              {dispute.createdAt ? new Date(dispute.createdAt).toLocaleDateString() : 'N/A'}
             </Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Resolution Stage:</Text>
-            <Text style={styles.infoValue}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border + "40" }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Resolution Stage:</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>
               {dispute.resolutionStage.charAt(0).toUpperCase() + dispute.resolutionStage.slice(1)}
             </Text>
           </View>
           {dispute.amountDisputed && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Amount in Dispute:</Text>
-              <Text style={[styles.infoValue, styles.amountText]}>
-                ${dispute.amountDisputed.toLocaleString()}
+            <View style={[styles.infoRow, { borderBottomColor: colors.border + "40" }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Amount in Dispute:</Text>
+              <Text style={[styles.infoValue, styles.amountText, { color: colors.error }]}>
+                ${(dispute.amountDisputed || 0).toLocaleString()}
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{dispute.description}</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>{dispute.description}</Text>
         </View>
 
         {dispute.desiredResolution && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Desired Resolution</Text>
-            <Text style={styles.description}>{dispute.desiredResolution}</Text>
+          <View style={[styles.section, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Desired Resolution</Text>
+            <Text style={[styles.description, { color: colors.textSecondary }]}>{dispute.desiredResolution}</Text>
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Evidence</Text>
-          
+        <View style={[styles.section, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Evidence</Text>
+            {!isResolved && (
+              <TouchableOpacity onPress={handleAddEvidence}>
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>Add Evidence</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {dispute.evidence.photos.length > 0 && (
             <View style={styles.evidenceItem}>
-              <ImageIcon size={20} color="#6b7280" />
-              <Text style={styles.evidenceText}>
+              <ImageIcon size={20} color={colors.textSecondary} />
+              <Text style={[styles.evidenceText, { color: colors.textSecondary }]}>
                 {dispute.evidence.photos.length} photo(s)
               </Text>
             </View>
           )}
-          
+
           {dispute.evidence.documents.length > 0 && (
             <View style={styles.evidenceItem}>
-              <FileText size={20} color="#6b7280" />
-              <Text style={styles.evidenceText}>
+              <FileText size={20} color={colors.textSecondary} />
+              <Text style={[styles.evidenceText, { color: colors.textSecondary }]}>
                 {dispute.evidence.documents.length} document(s)
               </Text>
             </View>
           )}
-          
+
           {dispute.evidence.messages.length > 0 && (
             <View style={styles.evidenceItem}>
-              <MessageSquare size={20} color="#6b7280" />
-              <Text style={styles.evidenceText}>
+              <MessageSquare size={20} color={colors.textSecondary} />
+              <Text style={[styles.evidenceText, { color: colors.textSecondary }]}>
                 {dispute.evidence.messages.length} message(s)
               </Text>
             </View>
@@ -276,17 +337,17 @@ export default function DisputeDetailsPage() {
           {dispute.evidence.photos.length === 0 &&
             dispute.evidence.documents.length === 0 &&
             dispute.evidence.messages.length === 0 && (
-              <Text style={styles.noEvidence}>No evidence provided</Text>
+              <Text style={[styles.noEvidence, { color: colors.textTertiary }]}>No evidence provided</Text>
             )}
         </View>
 
         {dispute.resolution && (
-          <View style={[styles.section, styles.resolutionSection]}>
-            <Text style={[styles.sectionTitle, styles.resolutionTitle]}>Resolution</Text>
-            <Text style={styles.description}>{dispute.resolution}</Text>
+          <View style={[styles.section, styles.resolutionSection, { backgroundColor: colors.primaryLight, borderColor: colors.success + "60" }]}>
+            <Text style={[styles.sectionTitle, styles.resolutionTitle, { color: colors.success }]}>Resolution</Text>
+            <Text style={[styles.description, { color: colors.text }]}>{dispute.resolution}</Text>
             {dispute.resolvedAt && (
-              <Text style={styles.resolvedDate}>
-                Resolved on {new Date(dispute.resolvedAt).toLocaleDateString()}
+              <Text style={[styles.resolvedDate, { color: colors.success }]}>
+                Resolved on {dispute.resolvedAt ? new Date(dispute.resolvedAt).toLocaleDateString() : 'N/A'}
               </Text>
             )}
           </View>
@@ -294,11 +355,12 @@ export default function DisputeDetailsPage() {
 
         {!isResolved && (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Add Resolution</Text>
+            <View style={[styles.section, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Resolution</Text>
               <TextInput
-                style={styles.textArea}
+                style={[styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                 placeholder="Describe the resolution or outcome..."
+                placeholderTextColor={colors.textTertiary}
                 multiline
                 numberOfLines={4}
                 value={resolution}
@@ -309,21 +371,21 @@ export default function DisputeDetailsPage() {
             <View style={styles.actionsContainer}>
               {dispute.resolutionStage !== "legal" && (
                 <TouchableOpacity
-                  style={styles.escalateButton}
+                  style={[styles.escalateButton, { backgroundColor: colors.surface, borderColor: colors.warning }]}
                   onPress={handleEscalate}
                 >
-                  <ArrowUpCircle size={20} color="#f59e0b" />
-                  <Text style={styles.escalateButtonText}>Escalate</Text>
+                  <ArrowUpCircle size={20} color={colors.warning} />
+                  <Text style={[styles.escalateButtonText, { color: colors.warning }]}>Escalate</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={styles.resolveButton}
+                style={[styles.resolveButton, { backgroundColor: colors.success }]}
                 onPress={handleResolve}
                 disabled={loading}
               >
-                <CheckCircle size={20} color="#fff" />
-                <Text style={styles.resolveButtonText}>
+                <CheckCircle size={20} color={colors.white} />
+                <Text style={[styles.resolveButtonText, { color: colors.white }]}>
                   {isAdmin ? "Resolve Dispute" : "Mark Resolved"}
                 </Text>
               </TouchableOpacity>
@@ -331,29 +393,29 @@ export default function DisputeDetailsPage() {
               {/* Admin-only: Reassign Dispute */}
               {isAdmin && (
                 <TouchableOpacity
-                  style={styles.reassignButton}
+                  style={[styles.reassignButton, { backgroundColor: colors.info }]}
                   onPress={handleReassignDispute}
                   disabled={loading}
                 >
-                  <ArrowUpCircle size={20} color="#3b82f6" />
-                  <Text style={styles.reassignButtonText}>Reassign Dispute</Text>
+                  <ArrowUpCircle size={20} color={colors.white} />
+                  <Text style={[styles.reassignButtonText, { color: colors.white }]}>Reassign Dispute</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={styles.closeButton}
+                style={[styles.closeButton, { backgroundColor: colors.surface, borderColor: colors.error }]}
                 onPress={handleClose}
               >
-                <XCircle size={20} color="#ef4444" />
-                <Text style={styles.closeButtonText}>Close Dispute</Text>
+                <XCircle size={20} color={colors.error} />
+                <Text style={[styles.closeButtonText, { color: colors.error }]}>Close Dispute</Text>
               </TouchableOpacity>
             </View>
           </>
         )}
 
-        <View style={styles.infoBox}>
-          <Text style={styles.infoBoxTitle}>Resolution Process</Text>
-          <Text style={styles.infoBoxText}>
+        <View style={[styles.infoBox, { backgroundColor: colors.info + "15", borderColor: colors.info + "40" }]}>
+          <Text style={[styles.infoBoxTitle, { color: colors.info }]}>Resolution Process</Text>
+          <Text style={[styles.infoBoxText, { color: colors.textSecondary }]}>
             1. Internal Discussion - Direct communication between parties{"\n"}
             2. Platform Mediation - Our team facilitates resolution{"\n"}
             3. Professional Mediation - Third-party mediator assists{"\n"}
@@ -368,7 +430,7 @@ export default function DisputeDetailsPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -382,13 +444,13 @@ const styles = StyleSheet.create({
   notFoundText: {
     marginTop: 16,
     fontSize: 18,
-    color: "#9ca3af",
+    color: staticColors.textTertiary,
   },
   header: {
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: staticColors.border,
   },
   headerTop: {
     flexDirection: "row",
@@ -402,12 +464,12 @@ const styles = StyleSheet.create({
   disputeType: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 2,
   },
   disputeId: {
     fontSize: 13,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   statusBadge: {
     alignSelf: "flex-start",
@@ -421,15 +483,15 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     marginTop: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: staticColors.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: "#111827",
+    color: staticColors.text,
     marginBottom: 12,
   },
   infoRow: {
@@ -437,23 +499,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: staticColors.border + "40",
   },
   infoLabel: {
     fontSize: 14,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#111827",
+    color: staticColors.text,
   },
   amountText: {
-    color: "#ef4444",
+    color: staticColors.error,
   },
   description: {
     fontSize: 14,
-    color: "#374151",
+    color: staticColors.textSecondary,
     lineHeight: 22,
   },
   evidenceItem: {
@@ -464,36 +526,37 @@ const styles = StyleSheet.create({
   },
   evidenceText: {
     fontSize: 14,
-    color: "#6b7280",
+    color: staticColors.textSecondary,
   },
   noEvidence: {
     fontSize: 14,
-    color: "#9ca3af",
+    color: staticColors.textTertiary,
     fontStyle: "italic",
   },
   resolutionSection: {
-    backgroundColor: "#f0fdf4",
+    backgroundColor: staticColors.primaryLight,
     borderWidth: 1,
-    borderColor: "#86efac",
+    borderColor: staticColors.success + "60",
   },
   resolutionTitle: {
-    color: "#15803d",
+    color: staticColors.success,
   },
   resolvedDate: {
     fontSize: 12,
-    color: "#16a34a",
+    color: staticColors.success,
     marginTop: 8,
     fontStyle: "italic",
   },
   textArea: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: staticColors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
     minHeight: 100,
     textAlignVertical: "top",
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.background,
+    color: staticColors.text,
   },
   actionsContainer: {
     padding: 20,
@@ -505,79 +568,79 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderWidth: 2,
-    borderColor: "#f59e0b",
+    borderColor: staticColors.warning,
     padding: 14,
     borderRadius: 8,
   },
   escalateButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#f59e0b",
+    color: staticColors.warning,
   },
   resolveButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#10b981",
+    backgroundColor: staticColors.success,
     padding: 14,
     borderRadius: 8,
   },
   resolveButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#fff",
+    color: staticColors.white,
   },
   closeButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#fff",
+    backgroundColor: staticColors.surface,
     borderWidth: 2,
-    borderColor: "#ef4444",
+    borderColor: staticColors.error,
     padding: 14,
     borderRadius: 8,
   },
   closeButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#ef4444",
+    color: staticColors.error,
   },
   reassignButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#3b82f6",
+    backgroundColor: staticColors.info,
     padding: 14,
     borderRadius: 8,
   },
   reassignButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: "#fff",
+    color: staticColors.white,
   },
   infoBox: {
     margin: 20,
     padding: 16,
-    backgroundColor: "#eff6ff",
+    backgroundColor: staticColors.primaryLight,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#93c5fd",
+    borderColor: staticColors.info + "40",
     marginBottom: 32,
   },
   infoBoxTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: "#1e40af",
+    color: staticColors.info,
     marginBottom: 8,
   },
   infoBoxText: {
     fontSize: 14,
-    color: "#1e3a8a",
+    color: staticColors.textSecondary,
     lineHeight: 22,
   },
 });

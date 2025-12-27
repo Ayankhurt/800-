@@ -5,67 +5,71 @@ import logger from "../utils/logger.js";
 
 export const createJob = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const {
-            title, description, budget_min, budget_max, location,
-            trade_type, specialization, urgency, requirements, images, documents,
-            pay_type, pay_rate, start_date, end_date,
-            // Also accept these alternate field names from frontend
-            trade, budget, deadline, timeline
-        } = req.body;
+        const userId = req.user?.id;
+        console.log('[DEBUG] createJob req.body:', req.body);
+        if (!userId) return res.status(401).json(formatResponse(false, "Unauthorized", null));
 
-        // Use either field name
-        const finalTradeType = trade_type || trade;
-        const finalLocation = location;
+        const {
+            title,
+            description,
+            budget_min,
+            budget_max,
+            location,
+            trade_type,
+            requirements,
+            images,
+            start_date,
+            end_date
+        } = req.body;
 
         if (!title || !description) {
             return res.status(400).json(formatResponse(false, "Title and description are required", null));
         }
 
-        // Handle requirements - can be string or object
-        let finalRequirements = {};
-        if (requirements) {
-            if (typeof requirements === 'string') {
-                finalRequirements = { text: requirements };
-            } else {
-                finalRequirements = requirements;
-            }
-        }
+        const finalTradeType = trade_type || req.body.category || 'All';
+        const finalRequirements = requirements || {};
+        const finalLocation = location && location.trim() !== '' ? location : 'Location Not Specified';
+
+        const jobData = {
+            projects_manager_id: userId,
+            title,
+            descriptions: description,
+            budget_min: budget_min || 0,
+            budget_max: budget_max || 0,
+            locations: finalLocation, // FIXED: Database column is 'locations' (plural)
+            trade_type: finalTradeType,
+            requirements: finalRequirements,
+            images: images || [],
+            start_date: (start_date && !isNaN(Date.parse(start_date))) ? start_date : null,
+            end_date: (end_date && !isNaN(Date.parse(end_date))) ? end_date : null,
+            status: 'open'
+        };
+
+        console.log('[DEBUG] Inserting job with data:', JSON.stringify(jobData, null, 2));
 
         const { data, error } = await supabase
             .from("jobs")
-            .insert({
-                projects_manager_id: userId,
-                created_by: userId,
-                title,
-                descriptions: description,
-                budget_min: budget_min || null,
-                budget_max: budget_max || null,
-                location: finalLocation || null,
-                trade_type: finalTradeType || null,
-                specialization,
-                urgency: urgency || 'medium',
-                requirements: finalRequirements,
-                images: images || [],
-                documents: documents || [],
-                pay_type,
-                pay_rate,
-                start_date: (start_date && !isNaN(Date.parse(start_date))) ? start_date : null,
-                end_date: (end_date && !isNaN(Date.parse(end_date))) ? end_date : null,
-                timeline: deadline || timeline || null,
-                status: 'open',
-                application_count: 0
-            })
+            .insert(jobData)
             .select()
             .single();
 
         if (error) {
             logger.error('createJob DB Error:', error);
+            console.error('[ERROR] Job creation failed:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
             throw error;
         }
 
         // Notify PM that job is posted
-        await notificationService.send(userId, "Job Posted", `Your job "${title}" is now live and accepting applications.`, "success");
+        try {
+            await notificationService.send(userId, "Job Posted", `Your job "${title}" is now live and accepting applications.`, "success");
+        } catch (nErr) {
+            logger.error('Notification failed:', nErr);
+        }
 
         return res.status(201).json(formatResponse(true, "Job posted successfully", data));
     } catch (err) {
@@ -79,30 +83,65 @@ export const getJobs = async (req, res) => {
         const { page = 1, limit = 10, search, trade_type, location, min_budget, max_budget } = req.query;
         const offset = (page - 1) * limit;
 
+        // Use column-based join for robustness
         let query = supabase
             .from("jobs")
             .select(`
-        *,
-        description:descriptions,
-        project_manager:users!inner(id, first_name, last_name, avatar_url, trust_score)
-      `, { count: 'exact' })
+                *,
+                project_manager:users(id, first_name, last_name, avatar_url, trust_score)
+            `, { count: 'exact' })
             .eq('status', 'open')
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
         if (search) query = query.ilike('title', `%${search}%`);
         if (trade_type) query = query.eq('trade_type', trade_type);
-        if (location) query = query.ilike('location', `%${location}%`);
+        if (location) query = query.ilike('locations', `%${location}%`);
         if (min_budget) query = query.gte('budget_min', min_budget);
         if (max_budget) query = query.lte('budget_max', max_budget);
 
         const { data, count, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            logger.error('Get jobs error:', error);
+            // Fallback: fetch without join
+            const { data: fallbackData, count: fallbackCount, error: fError } = await supabase
+                .from("jobs")
+                .select("*", { count: 'exact' })
+                .eq('status', 'open')
+                .order('created_at', { ascending: false })
+                .range(offset, offset + limit - 1);
+
+            if (fError) throw fError;
+            return res.json(formatResponse(true, "Jobs retrieved (minimal)", { jobs: fallbackData, total: fallbackCount }));
+        }
+
+        // Fetch application counts for the jobs
+        if (data && data.length > 0) {
+            const jobIds = data.map(j => j.id);
+            const { data: counts } = await supabase
+                .from('job_applications')
+                .select('job_id')
+                .in('job_id', jobIds);
+
+            if (counts) {
+                const countMap = counts.reduce((acc, curr) => {
+                    acc[curr.job_id] = (acc[curr.job_id] || 0) + 1;
+                    return acc;
+                }, {});
+                data.forEach(j => {
+                    j.application_count = countMap[j.id] || 0;
+                    j.applications_count = j.application_count; // Both variants
+                    j.description = j.descriptions; // Alias
+                    j.location = j.locations; // Alias
+                });
+            }
+        }
 
         return res.json(formatResponse(true, "Jobs retrieved", { jobs: data, total: count, page: parseInt(page), pages: Math.ceil(count / limit) }));
     } catch (err) {
-        logger.error('getJobs Error:', err);
+        logger.error('getJobs global Error:', err);
+        console.error('[DEBUG] getJobs CRITICAL Error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -114,24 +153,31 @@ export const getJobById = async (req, res) => {
         const { data, error } = await supabase
             .from("jobs")
             .select(`
-        *,
-        description:descriptions,
-        project_manager:users!jobs_projects_manager_id_fkey(id, first_name, last_name, avatar_url, trust_score, created_at),
-        applications:job_applications!job_applications_job_id_fkey (count)
-      `)
+                *,
+                project_manager:users(id, first_name, last_name, avatar_url, trust_score, created_at)
+            `)
             .eq('id', id)
             .single();
 
-        if (error) {
-            console.error("getJobById Error:", error);
-            return res.status(404).json(formatResponse(false, "Job not found", null));
+        if (error || !data) {
+            logger.error("getJobById Error:", error);
+
+            // Fallback: minimal details
+            const { data: fallback, error: fError } = await supabase.from("jobs").select("*").eq("id", id).single();
+            if (fError || !fallback) return res.status(404).json(formatResponse(false, "Job not found", null));
+
+            return res.json(formatResponse(true, "Job details retrieved (minimal)", fallback));
         }
 
-        // Increment view count (optional, if RPC exists)
-        // await supabase.rpc('increment_job_view', { job_id: id }).catch(() => {});
+        if (data) {
+            data.description = data.descriptions;
+            data.location = data.locations;
+        }
 
         return res.json(formatResponse(true, "Job details retrieved", data));
     } catch (err) {
+        logger.error('getJobById global error:', err);
+        console.error('[DEBUG] getJobById CRITICAL error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -195,22 +241,17 @@ export const getJobApplications = async (req, res) => {
 
         if (!job) return res.status(404).json(formatResponse(false, "Job not found", null));
 
-        // Allow PM or Admin to view
+        let query = supabase.from("job_applications").select(`
+            *,
+            contractor:users!job_applications_contractor_id_fkey(id, first_name, last_name, avatar_url, trust_score)
+        `).eq("job_id", id);
+
+        // Filter: Admin/Owner sees all, Contractor only sees their own
         if (job.projects_manager_id !== userId && req.user.role !== 'admin') {
-            console.log(`[Auth Check] Failed: User ${userId} is not Owner ${job.projects_manager_id} nor Admin`);
-            // Return empty list instead of 403 to prevent UI errors for non-owners
-            return res.json(formatResponse(true, "Job applications retrieved (Hidden for non-owners)", []));
+            query = query.eq("contractor_id", userId);
         }
 
-        // Fetch applications with contractor details
-        const { data: applications, error } = await supabase
-            .from("job_applications")
-            .select(`
-                *,
-                contractor:users!job_applications_contractor_id_fkey(id, first_name, last_name, avatar_url, trust_score)
-            `)
-            .eq("job_id", id)
-            .order("created_at", { ascending: false });
+        const { data: applications, error } = await query.order("created_at", { ascending: false });
 
         if (error) {
             console.error("getJobApplications Error:", error);

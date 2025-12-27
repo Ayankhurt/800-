@@ -1,4 +1,4 @@
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { Stack } from "expo-router";
 import { HelpCircle, MessageCircle, Mail, Book, Phone } from "lucide-react-native";
 import React from "react";
@@ -12,21 +12,40 @@ import {
   Linking,
 } from "react-native";
 
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
+
 interface HelpItemProps {
   icon: React.ReactNode;
   label: string;
   description: string;
   onPress: () => void;
+  colors: any;
 }
 
-function HelpItem({ icon, label, description, onPress }: HelpItemProps) {
+function HelpItem({ icon, label, description, onPress, colors }: HelpItemProps) {
   return (
-    <TouchableOpacity style={styles.helpItem} onPress={onPress}>
+    <TouchableOpacity style={[styles.helpItem, { borderBottomColor: colors.border }]} onPress={onPress}>
       <View style={styles.helpLeft}>
-        <View style={styles.helpIcon}><Text>{icon}</Text></View>
+        <View style={styles.helpIcon}>{icon}</View>
         <View style={styles.helpContent}>
-          <Text style={styles.helpLabel}>{label}</Text>
-          <Text style={styles.helpDescription}>{description}</Text>
+          <Text style={[styles.helpLabel, { color: colors.text }]}>{label}</Text>
+          <Text style={[styles.helpDescription, { color: colors.textSecondary }]}>{description}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -36,23 +55,26 @@ function HelpItem({ icon, label, description, onPress }: HelpItemProps) {
 interface FAQItemProps {
   question: string;
   answer: string;
+  colors: any;
 }
 
-function FAQItem({ question, answer }: FAQItemProps) {
+function FAQItem({ question, answer, colors }: FAQItemProps) {
   const [expanded, setExpanded] = React.useState(false);
 
   return (
     <TouchableOpacity
-      style={styles.faqItem}
+      style={[styles.faqItem, { borderBottomColor: colors.border }]}
       onPress={() => setExpanded(!expanded)}
     >
-      <Text style={styles.faqQuestion}>{question}</Text>
-      {expanded && <Text style={styles.faqAnswer}>{answer}</Text>}
+      <Text style={[styles.faqQuestion, { color: colors.text }]}>{question}</Text>
+      {expanded && <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{answer}</Text>}
     </TouchableOpacity>
   );
 }
 
 export default function HelpScreen() {
+  const { colors } = useAuth();
+
   const handleChat = () => {
     Alert.alert(
       "Live Chat",
@@ -64,7 +86,7 @@ export default function HelpScreen() {
   const handleEmail = async () => {
     const email = "support@bidroom.com";
     const url = `mailto:${email}`;
-    
+
     try {
       await Linking.openURL(url);
     } catch (error) {
@@ -78,8 +100,8 @@ export default function HelpScreen() {
       "Call us at: 1-800-BIDROOM\n(1-800-243-7666)",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Call", 
+        {
+          text: "Call",
           onPress: async () => {
             try {
               await Linking.openURL("tel:18002437666");
@@ -101,95 +123,104 @@ export default function HelpScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Help & Support",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
-          headerTintColor: Colors.primary,
+          headerTintColor: colors.primary,
         }}
       />
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <HelpCircle size={48} color={Colors.primary} />
-          <Text style={styles.headerTitle}>How can we help?</Text>
-          <Text style={styles.headerDescription}>
+          <HelpCircle size={48} color={colors.primary} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>How can we help?</Text>
+          <Text style={[styles.headerDescription, { color: colors.textSecondary }]}>
             Get answers to your questions or reach out to our support team.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Support</Text>
-          <View style={styles.sectionContent}>
+          <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Contact Support</Text>
+          <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <HelpItem
-              icon={<MessageCircle size={20} color={Colors.primary} />}
+              icon={<MessageCircle size={20} color={colors.primary} />}
               label="Live Chat"
               description="Chat with our support team in real-time"
               onPress={handleChat}
+              colors={colors}
             />
             <HelpItem
-              icon={<Mail size={20} color={Colors.primary} />}
+              icon={<Mail size={20} color={colors.primary} />}
               label="Email Support"
               description="Send us an email and we'll respond within 24 hours"
               onPress={handleEmail}
+              colors={colors}
             />
             <HelpItem
-              icon={<Phone size={20} color={Colors.primary} />}
+              icon={<Phone size={20} color={colors.primary} />}
               label="Phone Support"
               description="Call us for immediate assistance"
               onPress={handlePhone}
+              colors={colors}
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resources</Text>
-          <View style={styles.sectionContent}>
+          <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Resources</Text>
+          <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <HelpItem
-              icon={<Book size={20} color={Colors.textSecondary} />}
+              icon={<Book size={20} color={colors.textSecondary} />}
               label="Documentation"
               description="Browse guides and tutorials"
               onPress={handleDocs}
+              colors={colors}
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          <View style={styles.sectionContent}>
+          <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Frequently Asked Questions</Text>
+          <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <FAQItem
               question="How do I post a new job?"
               answer="Navigate to the Jobs tab and tap the '+' button in the top right. Fill out the job details and submit."
+              colors={colors}
             />
             <FAQItem
               question="How do I submit a bid?"
               answer="Open any job listing and tap 'Submit Bid'. Enter your bid amount, timeline, and any relevant details."
+              colors={colors}
             />
             <FAQItem
               question="How do I schedule an appointment?"
               answer="From a job detail page, tap 'Book Appointment' and select a date and time that works for you."
+              colors={colors}
             />
             <FAQItem
               question="How do I verify my account?"
               answer="Complete the verification process in your profile settings to gain access to all features."
+              colors={colors}
             />
             <FAQItem
               question="Can I edit or delete my bid?"
               answer="Yes, you can edit or withdraw your bid before it's accepted. Go to your Bids tab and select the bid you want to modify."
+              colors={colors}
             />
           </View>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.textTertiary }]}>
             Still need help? Our support team is here to assist you.
           </Text>
         </View>
@@ -201,7 +232,7 @@ export default function HelpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -214,13 +245,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   headerDescription: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     lineHeight: 22,
   },
@@ -230,17 +261,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   sectionContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   helpItem: {
     flexDirection: "row" as const,
@@ -248,7 +279,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   helpLeft: {
     flexDirection: "row" as const,
@@ -267,30 +298,30 @@ const styles = StyleSheet.create({
   },
   helpLabel: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     fontWeight: "500" as const,
     marginBottom: 2,
   },
   helpDescription: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 18,
   },
   faqItem: {
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   faqQuestion: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     fontWeight: "600" as const,
     marginBottom: 8,
   },
   faqAnswer: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 20,
     marginTop: 4,
   },
@@ -301,7 +332,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     textAlign: "center" as const,
     lineHeight: 20,
   },

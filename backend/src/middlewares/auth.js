@@ -49,15 +49,25 @@ export const authenticateUser = async (req, res, next) => {
       .eq("id", userId)
       .single();
 
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      logger.error("Auth Middleware DB Error (Users):", error);
+      return res.status(500).json(formatResponse(false, "Internal Server Error during authentication"));
+    }
+
     // If not found in users table, check admin_users table
-    if (error || !user) {
+    if (!user) {
       const { data: adminUser, error: adminError } = await supabase
         .from("admin_users")
         .select("*")
         .eq("id", userId)
         .single();
 
-      if (adminError || !adminUser) {
+      if (adminError && adminError.code !== 'PGRST116') {
+        logger.error("Auth Middleware DB Error (Admins):", adminError);
+        return res.status(500).json(formatResponse(false, "Internal Server Error during authentication"));
+      }
+
+      if (!adminUser) {
         return res.status(401).json(formatResponse(false, "User profile not found"));
       }
 
@@ -79,10 +89,29 @@ export const authenticateUser = async (req, res, next) => {
 };
 
 export const requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'ADMIN')) {
     return res.status(403).json(formatResponse(false, "Access denied - Admin privileges required"));
   }
   next();
+};
+
+export const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json(formatResponse(false, "Unauthorized - User not found"));
+    }
+
+    const userRole = (req.user.role || '').toUpperCase();
+    const authorizedRoles = roles.map(r => r.toUpperCase());
+
+    if (!authorizedRoles.includes(userRole)) {
+      return res.status(403).json(
+        formatResponse(false, `Access denied - Authorization required`)
+      );
+    }
+
+    next();
+  };
 };
 
 // Export alias for backward compatibility if needed

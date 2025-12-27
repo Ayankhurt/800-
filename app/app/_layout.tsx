@@ -18,15 +18,32 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
-import Colors from "@/constants/colors";
 import AuthTest from "./(test)/AuthTest";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { isAuthenticated, loading, user, hydrationComplete, setNavigationReady } = useAuth();
+  const { isAuthenticated, loading, user, hydrationComplete, setNavigationReady, colors } = useAuth();
   const router = useRouter();
 
   // Mark navigation as ready when component mounts
@@ -34,29 +51,32 @@ function RootLayoutNav() {
     setNavigationReady(true);
   }, [setNavigationReady]);
 
-  // DO NOT run any navigation inside _layout.tsx
-  // Navigation is handled by login() and logout() functions only
-  // This prevents infinite loops from user/role state changes
-
   // Show splash screen until hydration completes
-  // Wait for: loading complete + user/role loaded + hydration complete
   if (loading || !hydrationComplete || (user && !user.role)) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors?.background || staticColors.background }]}>
+        <ActivityIndicator size="large" color={colors?.primary || staticColors.primary} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      {/* Login route must be registered first to ensure it's available before navigation */}
-      <Stack.Screen 
-        name="login" 
-        options={{ 
+    <Stack
+      screenOptions={{
+        headerBackTitle: "Back",
+        contentStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { color: colors.text },
+      }}
+    >
+      {/* Login route must be registered first */}
+      <Stack.Screen
+        name="login"
+        options={{
           headerShown: false,
           presentation: "card",
-        }} 
+        }}
       />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -67,6 +87,7 @@ function RootLayoutNav() {
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="messages" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="mfa-setup" options={{ headerShown: false }} />
       <Stack.Screen name="privacy" options={{ headerShown: false }} />
       <Stack.Screen name="help" options={{ headerShown: false }} />
       <Stack.Screen name="terms" options={{ headerShown: false }} />
@@ -132,6 +153,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
 });

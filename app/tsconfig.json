@@ -7,7 +7,7 @@
         "./*"
       ],
       "@rork/toolkit-sdk": [
-        "./node_modules/@rork/toolkit-sdk/index.ts"
+        "./services/ai/rork-sdk.ts"
       ]
     }
   },

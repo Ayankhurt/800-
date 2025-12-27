@@ -52,32 +52,32 @@ type FilterType = "all" | "verified" | "suspended" | "admins" | "gc" | "pm" | "s
 
 // Available roles for admin to assign (excluding EDITOR)
 const ALL_ROLES = [
-  { code: "ADMIN", label: "Admin" },
-  { code: "SUPER", label: "Super Admin" },
-  { code: "FIN", label: "Finance" },
-  { code: "MOD", label: "Moderator" },
-  { code: "SUPPORT", label: "Support" },
-  { code: "PM", label: "Project Manager" },
-  { code: "GC", label: "General Contractor" },
-  { code: "SUB", label: "Subcontractor" },
-  { code: "TS", label: "Trade Specialist" },
-  { code: "VIEWER", label: "Viewer" },
+  { code: "admin", label: "Admin" },
+  { code: "super_admin", label: "Super Admin" },
+  { code: "finance_manager", label: "Finance" },
+  { code: "moderator", label: "Moderator" },
+  { code: "support_agent", label: "Support" },
+  { code: "project_manager", label: "Project Manager" },
+  { code: "general_contractor", label: "General Contractor" },
+  { code: "subcontractor", label: "Subcontractor" },
+  { code: "trade_specialist", label: "Trade Specialist" },
+  { code: "viewer", label: "Viewer" },
 ];
 
 // Get available roles for creating users based on current user's role
 const getAvailableRolesForCreate = (currentUserRole: string | undefined) => {
   const role = (currentUserRole || "").toUpperCase();
-  
+
   // SUPER admin can create ADMIN roles but not SUPER admin roles
   if (role === "SUPER") {
     return ALL_ROLES.filter((r) => r.code !== "SUPER");
   }
-  
+
   // Regular ADMIN cannot create ADMIN or SUPER roles
   if (role === "ADMIN") {
     return ALL_ROLES.filter((r) => r.code !== "ADMIN" && r.code !== "SUPER");
   }
-  
+
   // Default: return all roles
   return ALL_ROLES;
 };
@@ -120,7 +120,7 @@ export default function UserManagementScreen() {
 
   // Fetch users with cursor-based pagination
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  
+
   const fetchUsers = async (cursorParam: string | null = null, append: boolean = false) => {
     try {
       if (!append) {
@@ -130,25 +130,25 @@ export default function UserManagementScreen() {
       }
 
       console.log(`[UserManagement] Fetching users - cursor: ${cursorParam}, append: ${append}`);
-      
+
       // Use cursor-based pagination (new format)
       const response = await adminAPI.getAllUsers(undefined, limit, cursorParam);
-      
+
       console.log(`[UserManagement] API response:`, response);
-      
+
       // Handle response format: { success: true, data: [...], nextCursor: ..., hasMore: ... }
       // OR old format: { success: true, data: { users: [...], nextCursor: ... } }
       let usersData: any[] = [];
       let hasMoreData = false;
       let nextCursorValue: string | null = null;
-      
+
       if (response?.success && response?.data) {
         // Check if data is array (new format after extraction in api.ts)
         if (Array.isArray(response.data)) {
           usersData = response.data;
           hasMoreData = response.hasMore || false;
           nextCursorValue = response.nextCursor || null;
-        } 
+        }
         // Check if data.users exists (nested format)
         else if (response.data.users && Array.isArray(response.data.users)) {
           usersData = response.data.users;
@@ -160,32 +160,32 @@ export default function UserManagementScreen() {
           usersData = response.data;
         }
       }
-      
+
       // CRITICAL CHECK: Verify we're getting multiple users
       const uniqueUserIds = [...new Set(usersData.map(u => u.id))];
       const currentUserId = user?.id;
       const includesCurrentUser = usersData.some(u => u.id === currentUserId);
-      
+
       console.log(`[UserManagement] Received ${usersData.length} users (${uniqueUserIds.length} unique IDs)`);
       console.log(`[UserManagement] Verification - Includes current user (${currentUserId}): ${includesCurrentUser}`);
       console.log(`[UserManagement] Sample user IDs: ${uniqueUserIds.slice(0, 5).join(', ')}`);
-      
+
       // CRITICAL CHECK: If we only got 1 user and it's the current user, something is wrong
       if (usersData.length === 1 && usersData[0].id === currentUserId) {
         console.error(`[UserManagement] CRITICAL ERROR: API returned only the current user!`);
         console.error(`[UserManagement] This should NOT happen - admin should see ALL users, not just themselves.`);
         Alert.alert(
-          "Warning", 
+          "Warning",
           "Only current user returned. Please check backend logs. This may indicate a filtering issue."
         );
       }
-      
+
       // If response.data is a single user object (from auth/me), ignore it
       if (usersData && !Array.isArray(usersData)) {
         console.warn('[UserManagement] Received non-array data, ignoring:', usersData);
         usersData = [];
       }
-      
+
       const usersArray = Array.isArray(usersData) ? usersData : [];
 
       if (append) {
@@ -197,9 +197,13 @@ export default function UserManagementScreen() {
       }
 
       // Update pagination state
+      if (response?.data?.page && response?.data?.pages) {
+        setHasMore(response.data.page < response.data.pages);
+      } else {
+        setHasMore(hasMoreData);
+      }
       setNextCursor(nextCursorValue);
-      setHasMore(hasMoreData);
-      
+
       console.log(`[UserManagement] Updated state - Total users: ${usersArray.length}, Has more: ${hasMoreData}, Next cursor: ${nextCursorValue}`);
     } catch (error: any) {
       console.error("[UserManagement] Failed to fetch users:", error);
@@ -214,7 +218,7 @@ export default function UserManagementScreen() {
       setLoadingMore(false);
     }
   };
-  
+
   // Load more users using cursor
   const loadMoreUsers = () => {
     if (nextCursor && !loadingMore) {
@@ -268,24 +272,25 @@ export default function UserManagementScreen() {
       // Apply filter
       if (filter !== "all") {
         filtered = filtered.filter((u) => {
-          const role = (u.role || u.role_code || "").toUpperCase();
+          const role = (u.role || u.role_code || "").toLowerCase();
           const status = (u.status || "").toLowerCase();
+          const isActive = u.is_active !== undefined ? u.is_active : true;
 
           switch (filter) {
             case "verified":
-              return u.email_verified === true;
+              return u.verification_status === "verified";
             case "suspended":
-              return status === "suspended" || status === "inactive";
+              return isActive === false || status === "suspended" || status === "inactive";
             case "admins":
-              return role === "ADMIN" || role === "SUPER";
+              return role === "admin" || role === "super_admin";
             case "gc":
-              return role === "GC";
+              return role === "general_contractor";
             case "pm":
-              return role === "PM";
+              return role === "project_manager";
             case "sub":
-              return role === "SUB" || role === "TS";
+              return role === "subcontractor" || role === "trade_specialist";
             case "viewer":
-              return role === "VIEWER";
+              return role === "viewer";
             default:
               return true;
           }
@@ -329,22 +334,23 @@ export default function UserManagementScreen() {
   // Calculate statistics
   const stats = useMemo(() => {
     const total = allUsers.length;
-    const verified = allUsers.filter((u) => u.email_verified).length;
+    const verified = allUsers.filter((u) => u.verification_status === "verified").length;
     const suspended = allUsers.filter((u) => {
       const status = (u.status || "").toLowerCase();
-      return status === "suspended" || status === "inactive";
+      const isActive = u.is_active !== undefined ? u.is_active : false;
+      return isActive === false || status === "suspended" || status === "inactive";
     }).length;
     const admins = allUsers.filter((u) => {
-      const role = (u.role || u.role_code || "").toUpperCase();
-      return role === "ADMIN" || role === "SUPER";
+      const role = (u.role || u.role_code || "").toLowerCase();
+      return role === "admin" || role === "super_admin";
     }).length;
     const contractors = allUsers.filter((u) => {
-      const role = (u.role || u.role_code || "").toUpperCase();
-      return role === "GC" || role === "SUB" || role === "TS";
+      const role = (u.role || u.role_code || "").toLowerCase();
+      return role === "general_contractor" || role === "subcontractor" || role === "trade_specialist";
     }).length;
     const pms = allUsers.filter((u) => {
-      const role = (u.role || u.role_code || "").toUpperCase();
-      return role === "PM";
+      const role = (u.role || u.role_code || "").toLowerCase();
+      return role === "project_manager";
     }).length;
 
     return { total, verified, suspended, admins, contractors, pms };
@@ -352,31 +358,37 @@ export default function UserManagementScreen() {
 
   // Get role badge with professional colors
   const getRoleBadge = (user: User) => {
-    const role = (user.role || user.role_code || "USER").toUpperCase();
+    const role = (user.role || user.role_code || "user").toLowerCase();
     let badgeStyle: any = {};
     let textStyle: any = {};
     let iconColor = Colors.primary;
+    let label = role.toUpperCase();
 
-    if (role === "ADMIN" || role === "SUPER") {
+    if (role === "admin" || role === "super_admin") {
       badgeStyle = { backgroundColor: Colors.error + "15", borderColor: Colors.error };
       textStyle = { color: Colors.error };
       iconColor = Colors.error;
-    } else if (role === "GC") {
+      label = role === "super_admin" ? "SUPER ADMIN" : "ADMIN";
+    } else if (role === "general_contractor") {
       badgeStyle = { backgroundColor: "#FF9500" + "15", borderColor: "#FF9500" };
       textStyle = { color: "#FF9500" };
       iconColor = "#FF9500";
-    } else if (role === "PM") {
+      label = "GC";
+    } else if (role === "project_manager") {
       badgeStyle = { backgroundColor: "#007AFF" + "15", borderColor: "#007AFF" };
       textStyle = { color: "#007AFF" };
       iconColor = "#007AFF";
-    } else if (role === "SUB" || role === "TS") {
+      label = "PM";
+    } else if (role === "subcontractor" || role === "trade_specialist") {
       badgeStyle = { backgroundColor: "#AF52DE" + "15", borderColor: "#AF52DE" };
       textStyle = { color: "#AF52DE" };
       iconColor = "#AF52DE";
-    } else if (role === "VIEWER") {
+      label = role === "subcontractor" ? "SUB" : "TS";
+    } else if (role === "viewer") {
       badgeStyle = { backgroundColor: "#5AC8FA" + "15", borderColor: "#5AC8FA" };
       textStyle = { color: "#5AC8FA" };
       iconColor = "#5AC8FA";
+      label = "VIEWER";
     } else {
       badgeStyle = { backgroundColor: Colors.primaryLight };
       textStyle = { color: Colors.primary };
@@ -385,7 +397,7 @@ export default function UserManagementScreen() {
     return (
       <View style={[styles.roleBadge, badgeStyle]}>
         <Shield size={12} color={iconColor} />
-        <Text style={[styles.roleText, textStyle]}>{role}</Text>
+        <Text style={[styles.roleText, textStyle]}>{label}</Text>
       </View>
     );
   };
@@ -393,9 +405,10 @@ export default function UserManagementScreen() {
   // Get status badge with professional colors
   const getStatusBadge = (user: User) => {
     const status = (user.status || "").toLowerCase();
-    const isVerified = user.email_verified;
+    const isActive = user.is_active !== undefined ? user.is_active : true;
+    const isVerified = user.verification_status === "verified";
 
-    if (status === "suspended" || status === "inactive") {
+    if (isActive === false || status === "suspended" || status === "inactive") {
       return (
         <View style={[styles.statusBadge, { backgroundColor: "#8E8E93" + "15", borderColor: "#8E8E93" }]}>
           <XCircle size={12} color="#8E8E93" />
@@ -431,7 +444,7 @@ export default function UserManagementScreen() {
               console.log("[UserManagement] Calling verifyUser API...");
               const response = await adminAPI.verifyUser(userId);
               console.log("[UserManagement] verifyUser response:", response);
-              
+
               if (response.success) {
                 Alert.alert("Success", "User verified successfully", [
                   {
@@ -475,7 +488,7 @@ export default function UserManagementScreen() {
   const renderUserItem = useCallback(
     ({ item }: { item: User }) => {
       const fullName = item.fullName || item.full_name || "Unknown User";
-      const isVerified = item.email_verified === true;
+      const isVerified = item.verification_status === "verified";
 
       return (
         <TouchableOpacity
@@ -588,7 +601,7 @@ export default function UserManagementScreen() {
                 role: createUserData.role,
               });
               console.log("[UserManagement] createUser response:", response);
-              
+
               Alert.alert("Success", "User created successfully", [
                 {
                   text: "OK",
@@ -813,7 +826,7 @@ export default function UserManagementScreen() {
         <View style={styles.modalOverlay}>
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.modalTitle}>Create New User</Text>
-            
+
             <Text style={styles.modalLabel}>Full Name *</Text>
             <TextInput
               style={styles.modalInput}

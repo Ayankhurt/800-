@@ -9,7 +9,24 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Shield, X, CheckCircle } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
 
 interface VerificationModalProps {
   visible: boolean;
@@ -31,6 +48,7 @@ export default function VerificationModal({
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
   const [isVerified, setIsVerified] = useState(false);
+  const { colors } = useAuth();
 
   useEffect(() => {
     if (visible) {
@@ -56,7 +74,7 @@ export default function VerificationModal({
     if (parseInt(code) === challenge.answer) {
       setIsVerified(true);
       setIsVerifying(false);
-      
+
       setTimeout(() => {
         onVerified();
         onClose();
@@ -77,55 +95,56 @@ export default function VerificationModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modal}>
+        <View style={[styles.modal, { backgroundColor: colors.surface }]}>
           <View style={styles.header}>
-            <Shield size={32} color={Colors.primary} />
-            <Text style={styles.title}>{title}</Text>
+            <Shield size={32} color={colors.primary} />
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <X size={24} color={Colors.textSecondary} />
+              <X size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.message}>{message}</Text>
+          <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
 
           {!isVerified ? (
             <>
               <View style={styles.challengeContainer}>
-                <View style={styles.challengeBox}>
-                  <Text style={styles.challengeQuestion}>
+                <View style={[styles.challengeBox, { backgroundColor: colors.background, borderColor: colors.primary }]}>
+                  <Text style={[styles.challengeQuestion, { color: colors.text }]}>
                     What is {challenge.num1} + {challenge.num2}?
                   </Text>
                 </View>
 
                 <TextInput
-                  style={[styles.input, error && styles.inputError]}
+                  style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }, error && { borderColor: colors.error }]}
                   placeholder="Enter answer"
                   value={code}
                   onChangeText={setCode}
                   keyboardType="numeric"
                   maxLength={3}
                   autoFocus
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                   editable={!isVerifying}
                 />
 
                 {error ? (
-                  <Text style={styles.errorText}>{error}</Text>
+                  <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 ) : null}
               </View>
 
               <TouchableOpacity
                 style={[
                   styles.verifyButton,
+                  { backgroundColor: colors.primary },
                   (isVerifying || !code) && styles.verifyButtonDisabled,
                 ]}
                 onPress={handleVerify}
                 disabled={isVerifying || !code}
               >
                 {isVerifying ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Text style={styles.verifyButtonText}>Verify</Text>
+                  <Text style={[styles.verifyButtonText, { color: colors.white }]}>Verify</Text>
                 )}
               </TouchableOpacity>
 
@@ -134,13 +153,13 @@ export default function VerificationModal({
                 onPress={generateChallenge}
                 disabled={isVerifying}
               >
-                <Text style={styles.refreshButtonText}>New Challenge</Text>
+                <Text style={[styles.refreshButtonText, { color: colors.primary }]}>New Challenge</Text>
               </TouchableOpacity>
             </>
           ) : (
             <View style={styles.successContainer}>
-              <CheckCircle size={64} color={Colors.success} />
-              <Text style={styles.successText}>Verification Successful!</Text>
+              <CheckCircle size={64} color={colors.success} />
+              <Text style={[styles.successText, { color: colors.success }]}>Verification Successful!</Text>
             </View>
           )}
         </View>
@@ -158,7 +177,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modal: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 16,
     padding: 24,
     width: "100%",
@@ -177,12 +196,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 12,
   },
   message: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     marginBottom: 24,
   },
@@ -190,42 +209,42 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   challengeBox: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: staticColors.primary,
   },
   challengeQuestion: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     textAlign: "center" as const,
   },
   input: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 18,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     textAlign: "center" as const,
     fontWeight: "600" as const,
   },
   inputError: {
-    borderColor: Colors.error,
+    borderColor: staticColors.error,
   },
   errorText: {
     fontSize: 13,
-    color: Colors.error,
+    color: staticColors.error,
     marginTop: 8,
     textAlign: "center" as const,
   },
   verifyButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center" as const,
@@ -237,7 +256,7 @@ const styles = StyleSheet.create({
   verifyButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   refreshButton: {
     paddingVertical: 12,
@@ -246,7 +265,7 @@ const styles = StyleSheet.create({
   refreshButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   successContainer: {
     alignItems: "center" as const,
@@ -255,7 +274,7 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.success,
+    color: staticColors.success,
     marginTop: 16,
   },
 });

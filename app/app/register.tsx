@@ -1,6 +1,23 @@
-import Colors from "@/constants/colors";
 import { APP_ROLES } from "@/constants/roles";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 import { router } from "expo-router";
 import { UserPlus, ChevronDown, ShieldCheck, CheckCircle, ArrowLeft, ArrowRight, Upload } from "lucide-react-native";
 import React, { useState, useEffect, useRef } from "react";
@@ -55,7 +72,14 @@ interface SignupData {
 }
 
 export default function RegisterScreen() {
-  const { signup, loading } = useAuth();
+  const { signup, loading, isAuthenticated, colors } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated]);
+
   const [currentStep, setCurrentStep] = useState<SignupStep>(1);
   const [formData, setFormData] = useState<SignupData>({
     firstName: "",
@@ -305,15 +329,15 @@ export default function RegisterScreen() {
 
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Create Your Account</Text>
-      <Text style={styles.stepSubtitle}>Enter your basic information to get started</Text>
+      <Text style={[styles.stepTitle, { color: colors.text }]}>Create Your Account</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Enter your basic information to get started</Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>First Name</Text>
+        <Text style={[styles.label, { color: colors.text }]}>First Name</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
           placeholder="John"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           value={formData.firstName}
           onChangeText={(text) => updateFormData("firstName", text)}
           autoComplete="given-name"
@@ -322,11 +346,11 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Last Name</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Last Name</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
           placeholder="Doe"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           value={formData.lastName}
           onChangeText={(text) => updateFormData("lastName", text)}
           autoComplete="family-name"
@@ -345,11 +369,11 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Email *</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Email *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
           placeholder="your@email.com"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           value={formData.email}
           onChangeText={(text) => updateFormData("email", text)}
           autoCapitalize="none"
@@ -360,11 +384,11 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Password</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Password</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
           placeholder="Minimum 6 characters"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           value={formData.password}
           onChangeText={(text) => updateFormData("password", text)}
           secureTextEntry
@@ -374,11 +398,11 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Confirm Password</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Confirm Password</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
           placeholder="Re-enter password"
-          placeholderTextColor={Colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           value={formData.confirmPassword}
           onChangeText={(text) => updateFormData("confirmPassword", text)}
           secureTextEntry
@@ -391,8 +415,8 @@ export default function RegisterScreen() {
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select Your Role</Text>
-      <Text style={styles.stepSubtitle}>Choose the role that best describes you</Text>
+      <Text style={[styles.stepTitle, { color: colors.text }]}>Select Your Role</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Choose the role that best describes you</Text>
 
       <View style={styles.roleList}>
         {APP_ROLES.map((roleOption) => (
@@ -400,7 +424,8 @@ export default function RegisterScreen() {
             key={roleOption.value}
             style={[
               styles.roleOption,
-              formData.role === roleOption.value && styles.roleOptionSelected,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              formData.role === roleOption.value && [styles.roleOptionSelected, { borderColor: colors.primary, backgroundColor: colors.primary + "05" }],
             ]}
             onPress={() => updateFormData("role", roleOption.value)}
             disabled={isSubmitting}
@@ -410,7 +435,8 @@ export default function RegisterScreen() {
                 <Text
                   style={[
                     styles.roleOptionLabel,
-                    formData.role === roleOption.value && styles.roleOptionLabelSelected,
+                    { color: colors.text },
+                    formData.role === roleOption.value && [styles.roleOptionLabelSelected, { color: colors.primary }],
                   ]}
                 >
                   {roleOption.label}
@@ -418,14 +444,15 @@ export default function RegisterScreen() {
                 <Text
                   style={[
                     styles.roleOptionDesc,
-                    formData.role === roleOption.value && styles.roleOptionDescSelected,
+                    { color: colors.textSecondary },
+                    formData.role === roleOption.value && [styles.roleOptionDescSelected, { color: colors.textSecondary }],
                   ]}
                 >
                   {roleOption.description}
                 </Text>
               </View>
               {formData.role === roleOption.value && (
-                <CheckCircle size={24} color={Colors.primary} />
+                <CheckCircle size={24} color={colors.primary} />
               )}
             </View>
           </TouchableOpacity>
@@ -441,15 +468,15 @@ export default function RegisterScreen() {
     if (formData.role === "GC") {
       return (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Profile Information</Text>
-          <Text style={styles.stepSubtitle}>Tell us about your company</Text>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>Profile Information</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Tell us about your company</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Company Name *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Company Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Doe Construction"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.companyName}
               onChangeText={(text) => updateFormData("companyName", text)}
               editable={!isSubmitting}
@@ -457,11 +484,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Trade Specialization *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Trade Specialization *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="General"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.tradeSpecialization}
               onChangeText={(text) => updateFormData("tradeSpecialization", text)}
               editable={!isSubmitting}
@@ -469,11 +496,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Years of Experience *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Years of Experience *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="10"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.yearsExperience}
               onChangeText={(text) => updateFormData("yearsExperience", text)}
               keyboardType="number-pad"
@@ -482,11 +509,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>License Number *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>License Number *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="12345"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.licenseNumber}
               onChangeText={(text) => updateFormData("licenseNumber", text)}
               editable={!isSubmitting}
@@ -494,11 +521,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>License Type</Text>
+            <Text style={[styles.label, { color: colors.text }]}>License Type</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="General Contractor License"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.licenseType}
               onChangeText={(text) => updateFormData("licenseType", text)}
               editable={!isSubmitting}
@@ -506,11 +533,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Insurance Details</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Insurance Details</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Insurance details"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.insuranceDetails}
               onChangeText={(text) => updateFormData("insuranceDetails", text)}
               multiline
@@ -520,11 +547,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="New York"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.location}
               onChangeText={(text) => updateFormData("location", text)}
               editable={!isSubmitting}
@@ -532,11 +559,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Portfolio (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Portfolio (Optional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Portfolio link or description"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.portfolio}
               onChangeText={(text) => updateFormData("portfolio", text)}
               multiline
@@ -552,15 +579,15 @@ export default function RegisterScreen() {
     if (formData.role === "SUB") {
       return (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Profile Information</Text>
-          <Text style={styles.stepSubtitle}>Tell us about your trade</Text>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>Profile Information</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Tell us about your trade</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Trade Specialization *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Trade Specialization *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Plumbing"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.tradeSpecialization}
               onChangeText={(text) => updateFormData("tradeSpecialization", text)}
               editable={!isSubmitting}
@@ -568,11 +595,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Years of Experience *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Years of Experience *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="5"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.yearsExperience}
               onChangeText={(text) => updateFormData("yearsExperience", text)}
               keyboardType="number-pad"
@@ -581,11 +608,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>License/Certifications</Text>
+            <Text style={[styles.label, { color: colors.text }]}>License/Certifications</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="67890"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.licenseNumber}
               onChangeText={(text) => updateFormData("licenseNumber", text)}
               editable={!isSubmitting}
@@ -593,11 +620,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Company Name (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Company Name (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Doe Subcontracting"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.companyName}
               onChangeText={(text) => updateFormData("companyName", text)}
               editable={!isSubmitting}
@@ -605,11 +632,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Los Angeles"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.location}
               onChangeText={(text) => updateFormData("location", text)}
               editable={!isSubmitting}
@@ -617,11 +644,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Portfolio (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Portfolio (Optional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Portfolio link or description"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.portfolio}
               onChangeText={(text) => updateFormData("portfolio", text)}
               multiline
@@ -637,15 +664,15 @@ export default function RegisterScreen() {
     if (formData.role === "PM") {
       return (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Profile Information</Text>
-          <Text style={styles.stepSubtitle}>Tell us about your project management experience</Text>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>Profile Information</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Tell us about your project management experience</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Company Name *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Company Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Smith Projects"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.companyName}
               onChangeText={(text) => updateFormData("companyName", text)}
               editable={!isSubmitting}
@@ -653,11 +680,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Years of Project Management Experience *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Years of Project Management Experience *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="8"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.yearsExperience}
               onChangeText={(text) => updateFormData("yearsExperience", text)}
               keyboardType="number-pad"
@@ -666,11 +693,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Preferred Project Type *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Preferred Project Type *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Commercial, Residential, etc."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.projectType}
               onChangeText={(text) => updateFormData("projectType", text)}
               editable={!isSubmitting}
@@ -678,11 +705,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Chicago"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.location}
               onChangeText={(text) => updateFormData("location", text)}
               editable={!isSubmitting}
@@ -690,11 +717,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Portfolio (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Portfolio (Optional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Portfolio link or description"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.portfolio}
               onChangeText={(text) => updateFormData("portfolio", text)}
               multiline
@@ -710,15 +737,15 @@ export default function RegisterScreen() {
     if (formData.role === "TS") {
       return (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Profile Information</Text>
-          <Text style={styles.stepSubtitle}>Tell us about your trade specialization</Text>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>Profile Information</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>Tell us about your trade specialization</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Trade Specialization *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Trade Specialization *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Electrical"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.tradeSpecialization}
               onChangeText={(text) => updateFormData("tradeSpecialization", text)}
               editable={!isSubmitting}
@@ -726,11 +753,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Certifications *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Certifications *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Electrical Certification"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.certifications}
               onChangeText={(text) => updateFormData("certifications", text)}
               multiline
@@ -740,11 +767,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Years of Experience *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Years of Experience *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="6"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.yearsExperience}
               onChangeText={(text) => updateFormData("yearsExperience", text)}
               keyboardType="number-pad"
@@ -753,11 +780,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Dallas"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.location}
               onChangeText={(text) => updateFormData("location", text)}
               editable={!isSubmitting}
@@ -765,11 +792,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Portfolio (Optional)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Portfolio (Optional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
               placeholder="Portfolio link or description"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               value={formData.portfolio}
               onChangeText={(text) => updateFormData("portfolio", text)}
               multiline
@@ -785,10 +812,10 @@ export default function RegisterScreen() {
     if (formData.role === "VIEWER") {
       return (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Profile Information</Text>
-          <Text style={styles.stepSubtitle}>You have read-only access to the platform</Text>
-          <View style={styles.viewerInfo}>
-            <Text style={styles.viewerInfoText}>
+          <Text style={[styles.stepTitle, { color: colors.text }]}>Profile Information</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.textSecondary }]}>You have read-only access to the platform</Text>
+          <View style={[styles.viewerInfo, { backgroundColor: colors.primary + "10" }]}>
+            <Text style={[styles.viewerInfoText, { color: colors.textSecondary }]}>
               As a Viewer, you can browse projects and view information but cannot create bids or manage projects.
             </Text>
           </View>
@@ -812,7 +839,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Insurance Verification</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Insurance Document</Text>
             </TouchableOpacity>
           </View>
@@ -820,7 +847,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>License Verification</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload License Document</Text>
             </TouchableOpacity>
           </View>
@@ -828,7 +855,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Background Check (Optional)</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Background Check</Text>
             </TouchableOpacity>
           </View>
@@ -846,7 +873,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Certifications (Optional)</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Certifications</Text>
             </TouchableOpacity>
           </View>
@@ -864,7 +891,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Licensing and Certifications (if applicable)</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Documents</Text>
             </TouchableOpacity>
           </View>
@@ -872,7 +899,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Insurance Details</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Insurance Document</Text>
             </TouchableOpacity>
           </View>
@@ -890,7 +917,7 @@ export default function RegisterScreen() {
           <View style={styles.documentSection}>
             <Text style={styles.documentLabel}>Certifications (Required)</Text>
             <TouchableOpacity style={styles.uploadButton} disabled={isSubmitting}>
-              <Upload size={20} color={Colors.primary} />
+              <Upload size={20} color={colors.primary} />
               <Text style={styles.uploadButtonText}>Upload Certifications</Text>
             </TouchableOpacity>
           </View>
@@ -917,10 +944,10 @@ export default function RegisterScreen() {
     return (
       <View style={styles.stepContainer}>
         <View style={styles.confirmationIconContainer}>
-          <CheckCircle size={64} color={Colors.primary} />
+          <CheckCircle size={64} color={colors.primary} />
         </View>
-        <Text style={styles.confirmationTitle}>Thank You for Signing Up!</Text>
-        <Text style={styles.confirmationSubtitle}>
+        <Text style={[styles.confirmationTitle, { color: colors.text }]}>Thank You for Signing Up!</Text>
+        <Text style={[styles.confirmationSubtitle, { color: colors.textSecondary }]}>
           {formData.role === "VIEWER"
             ? "You have read-only access to the platform."
             : `Your ${roleLabel} profile is being reviewed. We'll notify you once it's approved.`}
@@ -948,14 +975,14 @@ export default function RegisterScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -966,11 +993,11 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <UserPlus size={48} color={Colors.primary} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + "15" }]}>
+              <UserPlus size={48} color={colors.primary} />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Step {currentStep} of 5</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Step {currentStep} of 5</Text>
           </View>
 
           {/* Progress Indicator */}
@@ -989,8 +1016,8 @@ export default function RegisterScreen() {
 
           <View style={styles.form}>
             {error ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", borderColor: colors.error + "40" }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             ) : null}
 
@@ -1001,27 +1028,27 @@ export default function RegisterScreen() {
               <View style={styles.buttonContainer}>
                 {currentStep > 1 && (
                   <TouchableOpacity
-                    style={[styles.navButton, styles.backButton]}
+                    style={[styles.navButton, styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     onPress={handleBack}
                     disabled={isSubmitting}
                   >
-                    <ArrowLeft size={20} color={Colors.primary} />
-                    <Text style={styles.backButtonText}>Back</Text>
+                    <ArrowLeft size={20} color={colors.primary} />
+                    <Text style={[styles.backButtonText, { color: colors.primary }]}>Back</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={[styles.navButton, styles.nextButton, currentStep === 1 && styles.nextButtonFull]}
+                  style={[styles.navButton, styles.nextButton, { backgroundColor: colors.primary }, currentStep === 1 && styles.nextButtonFull]}
                   onPress={currentStep === 4 ? handleCompleteSignup : handleNext}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color={Colors.surface} />
+                    <ActivityIndicator color={colors.white} />
                   ) : (
                     <>
-                      <Text style={styles.nextButtonText}>
+                      <Text style={[styles.nextButtonText, { color: colors.white }]}>
                         {currentStep === 4 ? "Complete Signup" : "Next"}
                       </Text>
-                      {currentStep < 4 && <ArrowRight size={20} color={Colors.surface} />}
+                      {currentStep < 4 && <ArrowRight size={20} color={colors.white} />}
                     </>
                   )}
                 </TouchableOpacity>
@@ -1069,27 +1096,27 @@ export default function RegisterScreen() {
           onPress={() => setShowVerification(false)}
         >
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.verificationModal}>
-              <View style={styles.verificationIconContainer}>
-                <ShieldCheck size={48} color={Colors.primary} />
+            <View style={[styles.verificationModal, { backgroundColor: colors.surface }]}>
+              <View style={[styles.verificationIconContainer, { backgroundColor: colors.primary + "15" }]}>
+                <ShieldCheck size={48} color={colors.primary} />
               </View>
-              <Text style={styles.verificationTitle}>Human Verification</Text>
-              <Text style={styles.verificationSubtitle}>
+              <Text style={[styles.verificationTitle, { color: colors.text }]}>Human Verification</Text>
+              <Text style={[styles.verificationSubtitle, { color: colors.textSecondary }]}>
                 Please solve this simple math problem to continue
               </Text>
 
-              <View style={styles.challengeContainer}>
-                <Text style={styles.challengeText}>
+              <View style={[styles.challengeContainer, { backgroundColor: colors.primary + "15" }]}>
+                <Text style={[styles.challengeText, { color: colors.primary }]}>
                   {verificationChallenge.num1} + {verificationChallenge.num2} = ?
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Your Answer</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Your Answer</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   placeholder="Enter the answer"
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                   value={verificationAnswer}
                   onChangeText={setVerificationAnswer}
                   keyboardType="number-pad"
@@ -1118,7 +1145,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   keyboardView: {
     flex: 1,
@@ -1131,7 +1158,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   header: {
     alignItems: "center",
@@ -1142,7 +1169,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
@@ -1150,12 +1177,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center",
   },
   progressContainer: {
@@ -1167,15 +1194,15 @@ const styles = StyleSheet.create({
   progressStep: {
     flex: 1,
     height: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: staticColors.border,
     marginHorizontal: 2,
     borderRadius: 2,
   },
   progressStepActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
   },
   progressStepCurrent: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     height: 6,
   },
   form: {
@@ -1188,12 +1215,12 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   stepSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginBottom: 24,
   },
   inputGroup: {
@@ -1202,30 +1229,30 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
   },
   textArea: {
     minHeight: 80,
     textAlignVertical: "top",
   },
   errorBanner: {
-    backgroundColor: Colors.error + "10",
+    backgroundColor: staticColors.error + "10",
     borderWidth: 1,
-    borderColor: Colors.error + "30",
+    borderColor: staticColors.error + "30",
     borderRadius: 12,
     padding: 12,
   },
   errorText: {
-    color: Colors.error,
+    color: staticColors.error,
     fontSize: 14,
     textAlign: "center",
   },
@@ -1233,15 +1260,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   roleOption: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 12,
     padding: 16,
   },
   roleOptionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    borderColor: staticColors.primary,
+    backgroundColor: staticColors.primaryLight,
   },
   roleOptionContent: {
     flexDirection: "row",
@@ -1254,28 +1281,28 @@ const styles = StyleSheet.create({
   roleOptionLabel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   roleOptionLabelSelected: {
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   roleOptionDesc: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   roleOptionDescSelected: {
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   viewerInfo: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     padding: 16,
     borderRadius: 12,
     marginTop: 8,
   },
   viewerInfoText: {
     fontSize: 14,
-    color: Colors.text,
+    color: staticColors.text,
     lineHeight: 20,
   },
   documentSection: {
@@ -1284,16 +1311,16 @@ const styles = StyleSheet.create({
   documentLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   uploadButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: staticColors.primary,
     borderStyle: "dashed",
     borderRadius: 12,
     padding: 20,
@@ -1302,7 +1329,7 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   confirmationIconContainer: {
     alignItems: "center",
@@ -1311,13 +1338,13 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     textAlign: "center",
     marginBottom: 12,
   },
   confirmationSubtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center",
     lineHeight: 24,
   },
@@ -1336,36 +1363,36 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   backButtonText: {
-    color: Colors.primary,
+    color: staticColors.primary,
     fontSize: 16,
     fontWeight: "600" as const,
   },
   nextButton: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
   },
   nextButtonFull: {
     flex: 1,
   },
   nextButtonText: {
-    color: Colors.surface,
+    color: staticColors.surface,
     fontSize: 16,
     fontWeight: "700" as const,
   },
   finishButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginTop: 24,
   },
   finishButtonText: {
-    color: Colors.surface,
+    color: staticColors.surface,
     fontSize: 16,
     fontWeight: "700" as const,
   },
@@ -1374,11 +1401,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loginLinkText: {
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontSize: 14,
   },
   loginLinkTextBold: {
-    color: Colors.primary,
+    color: staticColors.primary,
     fontWeight: "700" as const,
   },
   honeypotContainer: {
@@ -1400,7 +1427,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   verificationModal: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 20,
     padding: 32,
     margin: 24,
@@ -1412,7 +1439,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -1420,18 +1447,18 @@ const styles = StyleSheet.create({
   verificationTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
     textAlign: "center",
   },
   verificationSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center",
     marginBottom: 24,
   },
   challengeContainer: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: staticColors.primaryLight,
     padding: 24,
     borderRadius: 16,
     marginBottom: 24,
@@ -1441,17 +1468,17 @@ const styles = StyleSheet.create({
   challengeText: {
     fontSize: 32,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   verifyButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     padding: 16,
     width: "100%",
     alignItems: "center",
   },
   verifyButtonText: {
-    color: Colors.surface,
+    color: staticColors.surface,
     fontSize: 16,
     fontWeight: "700" as const,
   },
@@ -1460,7 +1487,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   cancelButtonText: {
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontSize: 14,
     fontWeight: "600" as const,
   },

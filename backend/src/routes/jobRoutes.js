@@ -1,6 +1,6 @@
 import express from "express";
 import { createJob, getJobs, getJobById, updateJob, deleteJob, getJobApplications } from "../controllers/jobController.js";
-import { applyToJob } from "../controllers/applicationController.js";
+import { applyToJob, updateApplicationStatus } from "../controllers/applicationController.js";
 import { authenticateUser } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -13,6 +13,7 @@ router.post("/:id/apply", authenticateUser, (req, res, next) => {
     req.body.job_id = req.params.id;
     next();
 }, applyToJob);
+router.put("/applications/:id/status", authenticateUser, updateApplicationStatus); // Alias for frontend compatibility
 router.get("/:id", getJobById);
 router.put("/:id", authenticateUser, updateJob);
 router.delete("/:id", authenticateUser, deleteJob);

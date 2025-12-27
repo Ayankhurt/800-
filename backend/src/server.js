@@ -188,6 +188,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import moderationRoutes from "./routes/moderationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js"; // Added
 import transactionRoutes from "./routes/transactionRoutes.js"; // Added
+import milestoneRoutes from "./routes/milestoneRoutes.js"; // Added
 
 // API Versioning - Register routes under /api/v1
 const v1Router = express.Router();
@@ -201,6 +202,7 @@ v1Router.use("/projects", projectRoutes);
 v1Router.use("/reviews", reviewRoutes);
 v1Router.use("/communication", communicationRoutes); // New
 v1Router.use("/notifications", notificationRoutes);
+// Mount versioned routes - Restart triggered for admin fixes
 v1Router.use("/admin", adminRoutes);
 v1Router.use("/admin", extendedAdminRoutes);
 v1Router.use("/appointments", appointmentRoutes);
@@ -226,6 +228,7 @@ v1Router.use("/ai", aiRoutes);
 v1Router.use("/payments", paymentRoutes);
 v1Router.use("/messages", messageRoutes); // Added
 v1Router.use("/transactions", transactionRoutes); // Added
+v1Router.use("/milestones", milestoneRoutes); // Added
 v1Router.use("/admin/moderation", moderationRoutes);
 
 // Mount versioned routes
@@ -270,10 +273,11 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   logger.info(`🚀 Backend server running on port ${PORT}`);
   logger.info(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   logger.info(`🏥 Health Check: http://localhost:${PORT}/api/health`);
+  logger.info(`🌍 Network Access: http://192.168.1.113:${PORT}/api/v1 (For Mobile)`);
   logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

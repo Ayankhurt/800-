@@ -14,7 +14,7 @@ export const inviteContractor = async (req, res) => {
         // Verify job ownership
         const { data: job } = await supabase
             .from("jobs")
-            .select("project_manager_id")
+            .select("projects_manager_id")
             .eq("id", job_id)
             .single();
 
@@ -22,7 +22,7 @@ export const inviteContractor = async (req, res) => {
             return res.status(404).json(formatResponse(false, "Job not found", null));
         }
 
-        if (job.project_manager_id !== userId && req.user.role !== 'admin') {
+        if (job.projects_manager_id !== userId && req.user.role !== 'admin') {
             return res.status(403).json(formatResponse(false, "Access denied", null));
         }
 
@@ -144,7 +144,7 @@ export const getSentInvites = async (req, res) => {
         // Verify job ownership
         const { data: job } = await supabase
             .from("jobs")
-            .select("project_manager_id")
+            .select("projects_manager_id")
             .eq("id", job_id)
             .single();
 
@@ -152,7 +152,7 @@ export const getSentInvites = async (req, res) => {
             return res.status(404).json(formatResponse(false, "Job not found", null));
         }
 
-        if (job.project_manager_id !== userId && req.user.role !== 'admin') {
+        if (job.projects_manager_id !== userId && req.user.role !== 'admin') {
             return res.status(403).json(formatResponse(false, "Access denied", null));
         }
 

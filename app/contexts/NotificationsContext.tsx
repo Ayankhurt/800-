@@ -110,7 +110,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
           title: n.title,
           message: n.content || n.message || "",
           priority: n.priority || "normal",
-          read: n.is_read || false,
+          read: n.is_reads || n.is_read || false,
           createdAt: n.created_at,
           data: n.metadata,
         }));

@@ -1,14 +1,31 @@
-import Colors from "@/constants/colors";
 import { Appointment } from "@/types";
 import { Stack, useRouter } from "expo-router";
 import { Calendar, Clock, MapPin, Check, X, AlertCircle } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
 import {
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppointments } from "@/contexts/AppointmentsContext";
@@ -19,16 +36,17 @@ interface AppointmentCardProps {
   appointment: Appointment;
   onPress: () => void;
   onStatusUpdate: (id: string, status: "completed" | "no_show" | "cancelled") => void;
+  colors: any;
 }
 
-function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCardProps) {
+function AppointmentCard({ appointment, onPress, onStatusUpdate, colors }: AppointmentCardProps) {
   const appointmentDate = new Date(appointment.date);
   const isValidDate = !isNaN(appointmentDate.getTime());
 
   const typeColors = {
-    estimate: Colors.info,
-    site_visit: Colors.secondary,
-    meeting: Colors.success,
+    estimate: colors.info || "#3B82F6",
+    site_visit: colors.secondary,
+    meeting: colors.success,
   };
 
   const typeLabels = {
@@ -38,10 +56,10 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
   };
 
   const statusColors = {
-    scheduled: Colors.info,
-    completed: Colors.success,
-    cancelled: Colors.error,
-    no_show: Colors.warning,
+    scheduled: colors.info || "#3B82F6",
+    completed: colors.success,
+    cancelled: colors.error,
+    no_show: colors.warning,
   };
 
   const statusLabels = {
@@ -52,8 +70,8 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
   };
 
   return (
-    <TouchableOpacity 
-      style={styles.appointmentCard} 
+    <TouchableOpacity
+      style={[styles.appointmentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
       onPress={onPress}
     >
       <View style={styles.appointmentHeader}>
@@ -66,10 +84,10 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
           <Calendar size={24} color={typeColors[appointment.type]} />
         </View>
         <View style={styles.appointmentContent}>
-          <Text style={styles.appointmentTitle} numberOfLines={1}>
+          <Text style={[styles.appointmentTitle, { color: colors.text }]} numberOfLines={1}>
             {appointment.title}
           </Text>
-          <Text style={styles.appointmentContractor} numberOfLines={1}>
+          <Text style={[styles.appointmentContractor, { color: colors.textSecondary }]} numberOfLines={1}>
             {appointment.contractorCompany}
           </Text>
         </View>
@@ -90,27 +108,27 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
 
       <View style={styles.appointmentDetails}>
         <View style={styles.detailRow}>
-          <Clock size={14} color={Colors.textSecondary} />
-          <Text style={styles.detailText}>
+          <Clock size={14} color={colors.textSecondary} />
+          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
             {isValidDate
               ? appointmentDate.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })
               : "Invalid date"}{" "}
             at {appointment.time}
           </Text>
         </View>
         <View style={styles.detailRow}>
-          <MapPin size={14} color={Colors.textSecondary} />
-          <Text style={styles.detailText} numberOfLines={1}>
+          <MapPin size={14} color={colors.textSecondary} />
+          <Text style={[styles.detailText, { color: colors.textSecondary }]} numberOfLines={1}>
             {appointment.location}
           </Text>
         </View>
       </View>
 
-      <View style={styles.appointmentFooter}>
+      <View style={[styles.appointmentFooter, { borderTopColor: colors.border }]}>
         <View
           style={[
             styles.typeBadge,
@@ -131,25 +149,25 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
       {appointment.status === "scheduled" && (
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: Colors.success }]}
+            style={[styles.actionBtn, { backgroundColor: colors.success }]}
             onPress={() => onStatusUpdate(appointment.id, "completed")}
           >
-            <Check size={16} color={Colors.white} />
-            <Text style={styles.actionBtnText}>Complete</Text>
+            <Check size={16} color={colors.white} />
+            <Text style={[styles.actionBtnText, { color: colors.white }]}>Complete</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: Colors.warning }]}
+            style={[styles.actionBtn, { backgroundColor: colors.warning }]}
             onPress={() => onStatusUpdate(appointment.id, "no_show")}
           >
-            <AlertCircle size={16} color={Colors.white} />
-            <Text style={styles.actionBtnText}>No Show</Text>
+            <AlertCircle size={16} color={colors.white} />
+            <Text style={[styles.actionBtnText, { color: colors.white }]}>No Show</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: Colors.error }]}
+            style={[styles.actionBtn, { backgroundColor: colors.error }]}
             onPress={() => onStatusUpdate(appointment.id, "cancelled")}
           >
-            <X size={16} color={Colors.white} />
-            <Text style={styles.actionBtnText}>Cancel</Text>
+            <X size={16} color={colors.white} />
+            <Text style={[styles.actionBtnText, { color: colors.white }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -159,9 +177,10 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate }: AppointmentCa
 
 export default function ScheduleScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { appointments, getPendingEstimateRequests, updateAppointment } = useAppointments();
+  const { user, colors } = useAuth();
+  const { appointments, getPendingEstimateRequests, updateAppointment, refreshAppointments } = useAppointments();
   const [filter, setFilter] = useState<AppointmentFilter>("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   const pendingRequests = getPendingEstimateRequests();
 
@@ -213,40 +232,55 @@ export default function ScheduleScreen() {
     await updateAppointment(id, { status });
   };
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (refreshAppointments) {
+        await refreshAppointments();
+      }
+    } catch (error) {
+      console.error("Failed to refresh appointments:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshAppointments]);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Schedule",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
+          headerShadowVisible: false,
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
         }}
       />
 
       {pendingRequests.length > 0 && (
-        <View style={styles.pendingBanner}>
-          <AlertCircle size={20} color={Colors.warning} />
-          <Text style={styles.pendingText}>
+        <View style={[styles.pendingBanner, { backgroundColor: colors.warning + "20", borderBottomColor: colors.warning + "40" }]}>
+          <AlertCircle size={20} color={colors.warning} />
+          <Text style={[styles.pendingText, { color: colors.warning }]}>
             {pendingRequests.length} estimate request{pendingRequests.length !== 1 ? "s" : ""} pending response
           </Text>
         </View>
       )}
 
-      <View style={styles.statsSection}>
+      <View style={[styles.statsSection, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.statCard, filter === "all" && styles.statCardActive]}
+          style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }, filter === "all" && [styles.statCardActive, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }]]}
           onPress={() => setFilter("all")}
         >
           <Text
             style={[
               styles.statValue,
-              filter === "all" && styles.statValueActive,
+              { color: colors.text },
+              filter === "all" && [styles.statValueActive, { color: colors.primary }],
             ]}
           >
             {stats.total}
@@ -254,7 +288,8 @@ export default function ScheduleScreen() {
           <Text
             style={[
               styles.statLabel,
-              filter === "all" && styles.statLabelActive,
+              { color: colors.textSecondary },
+              filter === "all" && [styles.statLabelActive, { color: colors.primary }],
             ]}
           >
             All
@@ -263,14 +298,16 @@ export default function ScheduleScreen() {
         <TouchableOpacity
           style={[
             styles.statCard,
-            filter === "scheduled" && styles.statCardActive,
+            { backgroundColor: colors.background, borderColor: colors.border },
+            filter === "scheduled" && [styles.statCardActive, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }],
           ]}
           onPress={() => setFilter("scheduled")}
         >
           <Text
             style={[
               styles.statValue,
-              filter === "scheduled" && styles.statValueActive,
+              { color: colors.text },
+              filter === "scheduled" && [styles.statValueActive, { color: colors.primary }],
             ]}
           >
             {stats.scheduled}
@@ -278,7 +315,8 @@ export default function ScheduleScreen() {
           <Text
             style={[
               styles.statLabel,
-              filter === "scheduled" && styles.statLabelActive,
+              { color: colors.textSecondary },
+              filter === "scheduled" && [styles.statLabelActive, { color: colors.primary }],
             ]}
           >
             Scheduled
@@ -287,14 +325,16 @@ export default function ScheduleScreen() {
         <TouchableOpacity
           style={[
             styles.statCard,
-            filter === "completed" && styles.statCardActive,
+            { backgroundColor: colors.background, borderColor: colors.border },
+            filter === "completed" && [styles.statCardActive, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }],
           ]}
           onPress={() => setFilter("completed")}
         >
           <Text
             style={[
               styles.statValue,
-              filter === "completed" && styles.statValueActive,
+              { color: colors.text },
+              filter === "completed" && [styles.statValueActive, { color: colors.primary }],
             ]}
           >
             {stats.completed}
@@ -302,7 +342,8 @@ export default function ScheduleScreen() {
           <Text
             style={[
               styles.statLabel,
-              filter === "completed" && styles.statLabelActive,
+              { color: colors.textSecondary },
+              filter === "completed" && [styles.statLabelActive, { color: colors.primary }],
             ]}
           >
             Completed
@@ -314,17 +355,17 @@ export default function ScheduleScreen() {
         data={groupedAppointments}
         renderItem={({ item }) => (
           <View style={styles.dateGroup}>
-            <Text style={styles.dateHeader}>
+            <Text style={[styles.dateHeader, { color: colors.text }]}>
               {(() => {
                 const date = new Date(item.date);
                 return isNaN(date.getTime())
                   ? "Invalid date"
                   : date.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    });
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  });
               })()}
             </Text>
             {item.appointments.map((appointment) => (
@@ -335,6 +376,7 @@ export default function ScheduleScreen() {
                   router.push(`/appointment-details?id=${appointment.id}`);
                 }}
                 onStatusUpdate={handleStatusUpdate}
+                colors={colors}
               />
             ))}
           </View>
@@ -342,11 +384,14 @@ export default function ScheduleScreen() {
         keyExtractor={(item) => item.date}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Calendar size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyStateTitle}>No appointments</Text>
-            <Text style={styles.emptyStateDescription}>
+            <Calendar size={48} color={colors.textTertiary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No appointments</Text>
+            <Text style={[styles.emptyStateDescription, { color: colors.textSecondary }]}>
               Appointments will appear here once scheduled
             </Text>
           </View>
@@ -359,61 +404,61 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   pendingBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: Colors.warning + "20",
+    backgroundColor: staticColors.warning + "20",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.warning + "40",
+    borderBottomColor: staticColors.warning + "40",
   },
   pendingText: {
     flex: 1,
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.warning,
+    color: staticColors.warning,
   },
   statsSection: {
     flexDirection: "row" as const,
     padding: 16,
     gap: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     padding: 16,
     alignItems: "center" as const,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   statCardActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "10",
+    borderColor: staticColors.primary,
+    backgroundColor: staticColors.primary + "10",
   },
   statValue: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   statValueActive: {
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontWeight: "600" as const,
   },
   statLabelActive: {
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   listContent: {
     padding: 16,
@@ -424,16 +469,16 @@ const styles = StyleSheet.create({
   dateHeader: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 12,
   },
   appointmentCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   appointmentHeader: {
     flexDirection: "row" as const,
@@ -454,12 +499,12 @@ const styles = StyleSheet.create({
   appointmentTitle: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   appointmentContractor: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   statusBadge: {
     width: 32,
@@ -484,7 +529,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     flex: 1,
   },
   appointmentFooter: {
@@ -493,7 +538,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
     marginBottom: 8,
   },
   typeBadge: {
@@ -526,7 +571,7 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   emptyState: {
     alignItems: "center" as const,
@@ -537,13 +582,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
   },
 });

@@ -18,72 +18,36 @@ import {
   AlertCircle,
 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProjects } from "@/contexts/ProjectsContext";
 import { useBids } from "@/contexts/BidsContext";
-// import { generateText } from "@rork/toolkit-sdk"; // SDK not available, using mock
+import { useJobs } from "@/contexts/JobsContext";
 
-// Mock function to replace @rork/toolkit-sdk generateText
-const generateText = async (prompt: string): Promise<string> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Return mock response matching the expected structure
-  const mockResponse = {
-    scope: {
-      overview: "Comprehensive construction project as specified in the bid requirements.",
-      deliverables: [
-        "Complete all work as per project specifications",
-        "Obtain necessary permits and approvals",
-        "Provide quality materials and workmanship",
-        "Complete project within agreed timeline"
-      ],
-      timeline: "Project to be completed within the agreed timeframe",
-      paymentTerms: "Payment schedule as per contract agreement"
-    },
-    contract: {
-      parties: "Contract between owner and contractor",
-      terms: "Standard construction contract terms apply",
-      liability: "Contractor carries appropriate insurance",
-      disputeResolution: "Disputes to be resolved through mediation"
-    },
-    milestones: [
-      { 
-        name: "Project Kickoff", 
-        description: "Initial project setup and planning", 
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], 
-        amount: "20%" 
-      },
-      { 
-        name: "Phase 1 Completion", 
-        description: "First major phase completion", 
-        dueDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], 
-        amount: "30%" 
-      },
-      { 
-        name: "Phase 2 Completion", 
-        description: "Second major phase completion", 
-        dueDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], 
-        amount: "30%" 
-      },
-      { 
-        name: "Final Completion", 
-        description: "Project completion and handover", 
-        dueDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], 
-        amount: "20%" 
-      }
-    ]
-  };
-  
-  return JSON.stringify(mockResponse);
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
 };
+import { generateProContract } from "@/services/ai/contract-generation";
 
 export default function ProjectSetupScreen() {
   const { bidId, submissionId } = useLocalSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
   const { getBidById, getSubmissionsByBidId } = useBids();
+  const { getJobById, applications } = useJobs();
   const { createProject, createScopeOfWork, createContract, createMilestone } = useProjects();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -104,152 +68,51 @@ export default function ProjectSetupScreen() {
   const [contractData, setContractData] = useState<any>(null);
   const [milestonesData, setMilestonesData] = useState<any[]>([]);
 
-  const bid = getBidById(bidId as string);
+  const bidData = getBidById(bidId as string);
+  const jobData = !bidData ? getJobById(bidId as string) : null;
+
+  const source = bidData || jobData;
+  const sourceTitle = bidData ? bidData.projectName : (jobData ? jobData.title : "");
+  const sourceDescription = bidData ? bidData.description : (jobData ? jobData.description : "");
+
   const submissions = getSubmissionsByBidId(bidId as string);
-  const submission = submissions.find(s => s.id === submissionId);
+  const bidSubmission = submissions.find(s => s.id === submissionId);
+  const jobApplication = !bidSubmission ? applications.find(a => a.id === submissionId) : null;
+
+  const submission = bidSubmission || (jobApplication ? {
+    id: jobApplication.id,
+    contractorId: jobApplication.applicantId,
+    contractorName: jobApplication.applicantName,
+    amount: parseFloat(jobApplication.proposedRate || "0"),
+    notes: jobApplication.coverLetter
+  } : null);
 
   const generateContractAndScope = async () => {
-    if (!bid || !submission || !user) return;
+    if (!source || !submission || !user) return;
 
     setGenerating(true);
     setError("");
 
     try {
-      const prompt = `Generate a comprehensive construction project contract and scope of work based on the following information:
+      console.log('Generating contract with AI...');
+      const generated = await generateProContract({
+        description: `Project: ${sourceTitle}. Description: ${sourceDescription}. Contractor Notes: ${submission.notes}. Owner Notes: ${contractNotes}`,
+        amount: submission.amount,
+        ownerName: user.fullName,
+        contractorName: submission.contractorName,
+        state: 'California'
+      });
 
-Project: ${bid.projectName}
-Description: ${bid.description}
-Budget: ${bid.budget || submission.amount}
-Contractor: ${submission.contractorName} from ${submission.contractorCompany}
-Owner: ${user.fullName} from ${user.company || "N/A"}
-Contractor Notes: ${submission.notes}
-Owner Additional Notes: ${contractNotes || "None provided"}
-Project Location: California
+      console.log('Contract generated successfully:', generated);
 
-IMPORTANT: This contract must comply with California contractor law. Include the following provisions:
-
-1. California Contractors State License Board (CSLB) Requirements:
-   - Contractor license number must be displayed on all contracts
-   - Notice to owner about contractor license verification at www.cslb.ca.gov
-   - Three-day right to cancel notice (California Business & Professions Code § 7159)
-
-2. California Payment Requirements (Civil Code § 8800):
-   - Progress payment schedule must be clearly defined
-   - Joint control provisions if applicable
-   - Notice of right to file mechanics lien
-   - Preliminary notice requirements
-
-3. California Contract Requirements (Business & Professions Code § 7159):
-   - Contract must be in writing for work over $500
-   - Must include approximate start and completion dates
-   - Must describe work to be performed
-   - Must include total price and payment terms
-   - Must contain notice of right to cancel
-   - Must include contractor license number
-
-4. Owner Protection Requirements:
-   - Contractor must provide proof of workers' compensation insurance
-   - Contractor must provide proof of general liability insurance ($1M minimum)
-   - Right to demand lien releases before payments
-   - Warranty provisions (minimum 1 year on workmanship)
-   - Arbitration clause per California arbitration rules
-
-5. Contractor Protection Requirements:
-   - Payment schedule tied to milestone completion
-   - Owner's obligation to provide site access
-   - Change order procedures
-   - Force majeure provisions
-   - Dispute resolution procedures
-
-6. Mandatory Disclosures:
-   - Mechanics lien warning per Civil Code § 8118
-   - Notice that contractor is required to be licensed and insured
-   - Information about how to verify contractor's license
-   - Notice of right to file complaint with CSLB
-
-Please generate the following in JSON format:
-
-{
-  "scope": {
-    "workBreakdown": {
-      "phases": [
-        {
-          "name": "Phase name",
-          "tasks": ["Task 1", "Task 2"],
-          "timeline": "2-3 weeks",
-          "dependencies": ["Previous phase"]
-        }
-      ]
-    },
-    "materials": {
-      "items": [
-        {
-          "name": "Material name",
-          "specifications": "Detailed specs",
-          "quantity": "Amount",
-          "supplier": "owner or contractor"
-        }
-      ]
-    },
-    "requirements": {
-      "codes": ["Building code requirements"],
-      "permits": ["Required permits"],
-      "inspections": ["Inspection points"],
-      "qualityStandards": ["Quality standards"]
-    },
-    "exclusions": ["What is not included"]
-  },
-  "contract": {
-    "contractType": "Fixed Price Construction Contract",
-    "terms": {
-      "paymentSchedule": [
-        {
-          "milestone": "Deposit",
-          "percentage": 20,
-          "amount": ${submission.amount * 0.2},
-          "dueDate": "Upon contract signing"
-        }
-      ],
-      "timeline": "Project timeline description",
-      "warranty": "Warranty terms (minimum 1 year on workmanship)",
-      "liability": "General liability insurance required ($1M minimum)",
-      "insurance": "Workers compensation and liability coverage required"
-    }
-  },
-  "milestones": [
-    {
-      "title": "Milestone name",
-      "description": "What needs to be completed",
-      "dueDate": "YYYY-MM-DD",
-      "paymentAmount": ${submission.amount * 0.2},
-      "deliverables": ["Deliverable 1"],
-      "acceptanceCriteria": ["Criteria 1"],
-      "orderNumber": 1
-    }
-  ]
-}
-
-Make it detailed, professional, and legally sound with standard AIA construction contract terms adapted for California law.
-
-Include all California-specific disclosures and notices required by law. Ensure warranty terms comply with California Civil Code requirements. Include arbitration provisions compliant with California Code of Civil Procedure.`;
-
-      const response = await generateText(prompt);
-      
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("Failed to parse AI response");
-      }
-
-      const generated = JSON.parse(jsonMatch[0]);
-      
       setScopeData(generated.scope);
       setContractData(generated.contract);
       setMilestonesData(generated.milestones);
 
       const totalAmount = submission.amount;
       setProjectData({
-        title: bid.projectName,
-        description: bid.description,
+        title: sourceTitle,
+        description: sourceDescription,
         totalAmount,
         escrowBalance: totalAmount,
         startDate: new Date().toISOString().split("T")[0],
@@ -295,7 +158,7 @@ Include all California-specific disclosures and notices required by law. Ensure 
         materials: scopeData.materials,
         requirements: scopeData.requirements,
         exclusions: scopeData.exclusions,
-        approvedByOwner: false,
+        approvedByOwner: true,
         approvedByContractor: false,
       });
 
@@ -333,38 +196,40 @@ Include all California-specific disclosures and notices required by law. Ensure 
     }
   };
 
-  if (!bid || !submission) {
+  if (!source || !submission) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen options={{ title: "Project Setup", headerShown: true }} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: "Project Setup", headerShown: true, headerStyle: { backgroundColor: colors.surface }, headerTintColor: colors.text }} />
         <View style={styles.errorContainer}>
-          <AlertCircle size={48} color={Colors.error} />
-          <Text style={styles.errorTitle}>Bid Not Found</Text>
-          <Text style={styles.errorText}>Unable to load bid information</Text>
+          <AlertCircle size={48} color={colors.error} />
+          <Text style={[styles.errorTitle, { color: colors.text }]}>Source Not Found</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>Unable to load project source information</Text>
         </View>
       </View>
     );
   }
 
+  const bid = source; // For backward compatibility with JSX if any
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Project Setup",
           headerShown: true,
-          headerStyle: { backgroundColor: Colors.surface },
-          headerTintColor: Colors.text,
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
           headerShadowVisible: false,
         }}
       />
 
       <View style={styles.progressBar}>
         <View style={[styles.progressStep, step >= 1 && styles.progressStepActive]}>
-          <View style={[styles.progressDot, step >= 1 && styles.progressDotActive]}>
+          <View style={[styles.progressDot, step >= 1 && styles.progressDotActive, { backgroundColor: step >= 1 ? colors.primary : colors.border }]}>
             {step > 1 ? (
-              <CheckCircle size={16} color={Colors.white} />
+              <CheckCircle size={16} color={colors.white} />
             ) : (
-              <Text style={styles.progressNumber}>1</Text>
+              <Text style={[styles.progressNumber, { color: step >= 1 ? colors.white : colors.textSecondary }]}>1</Text>
             )}
           </View>
           <Text style={[styles.progressLabel, step >= 1 && styles.progressLabelActive]}>
@@ -375,11 +240,11 @@ Include all California-specific disclosures and notices required by law. Ensure 
         <View style={[styles.progressLine, step >= 2 && styles.progressLineActive]} />
 
         <View style={[styles.progressStep, step >= 2 && styles.progressStepActive]}>
-          <View style={[styles.progressDot, step >= 2 && styles.progressDotActive]}>
+          <View style={[styles.progressDot, step >= 2 && styles.progressDotActive, { backgroundColor: step >= 2 ? colors.primary : colors.border }]}>
             {step > 2 ? (
-              <CheckCircle size={16} color={Colors.white} />
+              <CheckCircle size={16} color={colors.white} />
             ) : (
-              <Text style={styles.progressNumber}>2</Text>
+              <Text style={[styles.progressNumber, { color: step >= 2 ? colors.white : colors.textSecondary }]}>2</Text>
             )}
           </View>
           <Text style={[styles.progressLabel, step >= 2 && styles.progressLabelActive]}>
@@ -390,8 +255,8 @@ Include all California-specific disclosures and notices required by law. Ensure 
         <View style={[styles.progressLine, step >= 3 && styles.progressLineActive]} />
 
         <View style={[styles.progressStep, step >= 3 && styles.progressStepActive]}>
-          <View style={[styles.progressDot, step >= 3 && styles.progressDotActive]}>
-            <Text style={styles.progressNumber}>3</Text>
+          <View style={[styles.progressDot, step >= 3 && styles.progressDotActive, { backgroundColor: step >= 3 ? colors.primary : colors.border }]}>
+            <Text style={[styles.progressNumber, { color: step >= 3 ? colors.white : colors.textSecondary }]}>3</Text>
           </View>
           <Text style={[styles.progressLabel, step >= 3 && styles.progressLabelActive]}>
             Sign
@@ -402,51 +267,51 @@ Include all California-specific disclosures and notices required by law. Ensure 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {step === 1 && (
           <View style={styles.stepContainer}>
-            <View style={styles.bidSummary}>
-              <Text style={styles.bidTitle}>{bid.projectName}</Text>
-              <Text style={styles.bidDescription}>{bid.description}</Text>
+            <View style={[styles.bidSummary, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.bidTitle, { color: colors.text }]}>{sourceTitle}</Text>
+              <Text style={[styles.bidDescription, { color: colors.textSecondary }]}>{sourceDescription}</Text>
 
               <View style={styles.detailsGrid}>
-                <View style={styles.detailCard}>
-                  <DollarSign size={20} color={Colors.primary} />
-                  <Text style={styles.detailLabel}>Bid Amount</Text>
-                  <Text style={styles.detailValue}>${submission.amount.toLocaleString()}</Text>
+                <View style={[styles.detailCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <DollarSign size={20} color={colors.primary} />
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Bid Amount</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>${submission.amount.toLocaleString()}</Text>
                 </View>
 
-                <View style={styles.detailCard}>
-                  <Building size={20} color={Colors.primary} />
-                  <Text style={styles.detailLabel}>Contractor</Text>
-                  <Text style={styles.detailValue}>{submission.contractorName}</Text>
+                <View style={[styles.detailCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <Building size={20} color={colors.primary} />
+                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Contractor</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{submission.contractorName}</Text>
                 </View>
               </View>
 
-              <View style={styles.infoCard}>
-                <FileText size={20} color={Colors.primary} />
+              <View style={[styles.infoCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "20" }]}>
+                <FileText size={20} color={colors.primary} />
                 <View style={styles.infoCardContent}>
-                  <Text style={styles.infoCardTitle}>AI Contract Generation</Text>
-                  <Text style={styles.infoCardText}>
+                  <Text style={[styles.infoCardTitle, { color: colors.primary }]}>AI Contract Generation</Text>
+                  <Text style={[styles.infoCardText, { color: colors.textSecondary }]}>
                     We will generate a comprehensive contract including:
                   </Text>
                   <View style={styles.featureList}>
-                    <Text style={styles.featureItem}>• Detailed scope of work</Text>
-                    <Text style={styles.featureItem}>• Payment milestones</Text>
-                    <Text style={styles.featureItem}>• California contractor law protections</Text>
-                    <Text style={styles.featureItem}>• Timeline & deliverables</Text>
-                    <Text style={styles.featureItem}>• Owner & contractor legal safeguards</Text>
+                    <Text style={[styles.featureItem, { color: colors.textSecondary }]}>• Detailed scope of work</Text>
+                    <Text style={[styles.featureItem, { color: colors.textSecondary }]}>• Payment milestones</Text>
+                    <Text style={[styles.featureItem, { color: colors.textSecondary }]}>• California contractor law protections</Text>
+                    <Text style={[styles.featureItem, { color: colors.textSecondary }]}>• Timeline & deliverables</Text>
+                    <Text style={[styles.featureItem, { color: colors.textSecondary }]}>• Owner & contractor legal safeguards</Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.notesCard}>
-                <Text style={styles.notesLabel}>Additional Notes (Optional)</Text>
-                <Text style={styles.notesHelperText}>
+                <Text style={[styles.notesLabel, { color: colors.text }]}>Additional Notes (Optional)</Text>
+                <Text style={[styles.notesHelperText, { color: colors.textTertiary }]}>
                   Provide any additional details to help AI create a better contract
                   (e.g., special requirements, specific materials, timeline considerations)
                 </Text>
                 <TextInput
-                  style={styles.notesInput}
+                  style={[styles.notesInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                   placeholder="Enter notes here to improve AI-generated contract..."
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                   value={contractNotes}
                   onChangeText={setContractNotes}
                   multiline
@@ -457,26 +322,26 @@ Include all California-specific disclosures and notices required by law. Ensure 
             </View>
 
             {error ? (
-              <View style={styles.errorBanner}>
-                <AlertCircle size={20} color={Colors.error} />
-                <Text style={styles.errorBannerText}>{error}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.error + "15" }]}>
+                <AlertCircle size={20} color={colors.error} />
+                <Text style={[styles.errorBannerText, { color: colors.error }]}>{error}</Text>
               </View>
             ) : null}
 
             <TouchableOpacity
-              style={[styles.primaryButton, generating && styles.primaryButtonDisabled]}
+              style={[styles.primaryButton, { backgroundColor: colors.primary }, generating && [styles.primaryButtonDisabled, { opacity: 0.5 }]]}
               onPress={generateContractAndScope}
               disabled={generating}
             >
               {generating ? (
                 <>
-                  <Loader size={20} color={Colors.white} />
-                  <Text style={styles.primaryButtonText}>Generating Contract...</Text>
+                  <Loader size={20} color={colors.white} />
+                  <Text style={[styles.primaryButtonText, { color: colors.white }]}>Generating Contract...</Text>
                 </>
               ) : (
                 <>
-                  <Text style={styles.primaryButtonText}>Generate Contract</Text>
-                  <ArrowRight size={20} color={Colors.white} />
+                  <Text style={[styles.primaryButtonText, { color: colors.white }]}>Generate Contract</Text>
+                  <ArrowRight size={20} color={colors.white} />
                 </>
               )}
             </TouchableOpacity>
@@ -485,93 +350,93 @@ Include all California-specific disclosures and notices required by law. Ensure 
 
         {step === 2 && scopeData && contractData && (
           <View style={styles.stepContainer}>
-            <Text style={styles.sectionTitle}>Review Generated Contract</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Review Generated Contract</Text>
 
-            <View style={styles.reviewCard}>
-              <Text style={styles.reviewCardTitle}>Scope of Work</Text>
-              <Text style={styles.reviewCardSubtitle}>
+            <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.reviewCardTitle, { color: colors.text }]}>Scope of Work</Text>
+              <Text style={[styles.reviewCardSubtitle, { color: colors.textSecondary }]}>
                 {scopeData.workBreakdown.phases.length} phases • {scopeData.materials.items.length} materials
               </Text>
-              
+
               <View style={styles.phasesList}>
                 {scopeData.workBreakdown.phases.map((phase: any, index: number) => (
                   <View key={index} style={styles.phaseItem}>
-                    <View style={styles.phaseNumber}>
-                      <Text style={styles.phaseNumberText}>{index + 1}</Text>
+                    <View style={[styles.phaseNumber, { backgroundColor: colors.primary + "15" }]}>
+                      <Text style={[styles.phaseNumberText, { color: colors.primary }]}>{index + 1}</Text>
                     </View>
                     <View style={styles.phaseContent}>
-                      <Text style={styles.phaseName}>{phase.name}</Text>
-                      <Text style={styles.phaseTimeline}>{phase.timeline}</Text>
-                      <Text style={styles.phaseTasks}>{phase.tasks.length} tasks</Text>
+                      <Text style={[styles.phaseName, { color: colors.text }]}>{phase.name}</Text>
+                      <Text style={[styles.phaseTimeline, { color: colors.textSecondary }]}>{phase.timeline}</Text>
+                      <Text style={[styles.phaseTasks, { color: colors.textSecondary }]}>{phase.tasks.length} tasks</Text>
                     </View>
                   </View>
                 ))}
               </View>
             </View>
 
-            <View style={styles.reviewCard}>
-              <Text style={styles.reviewCardTitle}>Payment Schedule</Text>
-              <Text style={styles.reviewCardSubtitle}>
+            <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.reviewCardTitle, { color: colors.text }]}>Payment Schedule</Text>
+              <Text style={[styles.reviewCardSubtitle, { color: colors.textSecondary }]}>
                 {contractData.terms.paymentSchedule.length} milestone payments
               </Text>
 
               {contractData.terms.paymentSchedule.map((payment: any, index: number) => (
-                <View key={index} style={styles.paymentItem}>
+                <View key={index} style={[styles.paymentItem, { borderBottomColor: colors.border }]}>
                   <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentMilestone}>{payment.milestone}</Text>
-                    <Text style={styles.paymentDue}>{payment.dueDate}</Text>
+                    <Text style={[styles.paymentMilestone, { color: colors.text }]}>{payment.milestone}</Text>
+                    <Text style={[styles.paymentDue, { color: colors.textSecondary }]}>{payment.dueDate}</Text>
                   </View>
                   <View style={styles.paymentAmount}>
-                    <Text style={styles.paymentPercentage}>{payment.percentage}%</Text>
-                    <Text style={styles.paymentValue}>${payment.amount.toLocaleString()}</Text>
+                    <Text style={[styles.paymentPercentage, { color: colors.success }]}>{payment.percentage}%</Text>
+                    <Text style={[styles.paymentValue, { color: colors.text }]}>${payment.amount.toLocaleString()}</Text>
                   </View>
                 </View>
               ))}
             </View>
 
-            <View style={styles.reviewCard}>
-              <Text style={styles.reviewCardTitle}>Contract Terms</Text>
+            <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.reviewCardTitle, { color: colors.text }]}>Contract Terms</Text>
               <View style={styles.termsList}>
                 <View style={styles.termItem}>
-                  <Text style={styles.termLabel}>Warranty:</Text>
-                  <Text style={styles.termValue}>{contractData.terms.warranty}</Text>
+                  <Text style={[styles.termLabel, { color: colors.textSecondary }]}>Warranty:</Text>
+                  <Text style={[styles.termValue, { color: colors.text }]}>{contractData.terms.warranty}</Text>
                 </View>
                 <View style={styles.termItem}>
-                  <Text style={styles.termLabel}>Insurance:</Text>
-                  <Text style={styles.termValue}>{contractData.terms.insurance}</Text>
+                  <Text style={[styles.termLabel, { color: colors.textSecondary }]}>Insurance:</Text>
+                  <Text style={[styles.termValue, { color: colors.text }]}>{contractData.terms.insurance}</Text>
                 </View>
               </View>
             </View>
 
             {error ? (
-              <View style={styles.errorBanner}>
-                <AlertCircle size={20} color={Colors.error} />
-                <Text style={styles.errorBannerText}>{error}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.error + "15" }]}>
+                <AlertCircle size={20} color={colors.error} />
+                <Text style={[styles.errorBannerText, { color: colors.error }]}>{error}</Text>
               </View>
             ) : null}
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={[styles.secondaryButton, { borderColor: colors.border }]}
                 onPress={() => setStep(1)}
               >
-                <Text style={styles.secondaryButtonText}>Regenerate</Text>
+                <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>Regenerate</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.primaryButton, { flex: 1 }, generating && styles.primaryButtonDisabled]}
+                style={[styles.primaryButton, { flex: 1, backgroundColor: colors.primary }, generating && [styles.primaryButtonDisabled, { opacity: 0.5 }]]}
                 onPress={handleCreateProject}
                 disabled={generating}
               >
                 {generating ? (
                   <>
-                    <Loader size={20} color={Colors.white} />
-                    <Text style={styles.primaryButtonText}>Creating...</Text>
+                    <Loader size={20} color={colors.white} />
+                    <Text style={[styles.primaryButtonText, { color: colors.white }]}>Creating...</Text>
                   </>
                 ) : (
                   <>
-                    <Text style={styles.primaryButtonText}>Create Project</Text>
-                    <ArrowRight size={20} color={Colors.white} />
+                    <Text style={[styles.primaryButtonText, { color: colors.white }]}>Create Project</Text>
+                    <ArrowRight size={20} color={colors.white} />
                   </>
                 )}
               </TouchableOpacity>
@@ -586,7 +451,7 @@ Include all California-specific disclosures and notices required by law. Ensure 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -601,9 +466,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between" as const,
     paddingHorizontal: 32,
     paddingVertical: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   progressStep: {
     alignItems: "center" as const,
@@ -614,34 +479,34 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.border,
+    backgroundColor: staticColors.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   progressDotActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
   },
   progressNumber: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   progressLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   progressLabelActive: {
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   progressLine: {
     flex: 1,
     height: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: staticColors.border,
     marginHorizontal: 8,
   },
   progressLineActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
   },
   stepContainer: {
     gap: 20,
@@ -652,12 +517,12 @@ const styles = StyleSheet.create({
   bidTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   bidDescription: {
     fontSize: 15,
     lineHeight: 22,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   detailsGrid: {
     flexDirection: "row" as const,
@@ -665,31 +530,31 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     gap: 6,
   },
   detailLabel: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginTop: 4,
   },
   detailValue: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   infoCard: {
     flexDirection: "row" as const,
     gap: 16,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: staticColors.primary + "10",
     padding: 20,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: staticColors.primary + "30",
   },
   infoCardContent: {
     flex: 1,
@@ -698,11 +563,11 @@ const styles = StyleSheet.create({
   infoCardTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   infoCardText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   featureList: {
     marginTop: 8,
@@ -710,7 +575,7 @@ const styles = StyleSheet.create({
   },
   featureItem: {
     fontSize: 14,
-    color: Colors.text,
+    color: staticColors.text,
     lineHeight: 20,
   },
   primaryButton: {
@@ -718,7 +583,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     paddingVertical: 16,
     borderRadius: 12,
   },
@@ -728,41 +593,41 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   secondaryButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   reviewCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     gap: 16,
   },
   reviewCardTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   reviewCardSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   phasesList: {
     gap: 12,
@@ -771,21 +636,21 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     gap: 12,
     padding: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 8,
   },
   phaseNumber: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   phaseNumberText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   phaseContent: {
     flex: 1,
@@ -794,15 +659,15 @@ const styles = StyleSheet.create({
   phaseName: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   phaseTimeline: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   phaseTasks: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   paymentItem: {
     flexDirection: "row" as const,
@@ -810,7 +675,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   paymentInfo: {
     flex: 1,
@@ -818,12 +683,12 @@ const styles = StyleSheet.create({
   paymentMilestone: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   paymentDue: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   paymentAmount: {
     alignItems: "flex-end" as const,
@@ -831,13 +696,13 @@ const styles = StyleSheet.create({
   paymentPercentage: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
     marginBottom: 2,
   },
   paymentValue: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   termsList: {
     gap: 12,
@@ -848,11 +713,11 @@ const styles = StyleSheet.create({
   termLabel: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   termValue: {
     fontSize: 14,
-    color: Colors.text,
+    color: staticColors.text,
     lineHeight: 20,
   },
   buttonRow: {
@@ -863,16 +728,16 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
-    backgroundColor: Colors.error + "10",
+    backgroundColor: staticColors.error + "10",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.error + "30",
+    borderColor: staticColors.error + "30",
   },
   errorBannerText: {
     flex: 1,
     fontSize: 14,
-    color: Colors.error,
+    color: staticColors.error,
   },
   errorContainer: {
     flex: 1,
@@ -884,39 +749,39 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   errorText: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
   },
   notesCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     gap: 12,
   },
   notesLabel: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   notesHelperText: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 18,
   },
   notesInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: Colors.text,
+    color: staticColors.text,
     minHeight: 120,
   },
 });

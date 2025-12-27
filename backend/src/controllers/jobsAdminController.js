@@ -7,12 +7,9 @@ export const getJobDetails = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const { data, error } = await supabase
+        const { data: job, error } = await supabase
             .from('jobs')
-            .select(`
-                *,
-                posted_by:users!jobs_project_manager_id_fkey(id, email, first_name, last_name, avatar_url)
-            `)
+            .select(`*`)
             .eq('id', id)
             .single();
 
@@ -23,7 +20,22 @@ export const getJobDetails = async (req, res) => {
             throw error;
         }
 
-        return res.json(formatResponse(true, "Job details retrieved", data));
+        // Manual Join for posted_by
+        if (job.projects_manager_id) {
+            const { data: user } = await supabase
+                .from('users')
+                .select('id, email, first_name, last_name, avatar_url')
+                .eq('id', job.projects_manager_id)
+                .single();
+            job.posted_by = user || null;
+        }
+
+        // Aliases for admin panel compatibility
+        job.description = job.descriptions;
+        job.location = job.locations;
+        job.deadline = job.end_date;
+
+        return res.json(formatResponse(true, "Job details retrieved", job));
     } catch (err) {
         console.error('Get job details error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
@@ -34,9 +46,9 @@ export const getJobApplications = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // 1. Get bids for this job (bids are applications)
-        const { data: bids, error } = await supabase
-            .from('bids')
+        // 1. Get job applications from correct table
+        const { data: applications, error } = await supabase
+            .from('job_applications')
             .select('*')
             .eq('job_id', id)
             .order('created_at', { ascending: false });
@@ -44,8 +56,8 @@ export const getJobApplications = async (req, res) => {
         if (error) throw error;
 
         // 2. Manual Join: Fetch contractor details
-        if (bids && bids.length > 0) {
-            const contractorIds = [...new Set(bids.map(b => b.contractor_id).filter(Boolean))];
+        if (applications && applications.length > 0) {
+            const contractorIds = [...new Set(applications.map(b => b.contractor_id).filter(Boolean))];
 
             if (contractorIds.length > 0) {
                 const { data: contractors, error: userError } = await supabase
@@ -55,23 +67,29 @@ export const getJobApplications = async (req, res) => {
 
                 if (userError) {
                     console.error('Error fetching contractors for applications:', userError);
-                    // Don't fail the whole request, just return bids without details
+                    // Don't fail the whole request, just return applications without details
                 } else {
                     const contractorMap = {};
                     contractors.forEach(c => contractorMap[c.id] = c);
 
-                    // Attach contractor to bid
-                    const bidsWithContractors = bids.map(bid => ({
-                        ...bid,
-                        contractor: contractorMap[bid.contractor_id] || null
+                    // Attach contractor to application and map fields for frontend consistency
+                    const appsWithContractors = applications.map(app => ({
+                        ...app,
+                        contractor: contractorMap[app.contractor_id] || null,
+                        // Map fields to match generic 'Bid' or 'Application' shape expected by frontend
+                        amount: app.proposed_rate || 0,
+                        bid_amount: app.proposed_rate || 0, // Admin panel compatibility
+                        description: app.cover_letter || '',
+                        proposal: app.cover_letter || '', // Admin panel compatibility
+                        job_id: app.job_id // Ensure job_id is explicit
                     }));
 
-                    return res.json(formatResponse(true, "Job applications retrieved", bidsWithContractors));
+                    return res.json(formatResponse(true, "Job applications retrieved", appsWithContractors));
                 }
             }
         }
 
-        return res.json(formatResponse(true, "Job applications retrieved", bids || []));
+        return res.json(formatResponse(true, "Job applications retrieved", applications || []));
     } catch (err) {
         console.error('Get job applications error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
@@ -93,7 +111,7 @@ export const getJobTimeline = async (req, res) => {
         const { data: bids } = await supabase
             .from('bids')
             .select('created_at, status, contractor_id')
-            .eq('job_id', id)
+            .or(`job_id.eq.${id},jobs_id.eq.${id}`)
             .order('created_at', { ascending: true });
 
         // Create timeline events
@@ -144,12 +162,12 @@ export const getJobAppointments = async (req, res) => {
         const { data, error } = await supabase
             .from('appointments')
             .select(`
-            *,
-            client: users!appointments_client_id_fkey(id, email, first_name, last_name),
-                contractor: users!appointments_contractor_id_fkey(id, email, first_name, last_name)
-                    `)
+                *,
+                creator:users!appointments_created_by_fkey(id, email, first_name, last_name),
+                attendee:users!appointments_attendee_id_fkey(id, email, first_name, last_name)
+            `)
             .eq('job_id', id)
-            .order('scheduled_at', { ascending: true });
+            .order('start_time', { ascending: true });
 
         if (error) {
             console.warn('Appointments table may not exist:', error.message);
@@ -293,7 +311,7 @@ export const contactJobPoster = async (req, res) => {
         const userId = req.user.id;
 
         // Get job poster
-        const { data: job } = await supabase.from('jobs').select('project_manager_id').eq('id', id).single();
+        const { data: job } = await supabase.from('jobs').select('projects_manager_id').eq('id', id).single();
 
         if (!job) return res.status(404).json(formatResponse(false, "Job not found"));
 
@@ -303,7 +321,7 @@ export const contactJobPoster = async (req, res) => {
             .from('messages') // Assuming generic messages table
             .insert({
                 sender_id: userId,
-                receiver_id: job.project_manager_id,
+                receiver_id: job.projects_manager_id,
                 content: `[Admin Message regarding Job #${id}]: ${message}`,
                 is_read: false
             });
@@ -368,7 +386,7 @@ export const getAllBidsForAdmin = async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (status) query = query.eq('status', status);
-        if (job_id) query = query.eq('job_id', job_id);
+        if (job_id) query = query.or(`job_id.eq.${job_id},jobs_id.eq.${job_id}`);
 
         const { data: bids, count, error } = await query;
 
@@ -382,7 +400,7 @@ export const getAllBidsForAdmin = async (req, res) => {
 
             bids.forEach(b => {
                 if (b.contractor_id) userIds.add(b.contractor_id);
-                if (b.project_manager_id) userIds.add(b.project_manager_id);
+                if (b.projects_manager_id) userIds.add(b.projects_manager_id);
                 if (b.job_id) jobIds.add(b.job_id);
             });
 
@@ -403,16 +421,25 @@ export const getAllBidsForAdmin = async (req, res) => {
             const [usersRes, jobsRes] = await Promise.all(promises);
 
             const userMap = {};
-            usersRes.data?.forEach(u => userMap[u.id] = u);
+            usersRes.data?.forEach(u => {
+                u.full_name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email;
+                userMap[u.id] = u;
+            });
 
             const jobMap = {};
-            jobsRes.data?.forEach(j => jobMap[j.id] = j);
+            jobsRes.data?.forEach(j => {
+                j.deadline = j.end_date;
+                jobMap[j.id] = j;
+            });
 
             enrichedBids = bids.map(b => ({
                 ...b,
                 contractor: b.contractor_id ? (userMap[b.contractor_id] || null) : null,
                 job: b.job_id ? (jobMap[b.job_id] || null) : null,
-                created_by: b.project_manager_id ? (userMap[b.project_manager_id] || null) : null
+                job_id: b.job_id, // Map for frontend
+                created_by: b.projects_manager_id ? (userMap[b.projects_manager_id] || null) : null,
+                amount: b.total_amount,
+                bid_amount: b.total_amount
             }));
         }
 
@@ -444,8 +471,9 @@ export const getBidDetails = async (req, res) => {
         let job = null;
         let contractor = null;
 
-        if (bid.job_id) {
-            const { data: j } = await supabase.from('jobs').select('*').eq('id', bid.job_id).single();
+        const actualJobId = bid.job_id || bid.jobs_id;
+        if (actualJobId) {
+            const { data: j } = await supabase.from('jobs').select('*').eq('id', actualJobId).single();
             job = j;
         }
 

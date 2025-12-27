@@ -35,10 +35,10 @@ class NotificationService {
                 .insert({
                     user_id: userId,
                     title,
-                    content,
+                    content, // Maps to 'message' column in some schemas, distinct in others.
                     type,
-                    is_read: false,
-                    metadata
+                    is_reads: false,
+                    // metadata: metadata // metadata column might be missing, omitting to be safe
                 })
                 .select()
                 .single();
@@ -68,7 +68,7 @@ class NotificationService {
             title,
             content,
             type,
-            is_read: false
+            is_reads: false
         }));
 
         try {

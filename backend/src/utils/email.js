@@ -29,6 +29,35 @@ export async function sendEmailVerification(fullName, email, verifyUrl) {
   });
 }
 
+// Send MFA Backup Code email
+export async function sendMfaResetEmail(name, email, resetCode) {
+  const html = `
+    <html>
+    <body style="font-family: Arial; padding:20px;">
+      <div style="max-width:600px; margin:auto; background:white; padding:30px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #2563EB;">MFA Reset Request</h2>
+        <p>Hello ${name || "there"},</p>
+        <p>We received a request to disable Two-Factor Authentication (MFA) for your BidRoom account.</p>
+        <p>Your MFA reset backup code is:</p>
+        <div style="background: #F1F5F9; padding: 20px; text-align: center; border-radius: 8px; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #0F172A; margin: 20px 0;">
+          ${resetCode}
+        </div>
+        <p>Enter this code on the login screen to disable MFA and gain access to your account.</p>
+        <p><b>Note:</b> This code will expire in 15 minutes. If you did not request this, please ignore this email and ensure your account is secure.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: "MFA Reset Backup Code - BidRoom",
+    html,
+  });
+}
+/* CURSOR PATCH END */
+
 // Send OTP email for MFA
 export async function sendOtpEmail(name, email, otp) {
   const html = `
@@ -51,4 +80,3 @@ export async function sendOtpEmail(name, email, otp) {
     html,
   });
 }
-/* CURSOR PATCH END */

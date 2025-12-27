@@ -10,30 +10,56 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const getMyProjects = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const role = req.user.role;
+        const userId = req.user?.id;
+        const role = req.user?.role;
 
+        if (!userId) {
+            return res.status(401).json(formatResponse(false, "Authentication required", null));
+        }
+
+        // Try with column names as aliases, which is more robust
         let query = supabase
             .from("projects")
             .select(`
-        *,
-        owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url),
-        contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url)
-      `)
+                *,
+                owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url),
+                contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url)
+            `)
             .order("updated_at", { ascending: false });
 
-        // Filter based on role
-        if (['general_contractor', 'subcontractor', 'trade_specialist'].includes(role)) {
+        // Standardized Role Checks:
+        // PM, GC, CLIENT, ADMIN are usually managers/owners of projects they create.
+        // CONTRACTOR, SUBCONTRACTOR are workers.
+        const normalizedRole = role ? role.toUpperCase() : 'CLIENT';
+
+        if (normalizedRole === 'CONTRACTOR' || normalizedRole === 'SUBCONTRACTOR') {
+            // Workers only see projects they are assigned to
             query = query.eq("contractor_id", userId);
+        } else if (normalizedRole === 'ADMIN') {
+            // Admin sees everything - no filter
         } else {
-            query = query.eq("owner_id", userId);
+            // Default: User sees projects they own OR are assigned to (PM, GC, CLIENT)
+            query = query.or(`owner_id.eq.${userId},contractor_id.eq.${userId}`);
         }
 
         const { data, error } = await query;
-        if (error) throw error;
+
+        if (error) {
+            logger.error('Get projects error:', error);
+            // Fallback: fetch without joins if join fails
+            const { data: fallbackData, error: fallbackError } = await supabase
+                .from("projects")
+                .select("*")
+                .or(`owner_id.eq.${userId},contractor_id.eq.${userId}`)
+                .order("updated_at", { ascending: false });
+
+            if (fallbackError) throw fallbackError;
+            return res.json(formatResponse(true, "Projects retrieved (minimal)", fallbackData));
+        }
 
         return res.json(formatResponse(true, "Projects retrieved", data));
     } catch (err) {
+        logger.error('getMyProjects global error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -43,30 +69,58 @@ export const createProject = async (req, res) => {
         const userId = req.user.id;
         const { title, description, budget, location, category, startDate, endDate, status, contractorId } = req.body;
 
+        if (!title) {
+            return res.status(400).json(formatResponse(false, "Project title is required", null));
+        }
+
+        const projectData = {
+            owner_id: userId,
+            title,
+            description: description || '',
+            status: status || 'setup',
+            total_amount: budget || req.body.total_amount || 0
+        };
+
+        // Only add contractor_id if it's actually provided and not empty
+        // Fallback: The projects table has a NOT NULL constraint on contractor_id.
+        // If none is provided, we assign the current user (the creator) as the temporary contractor.
+        if (contractorId) {
+            projectData.contractor_id = contractorId;
+        } else {
+            projectData.contractor_id = userId;
+        }
+
+        if (startDate !== undefined) projectData.start_date = startDate;
+        else if (req.body.start_date !== undefined) projectData.start_date = req.body.start_date;
+
+        if (endDate !== undefined) projectData.end_date = endDate;
+        else if (req.body.end_date !== undefined) projectData.end_date = req.body.end_date;
+
+        // Note: location/category columns not in current schema. Filtered out.
+
+        console.log('[DEBUG] Attempting to create project with data:', JSON.stringify(projectData));
+
         const { data, error } = await supabase
             .from("projects")
-            .insert({
-                owner_id: userId,
-                contractor_id: contractorId || null,
-                title,
-                description,
-                budget: budget || 0,
-                location,
-                category,
-                start_date: startDate,
-                end_date: endDate,
-                status: status || 'pending'
-            })
+            .insert(projectData)
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('[DATABASE ERROR] project creation failed:', JSON.stringify(error));
+            throw error;
+        }
 
         // Notify Owner
-        await notificationService.send(userId, "Project Created", `New project "${title}" has been created.`, "success");
+        try {
+            await notificationService.send(userId, "Project Created", `New project "${title}" has been created.`, "success");
+        } catch (nErr) {
+            logger.error('Notification failed during project creation:', nErr);
+        }
 
         return res.status(201).json(formatResponse(true, "Project created successfully", data));
     } catch (err) {
+        logger.error('createProject error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -84,6 +138,12 @@ export const updateProject = async (req, res) => {
             return res.status(403).json(formatResponse(false, "Unauthorized"));
         }
 
+        // Map budget to total_amount if it exists and cleanup
+        if (updates.budget !== undefined) {
+            updates.total_amount = updates.budget;
+            delete updates.budget;
+        }
+
         const { data, error } = await supabase
             .from("projects")
             .update(updates)
@@ -95,6 +155,7 @@ export const updateProject = async (req, res) => {
 
         return res.json(formatResponse(true, "Project updated", data));
     } catch (err) {
+        logger.error('updateProject error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -116,12 +177,12 @@ export const deleteProject = async (req, res) => {
 
         return res.json(formatResponse(true, "Project deleted"));
     } catch (err) {
+        logger.error('deleteProject error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
 
 export const getProjectById = async (req, res) => {
-
     try {
         const userId = req.user.id;
         const { id } = req.params;
@@ -129,17 +190,30 @@ export const getProjectById = async (req, res) => {
         const { data, error } = await supabase
             .from("projects")
             .select(`
-        *,
-        owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url, phone, email),
-        contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url, phone, email),
-        milestones:project_milestones (*),
-        change_orders:change_orders (*),
-        progress_updates:progress_updates (*)
-      `)
+                *,
+                owner:users!fk_projects_owner_id (id, first_name, last_name, avatar_url, phone, email),
+                contractor:users!fk_projects_contractor_id (id, first_name, last_name, avatar_url, phone, email),
+                milestones:milestones!fk_milestones_project_id (id, project_id, title, status, amount, due_date),
+                change_orders:change_orders (*),
+                progress_updates:progress_updates (*)
+            `)
             .eq("id", id)
             .single();
 
-        if (error || !data) return res.status(404).json(formatResponse(false, "Project not found", null));
+        if (error || !data) {
+            logger.error('Get project details error:', error);
+
+            // Fallback: minimal details
+            const { data: fallback, error: fError } = await supabase
+                .from("projects")
+                .select("*")
+                .eq("id", id)
+                .single();
+
+            if (fError || !fallback) return res.status(404).json(formatResponse(false, "Project not found", null));
+
+            return res.json(formatResponse(true, "Project retrieved (minimal)", fallback));
+        }
 
         // Access control
         if (data.owner_id !== userId && data.contractor_id !== userId && req.user.role !== 'admin') {
@@ -148,6 +222,7 @@ export const getProjectById = async (req, res) => {
 
         return res.json(formatResponse(true, "Project details retrieved", data));
     } catch (err) {
+        logger.error('getProjectById global error:', err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -155,6 +230,31 @@ export const getProjectById = async (req, res) => {
 // ==========================================
 // MILESTONES
 // ==========================================
+
+export const getMilestoneById = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from("project_milestones")
+            .select("*, project:projects(owner_id, contractor_id)")
+            .eq("id", id)
+            .single();
+
+        if (error || !data) return res.status(404).json(formatResponse(false, "Milestone not found", null));
+
+        // Access check
+        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
+        if (data.project.owner_id !== userId && data.project.contractor_id !== userId && !isAdmin) {
+            return res.status(403).json(formatResponse(false, "Unauthorized", null));
+        }
+
+        return res.json(formatResponse(true, "Milestone retrieved", data));
+    } catch (err) {
+        return res.status(500).json(formatResponse(false, err.message, null));
+    }
+};
 
 export const getMilestones = async (req, res) => {
     try {
@@ -172,7 +272,7 @@ export const getMilestones = async (req, res) => {
         }
 
         const { data, error } = await supabase
-            .from("project_milestones")
+            .from("milestones")
             .select("*")
             .eq("project_id", project_id)
             .order("due_date", { ascending: true });

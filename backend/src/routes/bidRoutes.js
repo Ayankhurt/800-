@@ -4,7 +4,7 @@ import { authenticateUser } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.get("/", getAllBids); // Unified route to get all relevant bids
+router.get("/", authenticateUser, getAllBids); // Unified route to get all relevant bids
 router.post("/", authenticateUser, createBidRequest);
 router.post("/:id/submit", authenticateUser, submitBidResponse);
 router.get("/:id/compare", authenticateUser, compareBids);

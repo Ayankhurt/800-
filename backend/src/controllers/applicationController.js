@@ -5,19 +5,54 @@ import { formatResponse } from "../utils/formatResponse.js";
 export const applyToJob = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { job_id, cover_letter, proposed_rate, available_start_date, portfolio_links } = req.body;
+        const {
+            job_id,
+            cover_letter,
+            proposed_rate,
+            available_start_date,
+            portfolio_links,
+            // Additional fields from various frontend versions
+            resume_url,
+            available_from,
+            coverLetter
+        } = req.body;
 
-        if (!job_id || !cover_letter) {
+        const finalCoverLetter = cover_letter || coverLetter;
+        const finalStartDate = available_start_date || available_from;
+        const finalAttachments = portfolio_links || (resume_url ? [resume_url] : []);
+
+        if (!job_id || !finalCoverLetter) {
             return res.status(400).json(formatResponse(false, "Job ID and cover letter required", null));
         }
 
+        console.log("[DEBUG] applyToJob req.body:", req.body);
+
+        // Get job details to find the owner/project manager
+        const { data: job, error: jobError } = await supabase
+            .from("jobs")
+            .select("projects_manager_id")
+            .eq("id", job_id)
+            .single();
+
+        if (jobError || !job) {
+            console.error("[DEBUG] applyToJob Job Fetch Error:", jobError);
+            return res.status(404).json(formatResponse(false, "Job not found", null));
+        }
+
+        const ownerId = job.projects_manager_id;
+
         // Check if already applied
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
             .from("job_applications")
             .select("id")
             .eq("job_id", job_id)
             .eq("contractor_id", userId)
-            .single();
+            .maybeSingle();
+
+        if (checkError) {
+            console.error("[DEBUG] applyToJob Check Error:", checkError);
+            throw checkError;
+        }
 
         if (existing) {
             return res.status(400).json(formatResponse(false, "You have already applied to this job", null));
@@ -28,19 +63,21 @@ export const applyToJob = async (req, res) => {
             .insert({
                 job_id,
                 contractor_id: userId,
-                cover_letter,
-                proposed_rate,
-                available_start_date,
-                attachments: portfolio_links || [], // Map to attachments column which exists
+                cover_letter: finalCoverLetter,
+                proposed_rate: proposed_rate || 0,
                 status: 'pending'
             })
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error("[DEBUG] applyToJob Insert Error:", error);
+            throw error;
+        }
 
         return res.status(201).json(formatResponse(true, "Application submitted successfully", data));
     } catch (err) {
+        console.error("[DEBUG] applyToJob Global Catch:", err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -54,7 +91,7 @@ export const getJobApplications = async (req, res) => {
         // Verify job ownership
         const { data: job } = await supabase
             .from("jobs")
-            .select("project_manager_id")
+            .select("projects_manager_id")
             .eq("id", job_id)
             .single();
 
@@ -62,7 +99,7 @@ export const getJobApplications = async (req, res) => {
             return res.status(404).json(formatResponse(false, "Job not found", null));
         }
 
-        if (job.project_manager_id !== userId && req.user.role !== 'admin') {
+        if (job.projects_manager_id !== userId && req.user.role !== 'admin') {
             return res.status(403).json(formatResponse(false, "Access denied", null));
         }
 
@@ -113,7 +150,7 @@ export const getMyApplications = async (req, res) => {
             .from("job_applications")
             .select(`
         *,
-        job:jobs (id, title, location, budget_min, budget_max, status)
+        job:jobs!job_applications_job_id_fkey (id, title, locations, budget_min, budget_max, status)
       `)
             .eq("contractor_id", userId)
             .order("created_at", { ascending: false });
@@ -143,10 +180,10 @@ export const updateApplicationStatus = async (req, res) => {
             return res.status(400).json(formatResponse(false, "Invalid status", null));
         }
 
-        // Get application and verify job ownership
+        // Get application first
         const { data: application } = await supabase
             .from("job_applications")
-            .select("*, job:jobs(project_manager_id)")
+            .select("*")
             .eq("id", id)
             .single();
 
@@ -154,13 +191,24 @@ export const updateApplicationStatus = async (req, res) => {
             return res.status(404).json(formatResponse(false, "Application not found", null));
         }
 
-        if (application.job.project_manager_id !== userId && req.user.role !== 'admin') {
+        // Get job to verify ownership
+        const { data: job } = await supabase
+            .from("jobs")
+            .select("projects_manager_id")
+            .eq("id", application.job_id)
+            .single();
+
+        if (!job) {
+            return res.status(404).json(formatResponse(false, "Job not found", null));
+        }
+
+        if (job.projects_manager_id !== userId && req.user.role !== 'admin') {
             return res.status(403).json(formatResponse(false, "Access denied", null));
         }
 
         const { data, error } = await supabase
             .from("job_applications")
-            .update({ status, notes })
+            .update({ status })
             .eq("id", id)
             .select()
             .single();

@@ -208,25 +208,25 @@ export const listUsers = async (req, res) => {
     const { data, count, error } = await query;
 
     if (error) {
-      logger.error('Get all payouts error:', error);
+      logger.error('Get all users error:', error);
       throw error;
     }
 
     // Get user IDs for counting jobs and bids
     const userIds = data.map(u => u.id);
 
-    // Get jobs count for each user (jobs where user is project_manager_id or created_by)
+    // Get jobs count for each user (jobs where user is projects_manager_id or created_by)
     let jobsCounts = {};
     if (userIds.length > 0) {
-      // Get jobs where user is project_manager_id
+      // Get jobs where user is projects_manager_id
       const { data: jobsByPM } = await supabase
         .from("jobs")
-        .select("project_manager_id")
-        .in("project_manager_id", userIds);
+        .select("projects_manager_id")
+        .in("projects_manager_id", userIds);
 
       jobsByPM?.forEach(job => {
-        if (job.project_manager_id) {
-          jobsCounts[job.project_manager_id] = (jobsCounts[job.project_manager_id] || 0) + 1;
+        if (job.projects_manager_id) {
+          jobsCounts[job.projects_manager_id] = (jobsCounts[job.projects_manager_id] || 0) + 1;
         }
       });
 
@@ -238,7 +238,7 @@ export const listUsers = async (req, res) => {
         .not("created_by", "is", null);
 
       jobsByCreator?.forEach(job => {
-        if (job.created_by && job.created_by !== job.project_manager_id) {
+        if (job.created_by && job.created_by !== job.projects_manager_id) {
           jobsCounts[job.created_by] = (jobsCounts[job.created_by] || 0) + 1;
         }
       });
@@ -587,16 +587,27 @@ export const getAllProjects = async (req, res) => {
       const jobMap = {};
       jobsRes.data?.forEach(j => jobMap[j.id] = j);
 
-      enrichedProjects = projectsData.map(p => ({
-        ...p,
-        owner: p.owner_id ? (userMap[p.owner_id] || null) : null,
-        contractor: p.contractor_id ? (userMap[p.contractor_id] || null) : null,
-        job: p.job_id ? (jobMap[p.job_id] || null) : null,
-        // Computed fields
-        budget: p.total_amount, // Map total_amount to budget
-        completion_percentage: p.total_amount > 0 ? Math.round(((p.paid_amount || 0) / p.total_amount) * 100) : 0,
-        dispute_count: 0
-      }));
+      enrichedProjects = projectsData.map(p => {
+        const owner = p.owner_id ? (userMap[p.owner_id] || null) : null;
+        if (owner) {
+          owner.full_name = `${owner.first_name || ''} ${owner.last_name || ''}`.trim() || owner.email;
+        }
+        const contractor = p.contractor_id ? (userMap[p.contractor_id] || null) : null;
+        if (contractor) {
+          contractor.full_name = `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim() || contractor.email;
+        }
+
+        return {
+          ...p,
+          owner,
+          contractor,
+          job: p.job_id ? (jobMap[p.job_id] || null) : null,
+          // Computed fields
+          budget: p.total_amount, // Map total_amount to budget
+          completion_percentage: p.total_amount > 0 ? Math.round(((p.paid_amount || 0) / p.total_amount) * 100) : 0,
+          dispute_count: 0
+        };
+      });
     }
 
     return res.json(formatResponse(true, "Projects retrieved", {
@@ -619,14 +630,10 @@ export const getProjectById = async (req, res) => {
       return res.status(400).json(formatResponse(false, "Project ID is required", null));
     }
 
-    const { data, error } = await supabase
+    // 1. Fetch Project (Raw)
+    const { data: project, error } = await supabase
       .from("projects")
-      .select(`
-        *,
-        owner:users!fk_projects_owner_id (*),
-        contractor:users!fk_projects_contractor_id (*),
-        milestones:project_milestones (*)
-      `)
+      .select(`*`)
       .eq("id", id)
       .single();
 
@@ -638,11 +645,47 @@ export const getProjectById = async (req, res) => {
       throw error;
     }
 
-    if (!data) {
+    if (!project) {
       return res.status(404).json(formatResponse(false, "Project not found", null));
     }
 
-    return res.json(formatResponse(true, "Project retrieved", data));
+    // 2. Manual Join (Owner, Contractor, Milestones) with individual awaits for stability
+    console.log(`[DEBUG] Enriched data for project: ${id}`);
+
+    let owner = null;
+    let contractor = null;
+    let milestones = [];
+
+    if (project.owner_id) {
+      const { data: userData } = await supabase.from('users').select('*').eq('id', project.owner_id).single();
+      owner = userData || null;
+    }
+
+    if (project.contractor_id) {
+      const { data: contractorData } = await supabase.from('users').select('*').eq('id', project.contractor_id).single();
+      contractor = contractorData || null;
+    }
+
+    const { data: milestonesData } = await supabase.from('milestones').select('*').eq('project_id', id).order('created_at', { ascending: true });
+    milestones = milestonesData || [];
+
+    if (owner) {
+      owner.full_name = `${owner.first_name || ''} ${owner.last_name || ''}`.trim() || owner.email;
+    }
+    if (contractor) {
+      contractor.full_name = `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim() || contractor.email;
+    }
+
+    const enrichedProject = {
+      ...project,
+      owner,
+      contractor,
+      milestones,
+      budget: project.total_amount || 0
+    };
+
+    return res.json(formatResponse(true, "Project retrieved", enrichedProject));
+
   } catch (err) {
     logger.error('Get project by ID error:', { id: req.params.id, error: err });
     return res.status(500).json(formatResponse(false, err.message || "Failed to retrieve project", null));
@@ -692,30 +735,66 @@ export const getAllJobs = async (req, res) => {
     const { page = 1, limit = 50, status, trade_type } = req.query;
     const offset = (page - 1) * limit;
 
+    // 1. Fetch Jobs (Raw)
     let query = supabase
       .from("jobs")
-      .select(`
-        *,
-        posted_by:users!fk_jobs_project_manager_id (id, first_name, last_name, email),
-        job_applications(count)
-      `, { count: 'exact' })
-      .range(offset, offset + limit - 1)
-      .order("created_at", { ascending: false });
+      .select("*", { count: 'exact' });
 
-    if (status) query = query.eq("status", status);
+    if (status && status !== 'all') query = query.eq("status", status);
     if (trade_type) query = query.eq("trade_type", trade_type);
 
-    const { data, count, error } = await query;
+    // Pagination
+    query = query.range(offset, offset + limit - 1).order("created_at", { ascending: false });
+
+    const { data: jobsData, count, error } = await query;
 
     if (error) {
       logger.error('Get all jobs error:', error);
       throw error;
     }
 
-    const enrichedJobs = (data || []).map(job => ({
-      ...job,
-      applications_count: job.job_applications?.[0]?.count || 0
-    }));
+    // 2. Manual Join (Posted By, Application Count)
+    let enrichedJobs = [];
+    if (jobsData && jobsData.length > 0) {
+      const userIds = [...new Set(jobsData.map(j => j.projects_manager_id).filter(Boolean))];
+      const jobIds = jobsData.map(j => j.id);
+
+      // Fetch related user details
+      let userMap = {};
+      if (userIds.length > 0) {
+        const { data: usersRes } = await supabase.from('users').select('id, first_name, last_name, email, avatar_url').in('id', userIds);
+        usersRes?.forEach(u => userMap[u.id] = u);
+      }
+
+      // Fetch application counts
+      let applicationCounts = {};
+      if (jobIds.length > 0) {
+        // We fetching application counts per job
+        const { data: appCounts } = await supabase.from('job_applications').select('job_id');
+        // Count manually since RPC/Complex group by can be tricky with different schemas
+        appCounts?.forEach(app => {
+          applicationCounts[app.job_id] = (applicationCounts[app.job_id] || 0) + 1;
+        });
+      }
+
+      enrichedJobs = jobsData.map(job => {
+        const posted_by = job.projects_manager_id ? (userMap[job.projects_manager_id] || null) : null;
+        if (posted_by) {
+          posted_by.full_name = `${posted_by.first_name || ''} ${posted_by.last_name || ''}`.trim() || posted_by.email;
+        }
+        return {
+          ...job,
+          posted_by,
+          description: job.descriptions,
+          location: job.locations,
+          deadline: job.end_date,
+          applications_count: applicationCounts[job.id] || 0,
+          application_count: applicationCounts[job.id] || 0,
+          // Match frontend expected fields
+          applications: applicationCounts[job.id] || 0
+        };
+      });
+    }
 
     return res.json(formatResponse(true, "Jobs retrieved", {
       jobs: enrichedJobs,
@@ -2951,7 +3030,7 @@ export const warnUser = async (req, res) => {
         title: 'Account Warning',
         content: warningMessage,
         type: 'warning',
-        is_read: false
+        is_reads: false
       });
 
     if (notifError) {

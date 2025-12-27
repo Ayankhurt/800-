@@ -1,4 +1,4 @@
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { Stack } from "expo-router";
 import { Shield, Eye, Database, Trash2, Download, Lock } from "lucide-react-native";
 import React, { useState } from "react";
@@ -14,24 +14,43 @@ import {
 } from "react-native";
 import { authAPI } from "@/services/api";
 
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
+
 interface PrivacyItemProps {
   icon: React.ReactNode;
   label: string;
   description: string;
   onPress: () => void;
   destructive?: boolean;
+  colors: any;
 }
 
-function PrivacyItem({ icon, label, description, onPress, destructive }: PrivacyItemProps) {
+function PrivacyItem({ icon, label, description, onPress, destructive, colors }: PrivacyItemProps) {
   return (
-    <TouchableOpacity style={styles.privacyItem} onPress={onPress}>
+    <TouchableOpacity style={[styles.privacyItem, { borderBottomColor: colors.border }]} onPress={onPress}>
       <View style={styles.privacyLeft}>
-        <View style={styles.privacyIcon}><Text>{icon}</Text></View>
+        <View style={styles.privacyIcon}>{icon}</View>
         <View style={styles.privacyContent}>
-          <Text style={[styles.privacyLabel, destructive && styles.destructiveText]}>
+          <Text style={[styles.privacyLabel, { color: destructive ? colors.error : colors.text }]}>
             {label}
           </Text>
-          <Text style={styles.privacyDescription}>{description}</Text>
+          <Text style={[styles.privacyDescription, { color: colors.textSecondary }]}>{description}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -41,18 +60,20 @@ function PrivacyItem({ icon, label, description, onPress, destructive }: Privacy
 interface PrivacySectionProps {
   title: string;
   children: React.ReactNode;
+  colors: any;
 }
 
-function PrivacySection({ title, children }: PrivacySectionProps) {
+function PrivacySection({ title, children, colors }: PrivacySectionProps) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>{children}</View>
+      <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{title}</Text>
+      <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>{children}</View>
     </View>
   );
 }
 
 export default function PrivacyScreen() {
+  const { colors } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -130,8 +151,8 @@ export default function PrivacyScreen() {
       "This will permanently delete your account and all associated data. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: () => Alert.alert("Notice", "Account deletion is not available in this demo version.")
         }
@@ -148,92 +169,96 @@ export default function PrivacyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Privacy & Security",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
-          headerTintColor: Colors.primary,
+          headerTintColor: colors.primary,
         }}
       />
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Shield size={48} color={Colors.primary} />
-          <Text style={styles.headerTitle}>Your Privacy Matters</Text>
-          <Text style={styles.headerDescription}>
+          <Shield size={48} color={colors.primary} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Your Privacy Matters</Text>
+          <Text style={[styles.headerDescription, { color: colors.textSecondary }]}>
             We take your privacy seriously and give you control over your data.
           </Text>
         </View>
 
-        <PrivacySection title="Data Management">
+        <PrivacySection title="Data Management" colors={colors}>
           <PrivacyItem
-            icon={<Eye size={20} color={Colors.primary} />}
+            icon={<Eye size={20} color={colors.primary} />}
             label="View My Data"
             description="See what information we have about you"
             onPress={handleDataAccess}
+            colors={colors}
           />
           <PrivacyItem
-            icon={<Download size={20} color={Colors.primary} />}
+            icon={<Download size={20} color={colors.primary} />}
             label="Download My Data"
             description="Get a copy of all your data"
             onPress={handleDownloadData}
+            colors={colors}
           />
           <PrivacyItem
-            icon={<Database size={20} color={Colors.textSecondary} />}
+            icon={<Database size={20} color={colors.textSecondary} />}
             label="Data Retention Policy"
             description="Learn how long we keep your data"
             onPress={handleDataRetention}
+            colors={colors}
           />
         </PrivacySection>
 
-        <PrivacySection title="Security">
+        <PrivacySection title="Security" colors={colors}>
           <PrivacyItem
-            icon={<Lock size={20} color={Colors.primary} />}
+            icon={<Lock size={20} color={colors.primary} />}
             label="Change Password"
             description="Update your account password"
             onPress={() => setShowChangePassword(!showChangePassword)}
+            colors={colors}
           />
         </PrivacySection>
 
         {showChangePassword && (
-          <View style={styles.passwordForm}>
-            <Text style={styles.formTitle}>Change Password</Text>
-            
-            <Text style={styles.label}>Old Password</Text>
+          <View style={[styles.passwordForm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.formTitle, { color: colors.text }]}>Change Password</Text>
+
+            <Text style={[styles.label, { color: colors.text }]}>Old Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
               placeholder="Enter current password"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               secureTextEntry
               value={oldPassword}
               onChangeText={setOldPassword}
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>New Password</Text>
+            <Text style={[styles.label, { color: colors.text }]}>New Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
               placeholder="Enter new password"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               secureTextEntry
               value={newPassword}
               onChangeText={setNewPassword}
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Confirm New Password</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Confirm New Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
               placeholder="Confirm new password"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               secureTextEntry
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -241,40 +266,42 @@ export default function PrivacyScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.submitButton, isChangingPassword && styles.submitButtonDisabled]}
+              style={[styles.submitButton, isChangingPassword && styles.submitButtonDisabled, { backgroundColor: colors.primary }]}
               onPress={handleChangePassword}
               disabled={isChangingPassword}
             >
               {isChangingPassword ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
-                <Text style={styles.submitButtonText}>Change Password</Text>
+                <Text style={[styles.submitButtonText, { color: colors.white }]}>Change Password</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
 
-        <PrivacySection title="Permissions">
+        <PrivacySection title="Permissions" colors={colors}>
           <PrivacyItem
-            icon={<Shield size={20} color={Colors.textSecondary} />}
+            icon={<Shield size={20} color={colors.textSecondary} />}
             label="App Permissions"
             description="Manage camera, location, and notification access"
             onPress={handlePermissions}
+            colors={colors}
           />
         </PrivacySection>
 
-        <PrivacySection title="Account">
+        <PrivacySection title="Account" colors={colors}>
           <PrivacyItem
-            icon={<Trash2 size={20} color={Colors.error} />}
+            icon={<Trash2 size={20} color={colors.error} />}
             label="Delete My Account"
             description="Permanently delete your account and data"
             onPress={handleDeleteAccount}
             destructive
+            colors={colors}
           />
         </PrivacySection>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.textTertiary }]}>
             For more information, please read our Privacy Policy and Terms of Service.
           </Text>
         </View>
@@ -286,7 +313,7 @@ export default function PrivacyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -299,13 +326,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   headerDescription: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     lineHeight: 22,
   },
@@ -315,17 +342,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   sectionContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   privacyItem: {
     flexDirection: "row" as const,
@@ -333,7 +360,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   privacyLeft: {
     flexDirection: "row" as const,
@@ -352,16 +379,13 @@ const styles = StyleSheet.create({
   },
   privacyLabel: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     fontWeight: "500" as const,
     marginBottom: 2,
   },
-  destructiveText: {
-    color: Colors.error,
-  },
   privacyDescription: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 18,
   },
   footer: {
@@ -371,7 +395,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     textAlign: "center" as const,
     lineHeight: 20,
   },
@@ -379,37 +403,37 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 8,
     padding: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   formTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
     marginTop: 12,
   },
   input: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     marginBottom: 4,
   },
   submitButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center" as const,
@@ -421,6 +445,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
 });

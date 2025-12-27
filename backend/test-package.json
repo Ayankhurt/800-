@@ -1,0 +1,14 @@
+{
+    "name": "bidroom-api-tests",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Complete API test suite for BidRoom platform",
+    "main": "test-complete-flow.js",
+    "scripts": {
+        "test": "node test-complete-flow.js",
+        "test:flow": "node test-complete-flow.js"
+    },
+    "dependencies": {
+        "axios": "^1.6.0"
+    }
+}

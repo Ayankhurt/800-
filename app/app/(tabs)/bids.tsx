@@ -1,8 +1,24 @@
-import Colors from "@/constants/colors";
 import { Bid, BidStatus } from "@/types";
 import { useBids } from "@/contexts/BidsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Stack, useRouter } from "expo-router";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
 import { Calendar, FileText, Plus, Users, X } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import {
@@ -16,6 +32,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { bidsAPI, projectsAPI } from "@/services/api";
 
@@ -33,14 +50,15 @@ interface BidCardProps {
   bid: Bid;
   onPress: () => void;
   submissionsCount: number;
+  colors: any;
 }
 
-function BidCard({ bid, onPress, submissionsCount }: BidCardProps) {
+function BidCard({ bid, onPress, submissionsCount, colors }: BidCardProps) {
   const statusColors: Record<BidStatus, string> = {
-    pending: Colors.warning,
-    submitted: Colors.info,
-    awarded: Colors.success,
-    declined: Colors.error,
+    pending: colors.warning,
+    submitted: colors.info,
+    awarded: colors.success,
+    declined: colors.error,
   };
 
   const daysUntilDue = Math.ceil(
@@ -48,13 +66,13 @@ function BidCard({ bid, onPress, submissionsCount }: BidCardProps) {
   );
 
   return (
-    <TouchableOpacity style={styles.bidCard} onPress={onPress}>
+    <TouchableOpacity style={[styles.bidCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPress}>
       <View style={styles.bidHeader}>
         <View style={styles.bidTitleSection}>
-          <Text style={styles.bidTitle} numberOfLines={1}>
+          <Text style={[styles.bidTitle, { color: colors.text }]} numberOfLines={1}>
             {bid.projectName}
           </Text>
-          <Text style={styles.bidDate}>
+          <Text style={[styles.bidDate, { color: colors.textTertiary }]}>
             Created {new Date(bid.createdAt).toLocaleDateString()}
           </Text>
         </View>
@@ -70,35 +88,35 @@ function BidCard({ bid, onPress, submissionsCount }: BidCardProps) {
         </View>
       </View>
 
-      <Text style={styles.bidDescription} numberOfLines={2}>
+      <Text style={[styles.bidDescription, { color: colors.textSecondary }]} numberOfLines={2}>
         {bid.description}
       </Text>
 
       {bid.budget && (
         <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Budget:</Text>
-          <Text style={styles.budgetValue}>{bid.budget}</Text>
+          <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Budget:</Text>
+          <Text style={[styles.budgetValue, { color: colors.text }]}>{bid.budget}</Text>
         </View>
       )}
 
-      <View style={styles.bidMetrics}>
+      <View style={[styles.bidMetrics, { borderTopColor: colors.border }]}>
         <View style={styles.metricItem}>
-          <Users size={16} color={Colors.textSecondary} />
-          <Text style={styles.metricText}>
+          <Users size={16} color={colors.textSecondary} />
+          <Text style={[styles.metricText, { color: colors.textSecondary }]}>
             {submissionsCount}/{bid.contractorCount} Bids
           </Text>
         </View>
         <View style={styles.metricItem}>
-          <Calendar size={16} color={Colors.textSecondary} />
-          <Text style={styles.metricText}>
+          <Calendar size={16} color={colors.textSecondary} />
+          <Text style={[styles.metricText, { color: colors.textSecondary }]}>
             {daysUntilDue > 0 ? `${daysUntilDue} days left` : "Overdue"}
           </Text>
         </View>
       </View>
 
       {submissionsCount > 0 && (
-        <View style={styles.submissionsSection}>
-          <Text style={styles.submissionsTitle}>
+        <View style={[styles.submissionsSection, { borderTopColor: colors.border }]}>
+          <Text style={[styles.submissionsTitle, { color: colors.primary }]}>
             {submissionsCount} submission{submissionsCount > 1 ? 's' : ''} received
           </Text>
         </View>
@@ -109,54 +127,17 @@ function BidCard({ bid, onPress, submissionsCount }: BidCardProps) {
 
 export default function BidsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { bids: contextBids, getSubmissionsByBidId, isLoading: contextLoading } = useBids();
-  const [apiBids, setApiBids] = useState<Bid[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, colors } = useAuth();
+  const { bids, refreshBids, isLoading } = useBids();
   const [selectedStatus, setSelectedStatus] = useState<BidStatus | "all">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch bids from API
-  useEffect(() => {
-    const fetchBids = async () => {
-      if (!user) return;
-
-      setIsLoading(true);
-      try {
-        console.log("[API] GET /bids");
-        const response = await bidsAPI.getAll();
-
-        if (response.success && response.data) {
-          // Handle both array response and object response { bids: [], total: 0 }
-          const rawData = response.data.bids || (Array.isArray(response.data) ? response.data : []);
-
-          // Map backend bid format to frontend Bid type
-          const mappedBids = rawData.map((bid: any) => ({
-            id: bid.id || bid.bid_id,
-            projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
-            description: bid.notes || bid.description || "No description provided",
-            dueDate: bid.due_date || bid.dueDate || bid.created_at,
-            status: (bid.status || "pending") as BidStatus,
-            budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
-            contractorCount: bid.contractor_count || bid.contractorCount || 0,
-            submittedCount: bid.submitted_count || bid.submittedCount || 0,
-            createdAt: bid.created_at || bid.createdAt,
-          }));
-          setApiBids(mappedBids);
-        }
-      } catch (error: any) {
-        console.error("[API] Failed to fetch bids:", error);
-        Alert.alert("Error", "Failed to load bids. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBids();
-  }, [user]);
-
-  // Use API bids if available, otherwise fallback to context bids
-  const bids = apiBids.length > 0 ? apiBids : contextBids;
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refreshBids();
+    setRefreshing(false);
+  }, [refreshBids]);
 
   // Visible for PM and GC only (hide for VIEWER), Admin sees everything
   const isAdmin = user?.role === "ADMIN";
@@ -168,16 +149,16 @@ export default function BidsScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Bids",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
           headerRight: () =>
@@ -187,13 +168,13 @@ export default function BidsScreen() {
                 style={styles.addButton}
                 onPress={() => setShowCreateModal(true)}
               >
-                <Plus size={24} color={Colors.primary} />
+                <Plus size={24} color={colors.primary} />
               </TouchableOpacity>
             ) : null,
         }}
       />
 
-      <View style={styles.filtersSection}>
+      <View style={[styles.filtersSection, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -210,14 +191,16 @@ export default function BidsScreen() {
                 key={status}
                 style={[
                   styles.filterChip,
-                  selectedStatus === status && styles.filterChipActive,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                  selectedStatus === status && [styles.filterChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
                 ]}
                 onPress={() => setSelectedStatus(status)}
               >
                 <Text
                   style={[
                     styles.filterChipText,
-                    selectedStatus === status && styles.filterChipTextActive,
+                    { color: colors.textSecondary },
+                    selectedStatus === status && [styles.filterChipTextActive, { color: colors.surface }],
                   ]}
                 >
                   {STATUS_LABELS[status]} ({count})
@@ -228,9 +211,10 @@ export default function BidsScreen() {
         </ScrollView>
       </View>
 
-      {isLoading ? (
+      {isLoading && !refreshing ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateTitle}>Loading bids...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Loading bids...</Text>
         </View>
       ) : (
         <FlatList
@@ -239,17 +223,21 @@ export default function BidsScreen() {
             <BidCard
               bid={item}
               submissionsCount={item.submittedCount}
+              colors={colors}
               onPress={() => router.push(`/bid-details?id=${item.id}`)}
             />
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <FileText size={48} color={Colors.textTertiary} />
-              <Text style={styles.emptyStateTitle}>No bids found</Text>
-              <Text style={styles.emptyStateDescription}>
+              <FileText size={48} color={colors.textTertiary} />
+              <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No bids found</Text>
+              <Text style={[styles.emptyStateDescription, { color: colors.textSecondary }]}>
                 {canCreateBids ? "Tap the + button to create your first bid" : "Check back later for new bids"}
               </Text>
             </View>
@@ -259,36 +247,9 @@ export default function BidsScreen() {
 
       <CreateBidModal
         visible={showCreateModal}
+        colors={colors}
         onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
-          // Refresh bids list
-          const fetchBids = async () => {
-            setIsLoading(true);
-            try {
-              const response = await bidsAPI.getAll();
-              if (response.success && response.data) {
-                const rawData = response.data.bids || (Array.isArray(response.data) ? response.data : []);
-                const mappedBids = rawData.map((bid: any) => ({
-                  id: bid.id || bid.bid_id,
-                  projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
-                  description: bid.notes || bid.description || "No description provided",
-                  dueDate: bid.due_date || bid.dueDate || bid.created_at,
-                  status: (bid.status || "pending") as BidStatus,
-                  budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
-                  contractorCount: bid.contractor_count || bid.contractorCount || 0,
-                  submittedCount: bid.submitted_count || bid.submittedCount || 0,
-                  createdAt: bid.created_at || bid.createdAt,
-                }));
-                setApiBids(mappedBids);
-              }
-            } catch (error) {
-              console.error("[API] Failed to refresh bids:", error);
-            } finally {
-              setIsLoading(false);
-            }
-          };
-          fetchBids();
-        }}
+        onSuccess={refreshBids}
       />
     </View>
   );
@@ -298,10 +259,12 @@ function CreateBidModal({
   visible,
   onClose,
   onSuccess,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  colors: any;
 }) {
   const { createBid: contextCreateBid } = useBids();
   const [formData, setFormData] = useState({
@@ -376,15 +339,35 @@ function CreateBidModal({
         // Try to create a project first with the form data
         try {
           console.log("[API] Creating project first, then bid");
-          const projectResponse = await projectsAPI.create({
+          const projectPayload = {
             title: formData.projectName,
             description: formData.description,
             budget: amount,
-          });
+          };
+          console.log("[API] Project payload:", projectPayload);
 
-          if (projectResponse.success && projectResponse.data?.id) {
-            backendData.project_id = projectResponse.data.id;
+          const projectResponse = await projectsAPI.create(projectPayload);
+
+          console.log("[API] Project response:", projectResponse);
+
+          if (projectResponse.success && projectResponse.data) {
+            const projectId = projectResponse.data.id || projectResponse.data.project_id;
+            console.log("[API] Project created with ID:", projectId);
+
+            if (projectId) {
+              backendData.project_id = projectId;
+            } else {
+              console.error("[API] Project response missing ID:", projectResponse.data);
+              Alert.alert(
+                "Error",
+                "Project was created but ID is missing. Please try again.",
+                [{ text: "OK" }]
+              );
+              setSubmitting(false);
+              return;
+            }
           } else {
+            console.error("[API] Project creation failed:", projectResponse);
             Alert.alert(
               "Project Required",
               "Please select an existing project first, or create a new project before creating a bid.",
@@ -394,9 +377,12 @@ function CreateBidModal({
             return;
           }
         } catch (projectError: any) {
+          console.error("[API] Project creation error:", projectError);
+          console.error("[API] Error response:", projectError.response?.data);
+          const errorMessage = projectError.response?.data?.message || projectError.message || "Failed to create project.";
           Alert.alert(
             "Error",
-            "Failed to create project. Please select an existing project or try again.",
+            `${errorMessage} Please select an existing project or try again.`,
             [{ text: "OK" }]
           );
           setSubmitting(false);
@@ -404,7 +390,9 @@ function CreateBidModal({
         }
       }
 
+      console.log("[API] Creating bid with data:", backendData);
       const response = await bidsAPI.create(backendData);
+      console.log("[API] Bid creation response:", response);
 
       if (response.success) {
         Alert.alert("Success", "Bid created successfully!");
@@ -434,11 +422,11 @@ function CreateBidModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Create New Bid</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Create New Bid</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -447,9 +435,9 @@ function CreateBidModal({
           contentContainerStyle={styles.modalContentInner}
         >
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Select Project (or create new) *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Select Project (or create new) *</Text>
             {loadingProjects ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <View>
                 {projects.length > 0 && (
@@ -459,7 +447,8 @@ function CreateBidModal({
                         key={project.id}
                         style={[
                           styles.projectOption,
-                          formData.projectId === project.id && styles.projectOptionSelected,
+                          { backgroundColor: colors.background, borderColor: colors.border },
+                          formData.projectId === project.id && [styles.projectOptionSelected, { backgroundColor: colors.primary + "20", borderColor: colors.primary }],
                         ]}
                         onPress={() =>
                           setFormData({
@@ -469,31 +458,31 @@ function CreateBidModal({
                           })
                         }
                       >
-                        <Text style={styles.projectOptionText}>
+                        <Text style={[styles.projectOptionText, { color: colors.text }]}>
                           {project.title || project.name || project.id}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
-                <Text style={styles.label}>Or create new project:</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Or create new project:</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                   placeholder="e.g., Downtown Office Renovation"
                   value={formData.projectName}
                   onChangeText={(text) =>
                     setFormData({ ...formData, projectName: text, projectId: "" })
                   }
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                 />
               </View>
             )}
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Description *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Describe the project scope and requirements..."
               value={formData.description}
               onChangeText={(text) =>
@@ -502,63 +491,64 @@ function CreateBidModal({
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Due Date *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Due Date *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="YYYY-MM-DD"
               value={formData.dueDate}
               onChangeText={(text) =>
                 setFormData({ ...formData, dueDate: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Bid Amount *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Bid Amount *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g., 250000 (numeric amount only)"
               value={formData.budget}
               onChangeText={(text) =>
                 setFormData({ ...formData, budget: text })
               }
               keyboardType="numeric"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
-            <Text style={styles.helperText}>
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
               Enter the bid amount as a number (e.g., 250000 for $250,000)
             </Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Number of Contractors to Invite</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Number of Contractors to Invite</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="5"
               value={formData.contractorCount}
               onChangeText={(text) =>
                 setFormData({ ...formData, contractorCount: text })
               }
               keyboardType="numeric"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting || (!formData.projectId && !formData.projectName) || !formData.budget}
           >
-            <Text style={styles.submitButtonText}>
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Creating..." : "Create Bid"}
             </Text>
           </TouchableOpacity>
@@ -571,16 +561,16 @@ function CreateBidModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   addButton: {
     padding: 8,
   },
   filtersSection: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   filtersContent: {
     paddingHorizontal: 16,
@@ -590,33 +580,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: staticColors.primary,
+    borderColor: staticColors.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   filterChipTextActive: {
-    color: Colors.surface,
+    color: staticColors.surface,
   },
   listContent: {
     padding: 16,
   },
   bidCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   bidHeader: {
     flexDirection: "row" as const,
@@ -631,12 +621,12 @@ const styles = StyleSheet.create({
   bidTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 4,
   },
   bidDate: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   bidStatus: {
     paddingHorizontal: 12,
@@ -649,7 +639,7 @@ const styles = StyleSheet.create({
   },
   bidDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -660,20 +650,20 @@ const styles = StyleSheet.create({
   },
   budgetLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginRight: 8,
   },
   budgetValue: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   bidMetrics: {
     flexDirection: "row" as const,
     gap: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
     marginBottom: 12,
   },
   metricItem: {
@@ -683,19 +673,19 @@ const styles = StyleSheet.create({
   },
   metricText: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     fontWeight: "500" as const,
   },
   submissionsSection: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
   },
   submissionsTitle: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   emptyState: {
     alignItems: "center" as const,
@@ -706,18 +696,18 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   modalHeader: {
     flexDirection: "row" as const,
@@ -726,13 +716,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderBottomColor: staticColors.border,
+    backgroundColor: staticColors.surface,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   modalContent: {
     flex: 1,
@@ -746,25 +736,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   textArea: {
     minHeight: 120,
     paddingTop: 12,
   },
   submitButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center" as const,
@@ -776,7 +766,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   projectSelector: {
     marginBottom: 12,
@@ -785,23 +775,23 @@ const styles = StyleSheet.create({
   projectOption: {
     padding: 12,
     borderRadius: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     marginBottom: 8,
   },
   projectOptionSelected: {
-    backgroundColor: Colors.primary + "20",
-    borderColor: Colors.primary,
+    backgroundColor: staticColors.primary + "20",
+    borderColor: staticColors.primary,
   },
   projectOptionText: {
     fontSize: 14,
-    color: Colors.text,
+    color: staticColors.text,
     fontWeight: "500" as const,
   },
   helperText: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginTop: 4,
     fontStyle: "italic",
   },

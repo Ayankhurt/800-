@@ -7,7 +7,7 @@ export const getSettings = async (req, res) => {
         const userId = req.user.id;
 
         const { data, error } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .select("*")
             .eq("user_id", userId)
             .single();
@@ -17,7 +17,7 @@ export const getSettings = async (req, res) => {
         // If no settings exist, create default
         if (!data) {
             const { data: newSettings, error: createError } = await supabase
-                .from("user_settings")
+                .from("users_settings")
                 .insert({
                     user_id: userId,
                     email_notifications: true,
@@ -53,7 +53,8 @@ export const updateSettings = async (req, res) => {
             timezone,
             privacy_profile_visible,
             privacy_show_email,
-            privacy_show_phone
+            privacy_show_phone,
+            dark_mode
         } = req.body;
 
         const updateData = {};
@@ -66,10 +67,11 @@ export const updateSettings = async (req, res) => {
         if (privacy_profile_visible !== undefined) updateData.privacy_profile_visible = privacy_profile_visible;
         if (privacy_show_email !== undefined) updateData.privacy_show_email = privacy_show_email;
         if (privacy_show_phone !== undefined) updateData.privacy_show_phone = privacy_show_phone;
+        if (dark_mode !== undefined) updateData.dark_mode = dark_mode;
 
         // Check if settings exist
         const { data: existing } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .select("id")
             .eq("user_id", userId)
             .single();
@@ -79,7 +81,7 @@ export const updateSettings = async (req, res) => {
         if (existing) {
             // Update existing
             const result = await supabase
-                .from("user_settings")
+                .from("users_settings")
                 .update(updateData)
                 .eq("user_id", userId)
                 .select()
@@ -89,7 +91,7 @@ export const updateSettings = async (req, res) => {
         } else {
             // Insert new
             const result = await supabase
-                .from("user_settings")
+                .from("users_settings")
                 .insert({
                     user_id: userId,
                     ...updateData
@@ -114,7 +116,7 @@ export const getNotificationPreferences = async (req, res) => {
         const userId = req.user.id;
 
         const { data, error } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .select("email_notifications, push_notifications, sms_notifications, marketing_emails")
             .eq("user_id", userId)
             .single();
@@ -139,7 +141,7 @@ export const updateNotificationPreferences = async (req, res) => {
         const { email_notifications, push_notifications, sms_notifications, marketing_emails } = req.body;
 
         const { data, error } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .upsert({
                 user_id: userId,
                 email_notifications,
@@ -164,7 +166,7 @@ export const getPrivacySettings = async (req, res) => {
         const userId = req.user.id;
 
         const { data, error } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .select("privacy_profile_visible, privacy_show_email, privacy_show_phone")
             .eq("user_id", userId)
             .single();
@@ -188,7 +190,7 @@ export const updatePrivacySettings = async (req, res) => {
         const { privacy_profile_visible, privacy_show_email, privacy_show_phone } = req.body;
 
         const { data, error } = await supabase
-            .from("user_settings")
+            .from("users_settings")
             .upsert({
                 user_id: userId,
                 privacy_profile_visible,

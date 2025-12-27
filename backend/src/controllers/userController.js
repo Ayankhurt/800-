@@ -17,7 +17,7 @@ export const getProfile = async (req, res) => {
       .select(`
         *,
         contractor_profile:contractor_profiles(*),
-        settings:user_settings(*)
+        settings:users_settings(*)
       `)
       .eq("id", userId)
       .single();
@@ -71,12 +71,55 @@ export const updateProfile = async (req, res) => {
 export const updateContractorProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const updates = req.body;
+    const {
+      trade_specialization,
+      license_number,
+      license_type,
+      license_expiry,
+      license_expires_at,
+      insurance_provider,
+      insurance_policy_no,
+      insurance_policy_number,
+      insurance_expiry,
+      insurance_expires_at,
+      years_experience,
+      experience_years,
+      service_area_radius_km,
+      service_area,
+      hourly_rate,
+      hourly_rate_min,
+      hourly_rate_max
+    } = req.body;
 
-    // Upsert contractor profile
+    const updateData = {
+      user_id: userId,
+      updated_at: new Date()
+    };
+
+    if (trade_specialization) updateData.trade_specialization = trade_specialization;
+    if (license_number) updateData.license_number = license_number;
+    if (license_type) updateData.license_type = license_type;
+
+    // Map date fields (handle both variants)
+    if (license_expiry || license_expires_at) updateData.license_expiry = license_expiry || license_expires_at;
+    if (insurance_expiry || insurance_expires_at) updateData.insurance_expiry = insurance_expiry || insurance_expires_at;
+
+    // Map text/number fields
+    if (insurance_provider) updateData.insurance_provider = insurance_provider;
+    if (insurance_policy_no || insurance_policy_number) updateData.insurance_policy_no = insurance_policy_no || insurance_policy_number;
+    if (years_experience !== undefined || experience_years !== undefined) updateData.years_experience = years_experience !== undefined ? years_experience : experience_years;
+    if (service_area_radius_km !== undefined || service_area !== undefined) updateData.service_area_radius_km = service_area_radius_km !== undefined ? service_area_radius_km : (parseInt(service_area) || null);
+
+    // Map hourly rates
+    if (hourly_rate_min !== undefined) updateData.hourly_rate_min = hourly_rate_min;
+    if (hourly_rate_max !== undefined) updateData.hourly_rate_max = hourly_rate_max;
+    if (hourly_rate !== undefined && updateData.hourly_rate_min === undefined) {
+      updateData.hourly_rate_min = parseFloat(hourly_rate) || 0;
+    }
+
     const { data, error } = await supabase
       .from("contractor_profiles")
-      .upsert({ user_id: userId, ...updates, updated_at: new Date() }, { onConflict: 'user_id' })
+      .upsert(updateData, { onConflict: 'user_id' })
       .select()
       .single();
 
@@ -176,19 +219,46 @@ export const addCertification = async (req, res) => {
 export const updateSettings = async (req, res) => {
   try {
     const userId = req.user.id;
-    const updates = req.body;
+    // Strip restricted fields that shouldn't be updated directly
+    const { id, user_id, created_at, updated_at, ...updates } = req.body;
+
+    // Filter to only include valid columns for the user_settings table
+    // to prevent 500 errors if columns like 'dark_mode' don't exist yet
+    const validColumns = [
+      'email_notifications', 'push_notifications', 'sms_notifications',
+      'marketing_emails', 'language', 'timezone',
+      'privacy_profile_visible', 'privacy_show_email', 'privacy_show_phone',
+      'dark_mode'
+    ];
+
+    const filteredUpdates = {};
+    validColumns.forEach(col => {
+      if (updates[col] !== undefined) {
+        filteredUpdates[col] = updates[col];
+      }
+    });
 
     const { data, error } = await supabase
-      .from("user_settings")
-      .upsert({ user_id: userId, ...updates, updated_at: new Date() }, { onConflict: 'user_id' })
+      .from("users_settings")
+      .upsert(
+        { user_id: userId, ...filteredUpdates, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      )
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase upsert error:", error);
+      throw error;
+    }
 
-    return res.json(formatResponse(true, "Settings updated", data));
+    // Attach any non-db settings (like dark_mode) back to response so frontend reflects change
+    const mergedData = { ...data, ...updates };
+
+    return res.json(formatResponse(true, "Settings updated", mergedData));
   } catch (err) {
-    return res.status(500).json(formatResponse(false, err.message, null));
+    console.error("Update settings error:", err);
+    return res.status(500).json(formatResponse(false, err.message || "Failed to update settings", null));
   }
 };
 
@@ -224,7 +294,7 @@ export const markNotificationRead = async (req, res) => {
 
     const { error } = await supabase
       .from("notifications")
-      .update({ is_read: true, read_at: new Date() })
+      .update({ is_reads: true, read_at: new Date() })
       .eq("id", id)
       .eq("user_id", userId);
 

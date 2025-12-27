@@ -150,11 +150,12 @@ apiClient.interceptors.response.use(
 // Auth API functions
 export const authAPI = {
   // Login
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, mfa_code?: string) => {
     try {
       const response = await apiClient.post("/auth/login", {
         email,
         password,
+        mfa_code,
       });
       return response.data;
     } catch (error: any) {
@@ -178,7 +179,9 @@ export const authAPI = {
     insuranceDetails?: string;
     location?: string;
     portfolio?: string;
+    // Sub specific
     certifications?: string;
+    // PM specific
     projectType?: string;
   }) => {
     try {
@@ -277,7 +280,6 @@ export const authAPI = {
       throw detailedError;
     }
   },
-
   // Get current user profile
   getProfile: async () => {
     try {
@@ -497,6 +499,28 @@ export const authAPI = {
       throw error;
     }
   },
+
+  // Request MFA Reset (Forgot MFA)
+  requestMfaReset: async (email: string) => {
+    try {
+      const response = await apiClient.post("/auth/mfa/request-reset", { email });
+      return response.data;
+    } catch (error: any) {
+      console.error("Request MFA reset API error:", error);
+      throw error;
+    }
+  },
+
+  // Verify MFA Reset (Disable MFA with backup code)
+  verifyMfaReset: async (user_id: string, code: string) => {
+    try {
+      const response = await apiClient.post("/auth/mfa/verify-reset", { user_id, code });
+      return response.data;
+    } catch (error: any) {
+      console.error("Verify MFA reset API error:", error);
+      throw error;
+    }
+  },
 };
 
 /**
@@ -516,72 +540,19 @@ export const authAPI = {
  */
 export const adminAPI = {
   // User Management
-  getAllUsers: async (offset?: number, limit?: number, cursor?: string | null) => {
+  getAllUsers: async (page: number = 1, limit: number = 20, cursor?: string | null) => {
     try {
-      // Backend endpoint: GET /api/v1/admin/all-users
-      // Supports cursor-based pagination: ?cursor=user-id&limit=50
-      // Also supports offset-based for backward compatibility: ?offset=0&limit=20
-      const params: any = {};
+      // Backend endpoint: GET /admin/users
+      const params: any = { page, limit };
+      if (cursor) params.cursor = cursor;
 
-      // Use cursor-based pagination if cursor is provided
-      if (cursor !== undefined && cursor !== null) {
-        params.cursor = cursor;
-        if (limit !== undefined) params.limit = limit;
-      } else if (offset !== undefined && limit !== undefined) {
-        // Fallback to offset-based pagination for backward compatibility
-        params.offset = offset;
-        params.limit = limit;
-      } else if (limit !== undefined) {
-        params.limit = limit;
-      }
-
-      console.log("[API] GET /admin/all-users with params:", params);
-      const response = await apiClient.get("/admin/all-users", { params });
-      console.log("[API] GET /admin/all-users response:", response.data);
-
-      // Handle new response format: { success: true, data: { users: [...], nextCursor: ..., hasMore: ..., count: ... } }
-      // Backend returns: { success: true, message: "...", data: { users: [...], nextCursor: ..., hasMore: ..., count: ... } }
-      if (response.data?.success) {
-        const responseData = response.data.data;
-
-        // New format with pagination metadata (nested structure)
-        if (responseData && typeof responseData === 'object' && responseData.users && Array.isArray(responseData.users)) {
-          console.log(`[API] Retrieved ${responseData.users.length} users (new format with pagination)`);
-          console.log(`[API] Next cursor: ${responseData.nextCursor}, Has more: ${responseData.hasMore}`);
-          return {
-            success: response.data.success,
-            message: response.data.message,
-            data: responseData.users, // Extract users array
-            nextCursor: responseData.nextCursor,
-            hasMore: responseData.hasMore,
-            count: responseData.count,
-          };
-        }
-        // Old format - data is directly the array
-        if (Array.isArray(responseData)) {
-          console.log(`[API] Retrieved ${responseData.length} users (old format - direct array)`);
-          return {
-            success: response.data.success,
-            message: response.data.message,
-            data: responseData,
-          };
-        }
-      }
-
-      // Fallback: return as-is
-      console.warn("[API] Unexpected response format:", response.data);
+      console.log("[API] GET /admin/users with params:", params);
+      const response = await apiClient.get("/admin/users", { params });
       return response.data;
     } catch (error: any) {
-      // Gracefully handle 404 - endpoint might not exist yet
       if (error.response?.status === 404) {
-        // Silently return empty data - don't log as error
         return { data: [], success: false, message: "Endpoint not available" };
       }
-      // Only log non-404 errors
-      if (error.response?.status !== 404) {
-        console.error("[API] Get all users API error:", error);
-      }
-      // Return empty data instead of throwing
       return { data: [], success: false, message: error.message || "Failed to fetch users" };
     }
   },
@@ -595,14 +566,11 @@ export const adminAPI = {
     role: string;
   }) => {
     try {
-      // Backend endpoint: POST /api/v1/auth/admin/create-user
-      // Backend expects: email, password, full_name, role_code
       const requestBody = {
         email: data.email,
         password: data.password,
-        full_name: data.fullName, // Convert fullName to full_name
-        role_code: data.role, // Convert role to role_code
-        // Optional fields (if backend supports them)
+        full_name: data.fullName,
+        role_code: data.role,
         ...(data.phone && { phone: data.phone }),
         ...(data.companyName && { company_name: data.companyName }),
       };
@@ -611,56 +579,33 @@ export const adminAPI = {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
-        console.warn("Create user endpoint not found (404).");
         throw new Error("User creation endpoint not available");
       }
-      // Log the actual error message from backend
       const errorMessage = error.response?.data?.message || error.message || "Failed to create user";
-      console.error("Create user API error:", errorMessage);
       throw new Error(errorMessage);
     }
   },
 
-  updateUser: async (userId: string, data: {
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    companyName?: string;
-    role?: string;
-  }) => {
+  updateUser: async (userId: string, data: any) => {
     try {
-      // Backend endpoint: PUT /api/admin/update-role (for role) or use user update endpoint
-      if (data.role) {
-        const response = await apiClient.put("/admin/update-role", {
-          user_id: userId,
-          role_code: data.role,
-        });
-        return response.data;
-      }
-      // For other updates, might need to use user profile update endpoint
-      throw new Error("User update endpoint not fully implemented");
+      console.log(`[API] PUT /admin/users/${userId}`, data);
+      const response = await apiClient.put(`/admin/users/${userId}`, data);
+      console.log(`[API] PUT /admin/users/${userId} success:`, response.data);
+      return response.data;
     } catch (error: any) {
+      console.error("[API] Update user API error:", error);
       if (error.response?.status === 404) {
-        console.warn("Update user endpoint not found (404).");
         throw new Error("User update endpoint not available");
       }
-      console.error("Update user API error:", error);
       throw error;
     }
   },
 
   deleteUser: async (userId: string) => {
     try {
-      console.log(`[API] deleteUser called for userId: ${userId}`);
-      // Backend endpoint: DELETE /admin/users/:id
-      console.log(`[API] Attempting DELETE /admin/users/${userId}`);
       const response = await apiClient.delete(`/admin/users/${userId}`);
-      console.log(`[API] DELETE deleteUser success:`, response.data);
       return response.data;
     } catch (error: any) {
-      console.error("[API] Delete user API error:", error);
-      console.error("[API] Error response:", error.response?.data);
-      // Preserve original error for better debugging
       if (error.response) {
         const detailedError = new Error(error.response?.data?.message || error.message || "Failed to delete user");
         (detailedError as any).response = error.response;
@@ -672,30 +617,24 @@ export const adminAPI = {
 
   getUserById: async (userId: string) => {
     try {
-      // Backend endpoint: GET /api/admin/users/:id
       const response = await apiClient.get(`/admin/users/${userId}`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
         return { data: null, success: false, message: "User not found" };
       }
-      console.error("Get user by ID API error:", error);
       throw error;
     }
   },
 
   suspendUser: async (userId: string, reason?: string) => {
     try {
-      console.log(`[API] suspendUser called for userId: ${userId}`);
-      // Backend endpoint: PUT /admin/users/:id/suspend (not PATCH)
+      // Backend endpoint: POST /admin/users/:id/suspend
       const requestBody = { reason: reason || "Admin action" };
-      console.log(`[API] Attempting PUT /admin/users/${userId}/suspend with body:`, requestBody);
-      const response = await apiClient.put(`/admin/users/${userId}/suspend`, requestBody);
-      console.log(`[API] PUT suspendUser success:`, response.data);
+      const response = await apiClient.post(`/admin/users/${userId}/suspend`, requestBody);
       return response.data;
     } catch (error: any) {
       console.error("[API] Suspend user API error:", error);
-      console.error("[API] Error response:", error.response?.data);
       if (error.response) {
         const detailedError = new Error(error.response?.data?.message || error.message || "Failed to suspend user");
         (detailedError as any).response = error.response;
@@ -707,26 +646,11 @@ export const adminAPI = {
 
   unsuspendUser: async (userId: string) => {
     try {
-      console.log(`[API] unsuspendUser called for userId: ${userId}`);
-      // Backend endpoint: PUT /admin/users/:id/unsuspend (not PATCH)
-      console.log(`[API] Attempting PUT /admin/users/${userId}/unsuspend`);
-      const response = await apiClient.put(`/admin/users/${userId}/unsuspend`);
-      console.log(`[API] PUT unsuspendUser success:`, response.data);
+      // Backend endpoint: POST /admin/users/:id/unsuspend
+      const response = await apiClient.post(`/admin/users/${userId}/unsuspend`);
       return response.data;
     } catch (error: any) {
       console.error("[API] Unsuspend user API error:", error);
-      console.error("[API] Error response:", error.response?.data);
-
-      // Handle 400 error specifically (user not suspended)
-      if (error.response?.status === 400) {
-        const backendMessage = error.response?.data?.message || "User is not suspended";
-        const detailedError = new Error(backendMessage);
-        (detailedError as any).response = error.response;
-        (detailedError as any).status = 400;
-        throw detailedError;
-      }
-
-      // Preserve original error for better debugging
       if (error.response) {
         const detailedError = new Error(error.response?.data?.message || error.message || "Failed to unsuspend user");
         (detailedError as any).response = error.response;
@@ -739,7 +663,7 @@ export const adminAPI = {
   verifyUser: async (userId: string) => {
     try {
       console.log(`[API] verifyUser called for userId: ${userId}`);
-      // Backend endpoint: POST /admin/verify-user with { user_id: userId } in body
+      //Backend endpoint: POST /admin/verify-user with { user_id: userId} in body
       console.log(`[API] Attempting POST /admin/verify-user with user_id: ${userId}`);
       const response = await apiClient.post("/admin/verify-user", {
         user_id: userId,
@@ -802,18 +726,14 @@ export const adminAPI = {
   // Project Management
   getAllProjects: async () => {
     try {
-      console.log("[API] GET /projects");
-      // Backend endpoint: GET /projects
-      const response = await apiClient.get("/projects");
-      console.log("[API] GET /projects success:", response.data);
+      console.log("[API] GET /admin/projects");
+      const response = await apiClient.get("/admin/projects");
       return response.data;
     } catch (error: any) {
       console.log("[API ERROR]", error);
-      // Gracefully handle 404 - return empty data
       if (error.response?.status === 404) {
         return { data: [], success: false, message: "Endpoint not available" };
       }
-      // Return empty data instead of throwing
       return { data: [], success: false, message: error.message || "Failed to fetch projects" };
     }
   },
@@ -899,21 +819,27 @@ export const adminAPI = {
   // Bid Management
   getAllBids: async () => {
     try {
-      // Backend endpoint: GET /api/v1/bids (admin can see all bids via this endpoint)
-      // Note: Backend doesn't have /admin/bids, but /bids returns all for admin
-      const response = await apiClient.get("/bids");
+      // Backend endpoint: GET /admin/bids
+      const response = await apiClient.get("/admin/bids");
       return response.data;
     } catch (error: any) {
-      // Gracefully handle 404 - return empty data
       if (error.response?.status === 404) {
         return { data: [], success: false, message: "Endpoint not available" };
       }
-      // Only log non-404 errors
-      if (error.response?.status !== 404) {
-        console.error("Get all bids API error:", error);
-      }
-      // Return empty data instead of throwing
       return { data: [], success: false, message: error.message || "Failed to fetch bids" };
+    }
+  },
+
+  getAllJobs: async () => {
+    try {
+      // Backend endpoint: GET /admin/jobs
+      const response = await apiClient.get("/admin/jobs");
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { data: [], success: false, message: "Endpoint not available" };
+      }
+      return { data: [], success: false, message: error.message || "Failed to fetch jobs" };
     }
   },
 
@@ -1038,9 +964,8 @@ export const adminAPI = {
 
   approvePayout: async (payoutId: string) => {
     try {
-      console.log("[API] PATCH /admin/payouts/:id/approve", payoutId);
-      const response = await apiClient.patch(`/admin/payouts/${payoutId}/approve`);
-      console.log("[API] PATCH /admin/payouts/:id/approve success:", response.data);
+      console.log("[API] POST /admin/payouts/:id/approve", payoutId);
+      const response = await apiClient.post(`/admin/payouts/${payoutId}/approve`);
       return response.data;
     } catch (error: any) {
       console.error("[API] Approve payout error:", error);
@@ -1050,9 +975,8 @@ export const adminAPI = {
 
   rejectPayout: async (payoutId: string) => {
     try {
-      console.log("[API] PATCH /admin/payouts/:id/reject", payoutId);
-      const response = await apiClient.patch(`/admin/payouts/${payoutId}/reject`);
-      console.log("[API] PATCH /admin/payouts/:id/reject success:", response.data);
+      console.log("[API] POST /admin/payouts/:id/hold", payoutId);
+      const response = await apiClient.post(`/admin/payouts/${payoutId}/hold`);
       return response.data;
     } catch (error: any) {
       console.error("[API] Reject payout error:", error);
@@ -1076,8 +1000,8 @@ export const adminAPI = {
 
   getAllPayouts: async () => {
     try {
-      // Backend endpoint: GET /payouts
-      const response = await apiClient.get("/payouts");
+      // Backend endpoint: GET /admin/payouts
+      const response = await apiClient.get("/admin/payouts");
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1106,7 +1030,7 @@ export const adminAPI = {
   // Reports and Analytics (Not available in backend yet - return mock data)
   getAnalytics: async () => {
     try {
-      const response = await apiClient.get("/admin/login-stats");
+      const response = await apiClient.get("/admin/dashboard/stats");
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1184,7 +1108,7 @@ export const adminAPI = {
     try {
       console.log(`[API] PUT /admin/update-role`, { userId, roleCode });
       // Backend endpoint: PUT /admin/update-role
-      // Backend expects: { user_id, role_code } (not "role")
+      // Backend expects: { user_id, role_code} (not "role")
       const response = await apiClient.put(`/admin/update-role`, {
         user_id: userId,
         role_code: roleCode, // Backend expects role_code, not role
@@ -1567,6 +1491,14 @@ export const jobsAPI = {
       throw error;
     }
   },
+  delete: async (jobId: string) => {
+    try {
+      const response = await apiClient.delete(`/jobs/${jobId}`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
 };
 
 // Payments API
@@ -1669,7 +1601,7 @@ export const payoutsAPI = {
 export const milestonesAPI = {
   getByProject: async (projectId: string) => {
     try {
-      const response = await apiClient.get(`/milestones/projects/${projectId}`);
+      const response = await apiClient.get(`/milestones?project_id=${projectId}`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1681,6 +1613,7 @@ export const milestonesAPI = {
 
   getById: async (milestoneId: string) => {
     try {
+      // Backend doesn't have a direct get milestone by id outside of projects yet, but we'll keep this if needed
       const response = await apiClient.get(`/milestones/${milestoneId}`);
       return response.data;
     } catch (error: any) {
@@ -1690,25 +1623,25 @@ export const milestonesAPI = {
 
   create: async (projectId: string, data: any) => {
     try {
-      const response = await apiClient.post(`/milestones/projects/${projectId}`, data);
+      const response = await apiClient.post("/milestones", { ...data, project_id: projectId });
       return response.data;
     } catch (error: any) {
       throw error;
     }
   },
 
-  update: async (milestoneId: string, data: any) => {
+  updateStatus: async (milestoneId: string, status: string, data: any = {}) => {
     try {
-      const response = await apiClient.put(`/milestones/${milestoneId}`, data);
+      const response = await apiClient.put(`/milestones/${milestoneId}`, { status, ...data });
       return response.data;
     } catch (error: any) {
       throw error;
     }
   },
 
-  submit: async (milestoneId: string) => {
+  submit: async (milestoneId: string, data: any = {}) => {
     try {
-      const response = await apiClient.post(`/milestones/${milestoneId}/submit`);
+      const response = await apiClient.put(`/milestones/${milestoneId}`, { status: 'submitted', ...data });
       return response.data;
     } catch (error: any) {
       throw error;
@@ -1717,7 +1650,16 @@ export const milestonesAPI = {
 
   approve: async (milestoneId: string) => {
     try {
-      const response = await apiClient.post(`/milestones/${milestoneId}/approve`);
+      const response = await apiClient.put(`/projects/milestones/${milestoneId}/status`, { status: 'approved' });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  reject: async (milestoneId: string, reason: string) => {
+    try {
+      const response = await apiClient.put(`/projects/milestones/${milestoneId}/status`, { status: 'rejected', rejection_reason: reason });
       return response.data;
     } catch (error: any) {
       throw error;
@@ -1729,7 +1671,7 @@ export const milestonesAPI = {
 export const conversationsAPI = {
   getAll: async () => {
     try {
-      const response = await apiClient.get("/conversations");
+      const response = await apiClient.get("/messages/conversations");
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1741,7 +1683,7 @@ export const conversationsAPI = {
 
   getById: async (conversationId: string) => {
     try {
-      const response = await apiClient.get(`/conversations/${conversationId}`);
+      const response = await apiClient.get(`/messages/conversations/${conversationId}`);
       return response.data;
     } catch (error: any) {
       throw error;
@@ -1750,7 +1692,7 @@ export const conversationsAPI = {
 
   create: async (data: any) => {
     try {
-      const response = await apiClient.post("/conversations", data);
+      const response = await apiClient.post("/messages/conversations", data);
       return response.data;
     } catch (error: any) {
       throw error;
@@ -1762,7 +1704,7 @@ export const conversationsAPI = {
 export const messagesAPI = {
   getByConversation: async (conversationId: string) => {
     try {
-      const response = await apiClient.get(`/messages/conversations/${conversationId}`);
+      const response = await apiClient.get(`/messages/conversations/${conversationId}/messages`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1986,14 +1928,29 @@ export const disputesAPI = {
     }
   },
 
-  updateStatus: async (disputeId: string, data: any) => {
+  addResponse: async (disputeId: string, message: string, evidence?: any[]) => {
     try {
-      console.log("[API] PUT /disputes/:id/status", disputeId, data);
-      const response = await apiClient.put(`/disputes/${disputeId}/status`, data);
-      console.log("[API] PUT /disputes/:id/status success:", response.data);
+      const response = await apiClient.post(`/disputes/${disputeId}/responses`, { message, evidence });
       return response.data;
     } catch (error: any) {
-      console.error("[API] Update dispute status error:", error);
+      throw error;
+    }
+  },
+
+  resolve: async (disputeId: string, data: { resolution: string; resolution_notes: string }) => {
+    try {
+      const response = await apiClient.put(`/disputes/${disputeId}/resolve`, data);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  close: async (disputeId: string) => {
+    try {
+      const response = await apiClient.put(`/disputes/${disputeId}/close`);
+      return response.data;
+    } catch (error: any) {
       throw error;
     }
   },
@@ -2015,7 +1972,7 @@ export const disputesAPI = {
 export const progressUpdatesAPI = {
   getByProject: async (projectId: string) => {
     try {
-      const response = await apiClient.get(`/progress-updates/projects/${projectId}`);
+      const response = await apiClient.get(`/projects/${projectId}/progress`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -2025,18 +1982,9 @@ export const progressUpdatesAPI = {
     }
   },
 
-  getById: async (updateId: string) => {
+  create: async (projectId: string, data: any) => {
     try {
-      const response = await apiClient.get(`/progress-updates/${updateId}`);
-      return response.data;
-    } catch (error: any) {
-      throw error;
-    }
-  },
-
-  create: async (data: any) => {
-    try {
-      const response = await apiClient.post("/progress-updates", data);
+      const response = await apiClient.post(`/projects/${projectId}/progress`, data);
       return response.data;
     } catch (error: any) {
       throw error;
@@ -2114,7 +2062,7 @@ export const contractorsAPI = {
 
   search: async (query: string) => {
     try {
-      const response = await apiClient.get("/contractors/search", { params: { q: query } });
+      const response = await apiClient.get("/contractors/search", { params: { search: query } });
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -2172,6 +2120,24 @@ export const contractorsAPI = {
 
 // User API
 export const userAPI = {
+  // Upload Avatar
+  uploadAvatar: async (formData: FormData) => {
+    try {
+      const response = await apiClient.post("/uploads/avatar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data", // Let axios set boundary
+        },
+        transformRequest: (data, headers) => {
+          return data; // Prevent axios from stringifying FormData
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Upload avatar API error:", error);
+      throw error;
+    }
+  },
+
   getProfile: async () => {
     try {
       console.log("[API] GET /users/me");
@@ -2189,13 +2155,23 @@ export const userAPI = {
       console.log("[API] PUT /users/profile", data);
 
       // Data should already be in backend format (first_name, last_name, etc.)
-      // from the calling code
       const response = await apiClient.put("/users/profile", data);
       console.log("[API] PUT /users/profile success:", response.data);
       return response.data;
     } catch (error: any) {
       console.error("[API] Update profile API error:", error);
-      console.error("[API] Error response:", error.response?.data);
+      throw error;
+    }
+  },
+
+  updateContractorProfile: async (data: any) => {
+    try {
+      console.log("[API] PUT /users/contractor-profile", data);
+      const response = await apiClient.put("/users/contractor-profile", data);
+      console.log("[API] PUT /users/contractor-profile success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Update contractor profile API error:", error);
       throw error;
     }
   },
@@ -2211,6 +2187,51 @@ export const userAPI = {
       return response.data;
     } catch (error: any) {
       console.error("[API] Change password API error:", error);
+      throw error;
+    }
+  },
+
+  updateSettings: async (settings: any) => {
+    try {
+      console.log("[API] PUT /users/settings", settings);
+      const response = await apiClient.put("/users/settings", settings);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Update settings API error:", error);
+      throw error;
+    }
+  },
+};
+
+// Invites API
+export const invitesAPI = {
+  invite: async (data: { job_id: string, contractor_id: string, message?: string }) => {
+    try {
+      console.log("[API] POST /invites", data);
+      const response = await apiClient.post("/invites", data);
+      console.log("[API] POST /invites success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Invite contractor API error:", error);
+      throw error;
+    }
+  },
+
+  getMyInvites: async (status?: string) => {
+    try {
+      const url = status ? `/invites/my-invites?status=${status}` : "/invites/my-invites";
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  respond: async (inviteId: string, status: 'accepted' | 'declined') => {
+    try {
+      const response = await apiClient.put(`/invites/${inviteId}/respond`, { status });
+      return response.data;
+    } catch (error: any) {
       throw error;
     }
   },
@@ -2269,6 +2290,92 @@ export const statsAPI = {
         };
       }
       console.error("[API] Get admin dashboard stats API error:", error);
+      throw error;
+    }
+  },
+};
+
+
+// Upload API
+export const uploadAPI = {
+  uploadAvatar: async (formData: any) => {
+    try {
+      console.log("[API] POST /upload/avatar");
+      const response = await apiClient.post("/upload/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("[API] POST /upload/avatar success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Upload avatar error:", error);
+      throw error;
+    }
+  },
+
+  uploadDocument: async (formData: any) => {
+    try {
+      console.log("[API] POST /upload/document");
+      const response = await apiClient.post("/upload/document", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("[API] POST /upload/document success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Upload document error:", error);
+      throw error;
+    }
+  },
+
+  uploadProgress: async (formData: any) => {
+    try {
+      console.log("[API] POST /upload/progress");
+      const response = await apiClient.post("/upload/progress", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("[API] POST /upload/progress success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Upload progress photo error:", error);
+      throw error;
+    }
+  },
+
+  uploadPortfolio: async (formData: any) => {
+    try {
+      console.log("[API] POST /upload/portfolio");
+      const response = await apiClient.post("/upload/portfolio", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("[API] POST /upload/portfolio success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Upload portfolio error:", error);
+      throw error;
+    }
+  },
+
+  uploadChatAttachment: async (formData: any) => {
+    try {
+      console.log("[API] POST /upload/chat");
+      const response = await apiClient.post("/upload/chat", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("[API] POST /upload/chat success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Upload chat attachment error:", error);
+      throw error;
+    }
+  },
+
+  deleteFile: async (bucket: string, filename: string) => {
+    try {
+      console.log(`[API] DELETE /upload/${bucket}/${filename}`);
+      const response = await apiClient.delete(`/upload/${bucket}/${filename}`);
+      console.log(`[API] DELETE /upload/${bucket}/${filename} success:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Delete file error:", error);
       throw error;
     }
   },

@@ -1,6 +1,7 @@
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert } from "react-native";
 import { Appointment, EstimateRequest, JobNotification } from "@/types";
 import { useAuth } from "./AuthContext";
 import { useJobs } from "./JobsContext";
@@ -71,7 +72,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
         setAppointments(storedAppointments ? JSON.parse(storedAppointments) : []);
       }
     } catch (error) {
-      console.error("Failed to load appointments data:", error);
+      console.warn("Appointments API unavailable, using local storage:", error);
       const storedAppointments = await AsyncStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
       setAppointments(storedAppointments ? JSON.parse(storedAppointments) : []);
     } finally {
@@ -230,20 +231,64 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
     notes?: string;
     jobId?: string;
     applicationId?: string;
+    entityType?: 'job' | 'project'; // Add entityType
   }) => {
     if (!user) return null;
 
     try {
-      const startTime = `${appointmentData.date}T${appointmentData.time}:00Z`;
+      // Validate and Parse Date
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(appointmentData.date)) {
+        console.error("Invalid date format. Expected YYYY-MM-DD");
+        Alert.alert("Error", "Please enter date in YYYY-MM-DD format");
+        return null;
+      }
 
-      const apiResponse = await appointmentsAPI.create({
+      // Parse Time (Handle 12h and 24h)
+      let time24 = appointmentData.time;
+      if (time24.toLowerCase().includes('am') || time24.toLowerCase().includes('pm')) {
+        const [timePart, modifier] = time24.toLowerCase().split(' ');
+        let [hours, minutes] = timePart.split(':');
+        if (hours === '12') {
+          hours = '00';
+        }
+        if (modifier === 'pm') {
+          hours = (parseInt(hours, 10) + 12).toString();
+        }
+        time24 = `${hours.padStart(2, '0')}:${minutes}`;
+      } else if (time24.match(/^\d{1,2}:\d{2}$/)) {
+        // Ensure HH is 2 digits
+        const [h, m] = time24.split(':');
+        time24 = `${h.padStart(2, '0')}:${m}`;
+      } else {
+        // Fallback or error
+        console.warn("Ambiguous time format, using as-is or defaulting");
+      }
+
+      const startTime = `${appointmentData.date}T${time24}:00Z`;
+
+      // Determine linkage based on entityType
+      const isJob = appointmentData.entityType === 'job';
+      // If entityType is not specified but jobId is present, we try to guess or fallback
+      // But safe bet is: if we added entityType='job' in caller, use it.
+
+      const payload: any = {
         title: appointmentData.title,
         description: appointmentData.notes,
         start_time: startTime,
         attendee_id: appointmentData.contractorId,
-        project_id: appointmentData.jobId,
         status: "scheduled",
-      });
+      };
+
+      if (isJob && appointmentData.jobId) {
+        payload.job_id = appointmentData.jobId;
+        payload.project_id = null; // Explicitly null to avoid FK error
+      } else if (appointmentData.jobId) {
+        // Default behavior (likely Project or legacy)
+        payload.project_id = appointmentData.jobId;
+      }
+
+      const apiResponse = await appointmentsAPI.create(payload);
 
       if (apiResponse.success && apiResponse.data) {
         const appt = apiResponse.data;
@@ -396,6 +441,7 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
     getEstimateRequestsByUserId,
     getUpcomingAppointments,
     getPendingEstimateRequests,
+    refreshAppointments: loadData,
   }), [
     appointments,
     estimateRequests,
@@ -410,5 +456,6 @@ export const [AppointmentsProvider, useAppointments] = createContextHook(() => {
     getEstimateRequestsByUserId,
     getUpcomingAppointments,
     getPendingEstimateRequests,
+    loadData,
   ]);
 });

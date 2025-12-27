@@ -1,8 +1,23 @@
-import Colors from "@/constants/colors";
 import { TRADES } from "@/constants/trades";
 import { Contractor } from "@/types";
 import { Stack, useRouter } from "expo-router";
-import { BadgeCheck, MapPin, Phone, Search, Star, Calendar, X, Shield, CheckCircle2, Filter, MapIcon, ListIcon, Award, TrendingUp } from "lucide-react-native";
+import {
+  BadgeCheck,
+  MapPin,
+  Phone,
+  Search,
+  Star,
+  Calendar,
+  X,
+  Shield,
+  CheckCircle2,
+  Filter,
+  MapIcon,
+  ListIcon,
+  Award,
+  TrendingUp,
+  User,
+} from "lucide-react-native";
 import { calculateTrustScore, getTrustLevelColor } from "@/utils/trust";
 import React, { useState, useEffect } from "react";
 import {
@@ -22,66 +37,136 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppointments } from "@/contexts/AppointmentsContext";
 import { contractorsAPI } from "@/services/api";
 
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
+
 interface ContractorCardProps {
   contractor: Contractor;
   onPress: () => void;
   onRequestEstimate: () => void;
+  isOwnProfile?: boolean;
+  colors: any;
 }
 
-function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCardProps) {
+function ContractorCard({
+  contractor,
+  onPress,
+  onRequestEstimate,
+  isOwnProfile,
+  colors,
+}: ContractorCardProps) {
   // Safely extract contractor properties with fallbacks
-  const name = contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown";
-  const company = contractor?.company || contractor?.company_name || contractor?.companyName || "";
-  const trade = contractor?.trade || contractor?.trade_type || contractor?.tradeType || "All";
-  const location = contractor?.location || contractor?.address || "Location not specified";
-  const rating = contractor?.rating || contractor?.average_rating || contractor?.averageRating || 0;
+  const name =
+    contractor?.name ||
+    contractor?.full_name ||
+    contractor?.fullName ||
+    "Unknown";
+  const company =
+    contractor?.company ||
+    contractor?.company_name ||
+    contractor?.companyName ||
+    "";
+  const trade =
+    contractor?.trade || contractor?.trade_type || contractor?.tradeType || "All";
+  const location =
+    contractor?.location || contractor?.address || "Location not specified";
+  const rating =
+    contractor?.rating ||
+    contractor?.average_rating ||
+    contractor?.averageRating ||
+    0;
   const reviewCount = contractor?.reviewCount || contractor?.review_count || 0;
-  const verified = contractor?.verified || contractor?.is_verified || contractor?.isVerified || false;
-  const featured = contractor?.featured || contractor?.is_featured || contractor?.isFeatured || false;
-  const topRated = contractor?.topRated || contractor?.top_rated || contractor?.isTopRated || false;
-  const completedProjects = contractor?.completedProjects || contractor?.completed_projects || 0;
+  const verified =
+    contractor?.verified ||
+    contractor?.is_verified ||
+    contractor?.isVerified ||
+    false;
+  const featured =
+    contractor?.featured || contractor?.is_featured || contractor?.isFeatured || false;
+  const topRated =
+    contractor?.topRated ||
+    contractor?.top_rated ||
+    contractor?.isTopRated ||
+    false;
+  const completedProjects =
+    contractor?.completedProjects || contractor?.completed_projects || 0;
   const verifications = contractor?.verifications || [];
 
   const trustScore = calculateTrustScore(contractor);
-  const verifiedCount = verifications.filter((v: any) => v?.verified).length || 0;
+  const verifiedCount =
+    verifications.filter((v: any) => v?.verified).length || 0;
 
   // Generate avatar initials safely
   const getInitials = (nameStr: string) => {
-    if (!nameStr || typeof nameStr !== 'string') return "?";
-    return nameStr
-      .split(" ")
-      .map((n) => n[0])
-      .filter(Boolean)
-      .join("")
-      .toUpperCase()
-      .substring(0, 2) || "?";
+    if (!nameStr || typeof nameStr !== "string") return "?";
+    return (
+      nameStr
+        .split(" ")
+        .map((n) => n[0])
+        .filter(Boolean)
+        .join("")
+        .toUpperCase()
+        .substring(0, 2) || "?"
+    );
   };
 
   return (
-    <TouchableOpacity style={styles.contractorCard} onPress={onPress}>
+    <TouchableOpacity
+      style={[
+        styles.contractorCard,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.contractorHeader}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>
+        <View
+          style={[
+            styles.avatarPlaceholder,
+            { backgroundColor: colors.primary + "15" },
+          ]}
+        >
+          <Text style={[styles.avatarText, { color: colors.primary }]}>
             {getInitials(name)}
           </Text>
         </View>
         <View style={styles.contractorInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.contractorName} numberOfLines={1}>
+            <Text
+              style={[styles.contractorName, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {name}
             </Text>
-            {verified && (
-              <BadgeCheck size={16} color={Colors.primary} />
-            )}
+            {verified && <BadgeCheck size={16} color={colors.primary} />}
           </View>
           {company && (
-            <Text style={styles.contractorCompany} numberOfLines={1}>
+            <Text
+              style={[
+                styles.contractorCompany,
+                { color: colors.textSecondary },
+              ]}
+              numberOfLines={1}
+            >
               {company}
             </Text>
           )}
           <View style={styles.ratingRow}>
-            <Star size={14} color={Colors.warning} fill={Colors.warning} />
-            <Text style={styles.ratingText}>
+            <Star size={14} color={colors.warning} fill={colors.warning} />
+            <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
               {rating.toFixed(1)} ({reviewCount})
             </Text>
           </View>
@@ -90,29 +175,67 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
 
       <View style={styles.badgesContainer}>
         {featured && (
-          <View style={styles.featuredBadge}>
-            <Award size={12} color={Colors.warning} />
-            <Text style={styles.featuredBadgeText}>Featured</Text>
+          <View
+            style={[
+              styles.featuredBadge,
+              {
+                backgroundColor: colors.warning + "15",
+                borderColor: colors.warning + "30",
+              },
+            ]}
+          >
+            <Award size={12} color={colors.warning} />
+            <Text style={[styles.featuredBadgeText, { color: colors.warning }]}>
+              Featured
+            </Text>
           </View>
         )}
         {topRated && (
-          <View style={styles.topRatedBadge}>
-            <TrendingUp size={12} color={Colors.success} />
-            <Text style={styles.topRatedBadgeText}>Top Rated</Text>
+          <View
+            style={[
+              styles.topRatedBadge,
+              {
+                backgroundColor: colors.success + "15",
+                borderColor: colors.success + "30",
+              },
+            ]}
+          >
+            <TrendingUp size={12} color={colors.success} />
+            <Text style={[styles.topRatedBadgeText, { color: colors.success }]}>
+              Top Rated
+            </Text>
           </View>
         )}
       </View>
 
       {trustScore.score >= 70 && (
-        <View style={[styles.trustBadge, { backgroundColor: getTrustLevelColor(trustScore.level) + "15" }]}>
+        <View
+          style={[
+            styles.trustBadge,
+            { backgroundColor: getTrustLevelColor(trustScore.level) + "15" },
+          ]}
+        >
           <Shield size={14} color={getTrustLevelColor(trustScore.level)} />
-          <Text style={[styles.trustBadgeText, { color: getTrustLevelColor(trustScore.level) }]}>
+          <Text
+            style={[
+              styles.trustBadgeText,
+              { color: getTrustLevelColor(trustScore.level) },
+            ]}
+          >
             Trust Score: {trustScore.score}%
           </Text>
           {verifiedCount > 0 && (
             <View style={styles.verificationCountBadge}>
-              <CheckCircle2 size={12} color={getTrustLevelColor(trustScore.level)} />
-              <Text style={[styles.verificationCountText, { color: getTrustLevelColor(trustScore.level) }]}>
+              <CheckCircle2
+                size={12}
+                color={getTrustLevelColor(trustScore.level)}
+              />
+              <Text
+                style={[
+                  styles.verificationCountText,
+                  { color: getTrustLevelColor(trustScore.level) },
+                ]}
+              >
                 {verifiedCount} verified
               </Text>
             </View>
@@ -122,33 +245,90 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
 
       <View style={styles.contractorDetails}>
         <View style={styles.detailRow}>
-          <View style={styles.tradeBadge}>
-            <Text style={styles.tradeText}>{trade}</Text>
+          <View
+            style={[styles.tradeBadge, { backgroundColor: colors.primary + "15" }]}
+          >
+            <Text style={[styles.tradeText, { color: colors.primary }]}>
+              {trade}
+            </Text>
           </View>
-          <Text style={styles.projectsText}>
+          <Text style={[styles.projectsText, { color: colors.textTertiary }]}>
             {completedProjects} projects
           </Text>
         </View>
         <View style={styles.locationRow}>
-          <MapPin size={14} color={Colors.textSecondary} />
-          <Text style={styles.locationText}>{location}</Text>
+          <MapPin size={14} color={colors.textSecondary} />
+          <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+            {location}
+          </Text>
         </View>
       </View>
 
       <View style={styles.contractorActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-        >
-          <Phone size={16} color={Colors.primary} />
-          <Text style={styles.actionButtonTextSecondary}>Call</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onRequestEstimate}
-        >
-          <Calendar size={16} color={Colors.white} />
-          <Text style={styles.actionButtonText}>Request</Text>
-        </TouchableOpacity>
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.actionButtonSecondary,
+              {
+                backgroundColor: colors.primary + "10",
+                borderColor: colors.primary,
+              },
+            ]}
+            onPress={onPress}
+          >
+            <User size={16} color={colors.primary} />
+            <Text
+              style={[styles.actionButtonTextSecondary, { color: colors.primary }]}
+            >
+              View My Profile
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ flexDirection: "row", gap: 8, flex: 1 }}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.actionButtonSecondary,
+                {
+                  flex: 1,
+                  backgroundColor: colors.primary + "10",
+                  borderColor: colors.primary,
+                },
+              ]}
+              onPress={() =>
+                Alert.alert(
+                  "Call",
+                  (contractor as any).phone
+                    ? `Calling ${(contractor as any).phone}`
+                    : "Phone number not available"
+                )
+              }
+            >
+              <Phone size={16} color={colors.primary} />
+              <Text
+                style={[
+                  styles.actionButtonTextSecondary,
+                  { color: colors.primary },
+                ]}
+              >
+                Call
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { flex: 1, backgroundColor: colors.primary },
+              ]}
+              onPress={onRequestEstimate}
+            >
+              <Calendar size={16} color={colors.white} />
+              <Text style={[styles.actionButtonText, { color: colors.white }]}>
+                Request
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -156,7 +336,7 @@ function ContractorCard({ contractor, onPress, onRequestEstimate }: ContractorCa
 
 export default function ContractorsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
   const { createAppointment } = useAppointments();
   const [apiContractors, setApiContractors] = useState<Contractor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,7 +344,9 @@ export default function ContractorsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTrade, setSelectedTrade] = useState("All");
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedContractor, setSelectedContractor] = useState<Contractor | null>(null);
+  const [selectedContractor, setSelectedContractor] = useState<Contractor | null>(
+    null
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [filters, setFilters] = useState({
@@ -175,114 +357,108 @@ export default function ContractorsScreen() {
     topRated: false,
   });
 
-  // Fetch contractors from API
-  useEffect(() => {
-    fetchContractors();
-  }, []);
+  // Helper to map backend contractor to frontend type
+  const mapContractor = (contractor: any): Contractor => {
+    const userData = contractor.user || contractor.users || {};
+    const firstName = userData.first_name || contractor.first_name || "";
+    const lastName = userData.last_name || contractor.last_name || "";
+    const fullName = firstName
+      ? `${firstName} ${lastName}`.trim()
+      : contractor.name || contractor.full_name || "Unknown";
 
-  // Search contractors via API when search query is provided
-  useEffect(() => {
-    const searchContractors = async () => {
-      if (!user || !searchQuery.trim()) {
-        // If search is cleared, reload all
-        if (!searchQuery.trim()) {
-          fetchContractors();
-        }
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        console.log("[API] GET /contractors/search", { query: searchQuery });
-        const response = await contractorsAPI.search(searchQuery);
-
-        if (response.success && response.data) {
-          const rawList = Array.isArray(response.data) ? response.data : (response.data.contractors || []);
-          const mappedContractors = rawList.map((contractor: any) => {
-            const user = contractor.users || contractor.user || {};
-            const firstName = user.first_name || contractor.first_name || "";
-            const lastName = user.last_name || contractor.last_name || "";
-            const fullName = firstName ? `${firstName} ${lastName}`.trim() : (contractor.name || contractor.full_name || "Unknown");
-
-            return {
-              id: contractor.user_id || contractor.id || contractor.contractor_id,
-              name: fullName,
-              company: contractor.company || contractor.company_name || contractor.companyName,
-              trade: contractor.trade_specialization || contractor.trade || contractor.trade_type || "All",
-              location: user.location || contractor.location || contractor.address || "",
-              rating: contractor.rating || contractor.average_rating || 0,
-              reviewCount: contractor.review_count || contractor.reviewCount || 0,
-              verified: (user.verification_status === 'verified') || contractor.verified || contractor.is_verified || false,
-              featured: contractor.featured || contractor.is_featured || false,
-              topRated: contractor.top_rated || contractor.topRated || false,
-              completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
-              verifications: contractor.verifications || [],
-            };
-          });
-          setApiContractors(mappedContractors);
-        }
-      } catch (error: any) {
-        console.error("[API] Search failed:", error);
-        // Fallback to local filtering
-      } finally {
-        setIsLoading(false);
-      }
+    return {
+      id: contractor.id || contractor.user_id || contractor.contractor_id,
+      name: fullName,
+      company:
+        contractor.company_name ||
+        contractor.company ||
+        contractor.companyName ||
+        "",
+      trade:
+        contractor.trade_specialization ||
+        contractor.trade ||
+        contractor.trade_type ||
+        "All",
+      location:
+        userData.location || contractor.location || contractor.address || "",
+      rating: contractor.rating || contractor.average_rating || 0,
+      reviewCount: contractor.review_count || contractor.reviewCount || 0,
+      verified:
+        userData.verification_status === "verified" ||
+        contractor.verified ||
+        contractor.is_verified ||
+        false,
+      featured: contractor.featured || contractor.is_featured || false,
+      topRated: contractor.top_rated || contractor.topRated || false,
+      completedProjects:
+        contractor.completed_projects || contractor.completedProjects || 0,
+      verifications: contractor.verifications || [],
+      phone: userData.phone || contractor.phone || "",
+      email: userData.email || contractor.email || "",
     };
+  };
 
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      searchContractors();
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, user]);
-
-  const fetchContractors = async () => {
+  const fetchContractors = async (query?: string, isRefresh = false) => {
     if (!user) return;
 
-    setIsLoading(true);
+    if (!isRefresh) setIsLoading(true);
     try {
-      console.log("[API] GET /contractors");
-      const response = await contractorsAPI.getAll();
+      let response;
+      if (query && query.trim()) {
+        console.log("[API] GET /contractors/search", { query });
+        response = await contractorsAPI.search(query);
+      } else {
+        console.log("[API] GET /contractors");
+        response = await contractorsAPI.getAll();
+      }
 
       if (response.success && response.data) {
-        // Map backend contractor format to frontend Contractor type
-        const rawList = Array.isArray(response.data) ? response.data : (response.data.contractors || []);
-        const mappedContractors = rawList.map((contractor: any) => {
-          const user = contractor.users || contractor.user || {};
-          const firstName = user.first_name || contractor.first_name || "";
-          const lastName = user.last_name || contractor.last_name || "";
-          const fullName = firstName ? `${firstName} ${lastName}`.trim() : (contractor.name || contractor.full_name || "Unknown");
-
-          return {
-            id: contractor.user_id || contractor.id || contractor.contractor_id,
-            name: fullName,
-            company: contractor.company || contractor.company_name || contractor.companyName,
-            trade: contractor.trade_specialization || contractor.trade || contractor.trade_type || "All",
-            location: user.location || contractor.location || contractor.address || "",
-            rating: contractor.rating || contractor.average_rating || 0,
-            reviewCount: contractor.review_count || contractor.reviewCount || 0,
-            verified: (user.verification_status === 'verified') || contractor.verified || contractor.is_verified || false,
-            featured: contractor.featured || contractor.is_featured || false,
-            topRated: contractor.top_rated || contractor.topRated || false,
-            completedProjects: contractor.completed_projects || contractor.completedProjects || 0,
-            verifications: contractor.verifications || [],
-          };
-        });
+        const rawList = Array.isArray(response.data)
+          ? response.data
+          : response.data.contractors || [];
+        const mappedContractors = rawList.map(mapContractor);
         setApiContractors(mappedContractors);
       }
     } catch (error: any) {
       console.log("[API ERROR]", error);
-      Alert.alert("Error", error?.response?.data?.message || error?.message || "Failed to load contractors. Please try again.");
+      if (!query) {
+        Alert.alert(
+          "Error",
+          error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load contractors."
+        );
+      }
       setApiContractors([]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Fetch contractors from API on mount or user change
+  useEffect(() => {
+    fetchContractors();
+  }, [user]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      if (apiContractors.length === 0 && !isLoading) {
+        fetchContractors();
+      }
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      fetchContractors(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchContractors();
+    await fetchContractors(searchQuery, true);
     setRefreshing(false);
   };
 
@@ -291,69 +467,118 @@ export default function ContractorsScreen() {
 
   const filteredContractors = contractors.filter((contractor) => {
     // Safely get contractor properties with fallbacks
-    const name = contractor?.name || contractor?.full_name || contractor?.fullName || "";
-    const company = contractor?.company || contractor?.company_name || contractor?.companyName || "";
-    const trade = contractor?.trade || contractor?.trade_type || contractor?.tradeType || "";
+    const name =
+      contractor?.name || contractor?.full_name || contractor?.fullName || "";
+    const company =
+      contractor?.company ||
+      contractor?.company_name ||
+      contractor?.companyName ||
+      "";
+    const trade =
+      contractor?.trade || contractor?.trade_type || contractor?.tradeType || "";
     const location = contractor?.location || contractor?.address || "";
-    const rating = contractor?.rating || contractor?.average_rating || contractor?.averageRating || 0;
-    const verified = contractor?.verified || contractor?.is_verified || contractor?.isVerified || false;
-    const featured = contractor?.featured || contractor?.is_featured || contractor?.isFeatured || false;
-    const topRated = contractor?.topRated || contractor?.top_rated || contractor?.isTopRated || false;
+    const rating =
+      contractor?.rating ||
+      contractor?.average_rating ||
+      contractor?.averageRating ||
+      0;
+    const verified =
+      contractor?.verified || contractor?.is_verified || contractor?.isVerified || false;
+    const featured =
+      contractor?.featured || contractor?.is_featured || contractor?.isFeatured || false;
+    const topRated =
+      contractor?.topRated || contractor?.top_rated || contractor?.isTopRated || false;
 
     // Safe search matching
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = searchQuery === "" ||
+    const matchesSearch =
+      searchQuery === "" ||
       (name && name.toLowerCase().includes(searchLower)) ||
       (company && company.toLowerCase().includes(searchLower)) ||
       (trade && trade.toLowerCase().includes(searchLower));
 
     const matchesTrade = selectedTrade === "All" || trade === selectedTrade;
     const matchesRating = rating >= filters.minRating;
-    const matchesLocation = !filters.location || (location && location.toLowerCase().includes(filters.location.toLowerCase()));
+    const matchesLocation =
+      !filters.location ||
+      (location && location.toLowerCase().includes(filters.location.toLowerCase()));
     const matchesVerified = !filters.verified || verified;
     const matchesFeatured = !filters.featured || featured;
     const matchesTopRated = !filters.topRated || topRated;
 
-    return matchesSearch && matchesTrade && matchesRating && matchesLocation && matchesVerified && matchesFeatured && matchesTopRated;
+    return (
+      matchesSearch &&
+      matchesTrade &&
+      matchesRating &&
+      matchesLocation &&
+      matchesVerified &&
+      matchesFeatured &&
+      matchesTopRated
+    );
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Contractors",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
           headerRight: () => (
-            <View style={{ flexDirection: "row" as const, gap: 12, marginRight: 8 }}>
-              <TouchableOpacity onPress={() => setViewMode(viewMode === "list" ? "map" : "list")}>
+            <View
+              style={{ flexDirection: "row" as const, gap: 12, marginRight: 8 }}
+            >
+              <TouchableOpacity
+                onPress={() => setViewMode(viewMode === "list" ? "map" : "list")}
+              >
                 {viewMode === "list" ? (
-                  <MapIcon size={22} color={Colors.primary} />
+                  <MapIcon size={22} color={colors.primary} />
                 ) : (
-                  <ListIcon size={22} color={Colors.primary} />
+                  <ListIcon size={22} color={colors.primary} />
                 )}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
-                <Filter size={22} color={filters.minRating > 0 || filters.location || filters.verified || filters.featured || filters.topRated ? Colors.primary : Colors.text} />
+                <Filter
+                  size={22}
+                  color={
+                    filters.minRating > 0 ||
+                    filters.location ||
+                    filters.verified ||
+                    filters.featured ||
+                    filters.topRated
+                      ? colors.primary
+                      : colors.text
+                  }
+                />
               </TouchableOpacity>
             </View>
           ),
         }}
       />
 
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Search size={20} color={Colors.textSecondary} />
+      <View
+        style={[
+          styles.searchSection,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.background, borderColor: colors.border },
+          ]}
+        >
+          <Search size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search contractors..."
-            placeholderTextColor={Colors.textSecondary}
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -370,14 +595,22 @@ export default function ContractorsScreen() {
               key={trade}
               style={[
                 styles.filterChip,
-                selectedTrade === trade && styles.filterChipActive,
+                { backgroundColor: colors.background, borderColor: colors.border },
+                selectedTrade === trade && [
+                  styles.filterChipActive,
+                  { backgroundColor: colors.primary, borderColor: colors.primary },
+                ],
               ]}
               onPress={() => setSelectedTrade(trade)}
             >
               <Text
                 style={[
                   styles.filterChipText,
-                  selectedTrade === trade && styles.filterChipTextActive,
+                  { color: colors.textSecondary },
+                  selectedTrade === trade && [
+                    styles.filterChipTextActive,
+                    { color: colors.surface },
+                  ],
                 ]}
               >
                 {trade}
@@ -387,23 +620,35 @@ export default function ContractorsScreen() {
         </ScrollView>
 
         {showFilters && (
-          <View style={styles.advancedFilters}>
+          <View
+            style={[styles.advancedFilters, { borderTopColor: colors.border }]}
+          >
             <View style={styles.filterRow}>
-              <Text style={styles.filterLabel}>Min Rating:</Text>
+              <Text style={[styles.filterLabel, { color: colors.text }]}>
+                Min Rating:
+              </Text>
               <View style={styles.ratingFilters}>
                 {[0, 4, 4.5].map((rating) => (
                   <TouchableOpacity
                     key={rating}
                     style={[
                       styles.ratingFilterChip,
-                      filters.minRating === rating && styles.ratingFilterChipActive,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                      filters.minRating === rating && [
+                        styles.ratingFilterChipActive,
+                        { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ],
                     ]}
                     onPress={() => setFilters({ ...filters, minRating: rating })}
                   >
                     <Text
                       style={[
                         styles.ratingFilterText,
-                        filters.minRating === rating && styles.ratingFilterTextActive,
+                        { color: colors.textSecondary },
+                        filters.minRating === rating && [
+                          styles.ratingFilterTextActive,
+                          { color: colors.white },
+                        ],
                       ]}
                     >
                       {rating === 0 ? "All" : `${rating}+`}
@@ -415,11 +660,20 @@ export default function ContractorsScreen() {
 
             <View style={styles.filterRow}>
               <TextInput
-                style={styles.locationInput}
+                style={[
+                  styles.locationInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
                 placeholder="Filter by location..."
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 value={filters.location}
-                onChangeText={(text) => setFilters({ ...filters, location: text })}
+                onChangeText={(text) =>
+                  setFilters({ ...filters, location: text })
+                }
               />
             </View>
 
@@ -427,34 +681,94 @@ export default function ContractorsScreen() {
               <TouchableOpacity
                 style={[
                   styles.badgeFilterChip,
-                  filters.verified && styles.badgeFilterChipActive,
+                  { borderColor: colors.primary },
+                  filters.verified && [
+                    styles.badgeFilterChipActive,
+                    { backgroundColor: colors.primary },
+                  ],
                 ]}
-                onPress={() => setFilters({ ...filters, verified: !filters.verified })}
+                onPress={() =>
+                  setFilters({ ...filters, verified: !filters.verified })
+                }
               >
-                <BadgeCheck size={14} color={filters.verified ? Colors.white : Colors.primary} />
-                <Text style={[styles.badgeFilterText, filters.verified && styles.badgeFilterTextActive]}>Verified</Text>
+                <BadgeCheck
+                  size={14}
+                  color={filters.verified ? colors.white : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.badgeFilterText,
+                    { color: colors.primary },
+                    filters.verified && [
+                      styles.badgeFilterTextActive,
+                      { color: colors.white },
+                    ],
+                  ]}
+                >
+                  Verified
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.badgeFilterChip,
-                  filters.featured && styles.badgeFilterChipActive,
+                  { borderColor: colors.warning },
+                  filters.featured && [
+                    styles.badgeFilterChipActive,
+                    { backgroundColor: colors.warning },
+                  ],
                 ]}
-                onPress={() => setFilters({ ...filters, featured: !filters.featured })}
+                onPress={() =>
+                  setFilters({ ...filters, featured: !filters.featured })
+                }
               >
-                <Award size={14} color={filters.featured ? Colors.white : Colors.warning} />
-                <Text style={[styles.badgeFilterText, filters.featured && styles.badgeFilterTextActive]}>Featured</Text>
+                <Award
+                  size={14}
+                  color={filters.featured ? colors.white : colors.warning}
+                />
+                <Text
+                  style={[
+                    styles.badgeFilterText,
+                    { color: colors.warning },
+                    filters.featured && [
+                      styles.badgeFilterTextActive,
+                      { color: colors.white },
+                    ],
+                  ]}
+                >
+                  Featured
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.badgeFilterChip,
-                  filters.topRated && styles.badgeFilterChipActive,
+                  { borderColor: colors.success },
+                  filters.topRated && [
+                    styles.badgeFilterChipActive,
+                    { backgroundColor: colors.success },
+                  ],
                 ]}
-                onPress={() => setFilters({ ...filters, topRated: !filters.topRated })}
+                onPress={() =>
+                  setFilters({ ...filters, topRated: !filters.topRated })
+                }
               >
-                <TrendingUp size={14} color={filters.topRated ? Colors.white : Colors.success} />
-                <Text style={[styles.badgeFilterText, filters.topRated && styles.badgeFilterTextActive]}>Top Rated</Text>
+                <TrendingUp
+                  size={14}
+                  color={filters.topRated ? colors.white : colors.success}
+                />
+                <Text
+                  style={[
+                    styles.badgeFilterText,
+                    { color: colors.success },
+                    filters.topRated && [
+                      styles.badgeFilterTextActive,
+                      { color: colors.white },
+                    ],
+                  ]}
+                >
+                  Top Rated
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -470,6 +784,8 @@ export default function ContractorsScreen() {
           renderItem={({ item }) => (
             <ContractorCard
               contractor={item}
+              isOwnProfile={item.id === user?.id}
+              colors={colors}
               onPress={() => {
                 router.push(`/contractor-profile?id=${item.id}`);
               }}
@@ -485,39 +801,93 @@ export default function ContractorsScreen() {
           ListEmptyComponent={
             isLoading ? (
               <View style={styles.emptyState}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-                <Text style={styles.emptyStateText}>Loading contractors...</Text>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                  style={[
+                    styles.emptyStateText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Loading contractors...
+                </Text>
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No contractors found</Text>
+                <Text
+                  style={[
+                    styles.emptyStateText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  No contractors found
+                </Text>
               </View>
             )
           }
         />
       ) : (
-        <View style={styles.mapContainer}>
-          <Text style={styles.mapPlaceholder}>Map View</Text>
-          <Text style={styles.mapSubtext}>Interactive map with contractor locations</Text>
-          <Text style={styles.mapNote}>Web: Use browser&apos;s geolocation API{"\n"}Mobile: Use react-native-maps</Text>
+        <View
+          style={[styles.mapContainer, { backgroundColor: colors.background }]}
+        >
+          <Text style={[styles.mapPlaceholder, { color: colors.text }]}>
+            Map View
+          </Text>
+          <Text style={[styles.mapSubtext, { color: colors.textSecondary }]}>
+            Interactive map with contractor locations
+          </Text>
+          <Text style={[styles.mapNote, { color: colors.textTertiary }]}>
+            Web: Use browser's geolocation API{"\n"}Mobile: Use react-native-maps
+          </Text>
           <View style={styles.mapContractorsList}>
             <ScrollView contentContainerStyle={styles.mapContractorsContent}>
               {filteredContractors.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.mapContractorCard}
+                  style={[
+                    styles.mapContractorCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
                   onPress={() => router.push(`/contractor-profile?id=${item.id}`)}
                 >
                   <View style={styles.mapContractorHeader}>
-                    <Text style={styles.mapContractorName}>{item?.name || item?.full_name || item?.fullName || "Unknown"}</Text>
-                    {(item?.featured || item?.is_featured) && <Award size={14} color={Colors.warning} />}
-                    {(item?.topRated || item?.top_rated) && <TrendingUp size={14} color={Colors.success} />}
+                    <Text
+                      style={[styles.mapContractorName, { color: colors.text }]}
+                    >
+                      {item?.name ||
+                        item?.full_name ||
+                        item?.fullName ||
+                        "Unknown"}
+                    </Text>
+                    {!!(item?.featured || item?.is_featured) && (
+                      <Award size={14} color={colors.warning} />
+                    )}
+                    {!!(item?.topRated || item?.top_rated) && (
+                      <TrendingUp size={14} color={colors.success} />
+                    )}
                   </View>
-                  <Text style={styles.mapContractorTrade}>{item?.trade || item?.trade_type || "All"}</Text>
+                  <Text
+                    style={[
+                      styles.mapContractorTrade,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {item?.trade || item?.trade_type || "All"}
+                  </Text>
                   <View style={styles.mapContractorRating}>
-                    <Star size={12} color={Colors.warning} fill={Colors.warning} />
-                    <Text style={styles.mapContractorRatingText}>
-                      {((item?.rating || item?.average_rating || 0) as number).toFixed(1)}
+                    <Star
+                      size={12}
+                      color={colors.warning}
+                      fill={colors.warning}
+                    />
+                    <Text
+                      style={[
+                        styles.mapContractorRatingText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {((item?.rating || item?.average_rating || 0) as number).toFixed(
+                        1
+                      )}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -530,6 +900,7 @@ export default function ContractorsScreen() {
       <RequestEstimateModal
         visible={showRequestModal}
         contractor={selectedContractor}
+        colors={colors}
         onClose={() => {
           setShowRequestModal(false);
           setSelectedContractor(null);
@@ -573,6 +944,7 @@ function RequestEstimateModal({
   contractor,
   onClose,
   onSubmit,
+  colors,
 }: {
   visible: boolean;
   contractor: Contractor | null;
@@ -584,6 +956,7 @@ function RequestEstimateModal({
     preferredDate: string;
     preferredTime: string;
   }) => Promise<void>;
+  colors: any;
 }) {
   const [formData, setFormData] = useState({
     projectName: "",
@@ -618,12 +991,25 @@ function RequestEstimateModal({
   if (!contractor) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Request Estimate</Text>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
+      <View
+        style={[styles.modalContainer, { backgroundColor: colors.background }]}
+      >
+        <View
+          style={[
+            styles.modalHeader,
+            { backgroundColor: colors.surface, borderBottomColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            Request Estimate
+          </Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -631,68 +1017,125 @@ function RequestEstimateModal({
           style={styles.modalContent}
           contentContainerStyle={styles.modalContentInner}
         >
-          <View style={styles.modalContractorInfo}>
+          <View
+            style={[
+              styles.modalContractorInfo,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.modalContractorHeader}>
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
+              <View
+                style={[
+                  styles.avatarPlaceholder,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+              >
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
                   {(() => {
-                    const contractorName = contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown";
-                    return contractorName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .filter(Boolean)
-                      .join("")
-                      .toUpperCase()
-                      .substring(0, 2) || "?";
+                    const contractorName =
+                      contractor?.name ||
+                      contractor?.full_name ||
+                      contractor?.fullName ||
+                      "Unknown";
+                    return (
+                      contractorName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .filter(Boolean)
+                        .join("")
+                        .toUpperCase()
+                        .substring(0, 2) || "?"
+                    );
                   })()}
                 </Text>
               </View>
               <View style={styles.modalContractorText}>
-                <Text style={styles.modalContractorName}>
-                  {contractor?.name || contractor?.full_name || contractor?.fullName || "Unknown"}
+                <Text
+                  style={[styles.modalContractorName, { color: colors.text }]}
+                >
+                  {contractor?.name ||
+                    contractor?.full_name ||
+                    contractor?.fullName ||
+                    "Unknown"}
                 </Text>
                 {(contractor?.company || contractor?.company_name) && (
-                  <Text style={styles.modalContractorCompany}>
-                    {contractor?.company || contractor?.company_name || contractor?.companyName}
+                  <Text
+                    style={[
+                      styles.modalContractorCompany,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {contractor?.company ||
+                      contractor?.company_name ||
+                      contractor?.companyName}
                   </Text>
                 )}
-                <Text style={styles.modalContractorTrade}>
-                  {contractor?.trade || contractor?.trade_type || contractor?.tradeType || "All"}
+                <Text
+                  style={[styles.modalContractorTrade, { color: colors.primary }]}
+                >
+                  {contractor?.trade ||
+                    contractor?.trade_type ||
+                    contractor?.tradeType ||
+                    "All"}
                 </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Project Name *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Project Name *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="e.g., Kitchen Remodel"
               value={formData.projectName}
               onChangeText={(text) =>
                 setFormData({ ...formData, projectName: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="Project address or location"
               value={formData.location}
-              onChangeText={(text) =>
-                setFormData({ ...formData, location: text })
-              }
-              placeholderTextColor={Colors.textTertiary}
+              onChangeText={(text) => setFormData({ ...formData, location: text })}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Project Description *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Project Description *
+            </Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="Describe the work you need estimated..."
               value={formData.description}
               onChangeText={(text) =>
@@ -701,34 +1144,52 @@ function RequestEstimateModal({
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formRow}>
             <View style={styles.formGroupHalf}>
-              <Text style={styles.label}>Preferred Date</Text>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Preferred Date
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
                 placeholder="YYYY-MM-DD"
                 value={formData.preferredDate}
                 onChangeText={(text) =>
                   setFormData({ ...formData, preferredDate: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={styles.formGroupHalf}>
-              <Text style={styles.label}>Preferred Time</Text>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Preferred Time
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
                 placeholder="HH:MM"
                 value={formData.preferredTime}
                 onChangeText={(text) =>
                   setFormData({ ...formData, preferredTime: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
           </View>
@@ -736,13 +1197,14 @@ function RequestEstimateModal({
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting}
           >
-            <Calendar size={20} color={Colors.white} />
-            <Text style={styles.submitButtonText}>
+            <Calendar size={20} color={colors.white} />
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Sending..." : "Send Request"}
             </Text>
           </TouchableOpacity>
@@ -755,30 +1217,24 @@ function RequestEstimateModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   searchSection: {
-    backgroundColor: Colors.surface,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   searchBar: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   searchInput: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: Colors.text,
   },
   filtersScroll: {
     marginHorizontal: -16,
@@ -791,33 +1247,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
     marginRight: 8,
   },
-  filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
+  filterChipActive: {},
   filterChipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
   },
-  filterChipTextActive: {
-    color: Colors.surface,
-  },
+  filterChipTextActive: {},
   listContent: {
     padding: 16,
   },
   contractorCard: {
-    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   contractorHeader: {
     flexDirection: "row" as const,
@@ -827,7 +1273,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.primary + "20",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginRight: 12,
@@ -835,7 +1280,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.primary,
   },
   contractorInfo: {
     flex: 1,
@@ -849,12 +1293,10 @@ const styles = StyleSheet.create({
   contractorName: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
     flex: 1,
   },
   contractorCompany: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginBottom: 6,
   },
   ratingRow: {
@@ -864,7 +1306,6 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 13,
-    color: Colors.textSecondary,
     fontWeight: "500" as const,
   },
   contractorDetails: {
@@ -877,7 +1318,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tradeBadge: {
-    backgroundColor: Colors.info + "15",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -885,11 +1325,9 @@ const styles = StyleSheet.create({
   tradeText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.info,
   },
   projectsText: {
     fontSize: 13,
-    color: Colors.textSecondary,
     fontWeight: "500" as const,
   },
   locationRow: {
@@ -899,7 +1337,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: Colors.textSecondary,
   },
   contractorActions: {
     flexDirection: "row" as const,
@@ -912,23 +1349,18 @@ const styles = StyleSheet.create({
     justifyContent: "center" as const,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
     gap: 6,
   },
   actionButtonSecondary: {
-    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   actionButtonText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.surface,
   },
   actionButtonTextSecondary: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.primary,
   },
   emptyState: {
     alignItems: "center" as const,
@@ -937,11 +1369,9 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   modalHeader: {
     flexDirection: "row" as const,
@@ -950,13 +1380,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
   },
   modalContent: {
     flex: 1,
@@ -965,12 +1392,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalContractorInfo: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   modalContractorHeader: {
     flexDirection: "row" as const,
@@ -982,17 +1407,14 @@ const styles = StyleSheet.create({
   modalContractorName: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   modalContractorCompany: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   modalContractorTrade: {
     fontSize: 13,
-    color: Colors.primary,
     fontWeight: "600" as const,
   },
   formGroup: {
@@ -1009,25 +1431,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   textArea: {
     minHeight: 120,
     paddingTop: 12,
   },
   submitButton: {
-    backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center" as const,
@@ -1042,7 +1459,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
   },
   trustBadge: {
     flexDirection: "row" as const,
@@ -1078,13 +1494,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: Colors.warning + "15",
   },
   featuredBadgeText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.warning,
-    textTransform: "uppercase" as const,
   },
   topRatedBadge: {
     flexDirection: "row" as const,
@@ -1093,19 +1506,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: Colors.success + "15",
   },
   topRatedBadgeText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.success,
-    textTransform: "uppercase" as const,
   },
   advancedFilters: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   filterRow: {
     marginBottom: 12,
@@ -1113,7 +1522,6 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 8,
   },
   ratingFilters: {
@@ -1124,31 +1532,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  ratingFilterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
+  ratingFilterChipActive: {},
   ratingFilterText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
   },
-  ratingFilterTextActive: {
-    color: Colors.white,
-  },
+  ratingFilterTextActive: {},
   locationInput: {
-    backgroundColor: Colors.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   badgeFiltersRow: {
     flexDirection: "row" as const,
@@ -1162,25 +1559,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
-  badgeFilterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
+  badgeFilterChipActive: {},
   badgeFilterText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
   },
-  badgeFilterTextActive: {
-    color: Colors.white,
-  },
+  badgeFilterTextActive: {},
   mapContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     padding: 16,
@@ -1188,17 +1576,14 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
     marginBottom: 8,
   },
   mapSubtext: {
     fontSize: 16,
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   mapNote: {
     fontSize: 12,
-    color: Colors.textTertiary,
     textAlign: "center" as const,
     marginBottom: 24,
   },
@@ -1210,11 +1595,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   mapContractorCard: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   mapContractorHeader: {
     flexDirection: "row" as const,
@@ -1225,12 +1608,10 @@ const styles = StyleSheet.create({
   mapContractorName: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
     flex: 1,
   },
   mapContractorTrade: {
     fontSize: 13,
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   mapContractorRating: {
@@ -1240,7 +1621,6 @@ const styles = StyleSheet.create({
   },
   mapContractorRatingText: {
     fontSize: 12,
-    color: Colors.textSecondary,
     fontWeight: "500" as const,
   },
 });

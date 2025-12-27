@@ -1,16 +1,43 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { Stack } from "expo-router";
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
-import Colors from "@/constants/colors";
+
+const staticColors = {
+    primary: "#2563EB",
+    secondary: "#F97316",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    white: "#FFFFFF",
+    black: "#000000",
+    background: "#F8FAFC",
+    surface: "#FFFFFF",
+    text: "#0F172A",
+    textSecondary: "#64748B",
+    textTertiary: "#94A3B8",
+    border: "#E2E8F0",
+    info: "#3B82F6",
+    primaryLight: "#EFF6FF",
+};
 
 export default function ReferralsScreen() {
+    const { colors } = useAuth();
+
     return (
-        <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ headerShown: true, title: "Referrals" }} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <Stack.Screen
+                options={{
+                    headerShown: true,
+                    title: "Referrals",
+                    headerStyle: { backgroundColor: colors.surface },
+                    headerTintColor: colors.text
+                }}
+            />
             <View style={styles.content}>
-                <Text style={styles.title}>Referrals</Text>
-                <Text style={styles.message}>This feature is coming soon.</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Referrals</Text>
+                <Text style={[styles.message, { color: colors.textSecondary }]}>This feature is coming soon.</Text>
             </View>
         </SafeAreaView>
     );
@@ -19,7 +46,7 @@ export default function ReferralsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: staticColors.background,
     },
     content: {
         flex: 1,
@@ -30,12 +57,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: "bold",
-        color: Colors.text,
+        color: staticColors.text,
         marginBottom: 10,
     },
     message: {
         fontSize: 16,
-        color: Colors.textSecondary,
+        color: staticColors.textSecondary,
         textAlign: "center",
     },
 });

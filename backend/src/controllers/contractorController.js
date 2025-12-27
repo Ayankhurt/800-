@@ -6,35 +6,86 @@ export const getContractorProfile = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Fetch user data first
-        const { data: user, error: userError } = await supabase
+        // Fetch basic user data (resilient approach)
+        let userQuery = supabase
             .from("users")
-            .select("id, first_name, last_name, email, phone, avatar_url, company_name, location, bio, trust_score, created_at, role")
+            .select("id, first_name, last_name, email, phone, avatar_url, company_name, location, bio, trust_score, created_at, role, average_rating, total_reviews")
             .eq("id", id)
             .single();
 
-        if (userError || !user) {
-            return res.status(404).json(formatResponse(false, "User not found", null));
+        let { data: user, error: userError } = await userQuery;
+
+        // Fallback if columns are missing
+        if (userError && userError.message?.includes("column")) {
+            console.log("[DEBUG] Fallback query for user ID:", id);
+            const fallbackQuery = await supabase
+                .from("users")
+                .select("id, first_name, last_name, email, phone, avatar_url, company_name, location, bio, trust_score, created_at, role")
+                .eq("id", id)
+                .single();
+            user = fallbackQuery.data;
+            userError = fallbackQuery.error;
         }
 
-        // Fetch contractor profile (optional)
-        const { data: profile, error } = await supabase
+        if (userError || !user) {
+            console.log("[DEBUG] Contractor fetch failed for ID:", id, "Error:", userError);
+            return res.status(404).json(formatResponse(false, "Contractor not found", null));
+        }
+
+        // Fetch specialized contractor profile
+        const { data: profile } = await supabase
             .from("contractor_profiles")
             .select("*")
             .eq("user_id", id)
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error;
+        // Fetch portfolio items
+        const { data: portfolio } = await supabase
+            .from("portfolio_items")
+            .select("*")
+            .eq("contractor_id", id)
+            .order("completion_date", { ascending: false });
 
-        // Merge data
+        // Fetch certifications
+        const { data: certifications } = await supabase
+            .from("certifications")
+            .select("*")
+            .eq("contractor_id", id)
+            .order("issue_date", { ascending: false });
+
+        // Fetch reviews with reviewer details
+        const { data: reviews } = await supabase
+            .from("reviews")
+            .select(`
+                *,
+                reviewer:users!reviews_reviewer_id_fkey (
+                    id, first_name, last_name, company_name, avatar_url
+                )
+            `)
+            .eq("reviewee_id", id)
+            .order("created_at", { ascending: false });
+
+        // Merge all data
         const responseData = {
-            ...user, // Base fields from user
-            ...(profile || {}), // Fields from profile if exists
-            user: user // Keep nested user object for compatibility
+            ...user,
+            ...(profile || {}),
+            experience_years: profile?.years_experience || 0,
+            years_in_business: profile?.years_experience || 0,
+            insurance_amount: "", // Not available in DB columns
+            insurance_policy_number: profile?.insurance_policy_no || "",
+            license_expires_at: profile?.license_expiry,
+            insurance_expires_at: profile?.insurance_expiry,
+            service_area: profile?.service_area_radius_km,
+            portfolio: portfolio || [],
+            certifications: certifications || [],
+            reviews: reviews || [],
+            review_count: user.total_reviews || reviews?.length || 0,
+            rating: user.average_rating || 0
         };
 
         return res.json(formatResponse(true, "Contractor profile retrieved", responseData));
     } catch (err) {
+        console.error("Get contractor profile error:", err);
         return res.status(500).json(formatResponse(false, err.message, null));
     }
 };
@@ -60,13 +111,16 @@ export const updateContractorProfile = async (req, res) => {
         if (trade_specialization) updateData.trade_specialization = trade_specialization;
         if (license_number) updateData.license_number = license_number;
         if (license_type) updateData.license_type = license_type;
-        if (license_expires_at) updateData.license_expires_at = license_expires_at;
+        if (license_expires_at) updateData.license_expiry = license_expires_at; // DB uses license_expiry
         if (insurance_provider) updateData.insurance_provider = insurance_provider;
-        if (insurance_policy_number) updateData.insurance_policy_number = insurance_policy_number;
-        if (insurance_expires_at) updateData.insurance_expires_at = insurance_expires_at;
-        if (experience_years !== undefined) updateData.experience_years = experience_years;
-        if (service_area) updateData.service_area = service_area;
-        if (hourly_rate !== undefined) updateData.hourly_rate = hourly_rate;
+        if (insurance_policy_number) updateData.insurance_policy_no = insurance_policy_number; // DB uses insurance_policy_no
+        if (insurance_expires_at) updateData.insurance_expiry = insurance_expires_at; // DB uses insurance_expiry
+        if (experience_years !== undefined) updateData.years_experience = experience_years; // DB uses years_experience
+        if (service_area) updateData.service_area_radius_km = parseInt(service_area) || null; // DB uses service_area_radius_km
+        if (hourly_rate !== undefined) {
+            updateData.hourly_rate_min = parseFloat(hourly_rate) || 0; // DB uses min/max
+            updateData.hourly_rate_max = (parseFloat(hourly_rate) || 0) * 1.5;
+        }
 
         const { data, error } = await supabase
             .from("contractor_profiles")
@@ -259,6 +313,9 @@ export const searchContractors = async (req, res) => {
         if (trade) {
             query = query.eq("trade_specialization", trade);
         }
+        if (location) {
+            query = query.ilike('users.location', `%${location}%`);
+        }
 
         const { data, count, error } = await query;
 
@@ -268,20 +325,23 @@ export const searchContractors = async (req, res) => {
         }
 
         // Transform and filter data
-        let contractors = (data || []).map(profile => ({
-            ...profile,
-            ...profile.user, // Flatten user fields to top level
-            contractor_profile: {
-                trade_specialization: profile.trade_specialization,
-                license_number: profile.license_number,
-                license_type: profile.license_type,
-                insurance_provider: profile.insurance_provider,
-                years_experience: profile.years_experience,
-                hourly_rate: profile.hourly_rate,
-                availability_status: profile.availability_status,
-                service_area: profile.service_area
-            }
-        }));
+        let contractors = (data || [])
+            .filter(profile => profile.user) // Filter out orphaned profiles
+            .map(profile => ({
+                ...profile,
+                ...profile.user, // Flatten user fields to top level
+                id: profile.user.id, // Explicitly use user ID as the main ID
+                contractor_profile: {
+                    trade_specialization: profile.trade_specialization,
+                    license_number: profile.license_number,
+                    license_type: profile.license_type,
+                    insurance_provider: profile.insurance_provider,
+                    years_experience: profile.years_experience,
+                    hourly_rate: profile.hourly_rate,
+                    availability_status: profile.availability_status,
+                    service_area: profile.service_area
+                }
+            }));
 
         // Apply post-fetch filters
         if (location) {

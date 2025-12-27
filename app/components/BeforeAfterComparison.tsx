@@ -1,9 +1,32 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions, Modal } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Dimensions,
+  Modal,
+} from "react-native";
 import { ArrowRightLeft, X } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { BeforeAfter } from "@/types";
 import SafeImage from "./SafeImage";
+
+const staticColors = {
+  primary: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  white: "#FFFFFF",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+};
 
 interface BeforeAfterComparisonProps {
   projects: BeforeAfter[];
@@ -12,7 +35,10 @@ interface BeforeAfterComparisonProps {
 export default function BeforeAfterComparison({
   projects,
 }: BeforeAfterComparisonProps) {
-  const [selectedProject, setSelectedProject] = useState<BeforeAfter | null>(null);
+  const { colors } = useAuth();
+  const [selectedProject, setSelectedProject] = useState<BeforeAfter | null>(
+    null
+  );
 
   if (!projects || projects.length === 0) {
     return null;
@@ -22,8 +48,10 @@ export default function BeforeAfterComparison({
     <>
       <View style={styles.container}>
         <View style={styles.header}>
-          <ArrowRightLeft size={20} color={Colors.primary} />
-          <Text style={styles.title}>Before & After</Text>
+          <ArrowRightLeft size={20} color={colors.primary} />
+          <Text style={[styles.title, { color: colors.text }]}>
+            Before & After
+          </Text>
         </View>
 
         <ScrollView
@@ -34,42 +62,69 @@ export default function BeforeAfterComparison({
           {projects.map((project) => (
             <Pressable
               key={project.id}
-              style={styles.projectCard}
+              style={[
+                styles.projectCard,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={() => setSelectedProject(project)}
             >
               <View style={styles.imagesContainer}>
                 <View style={styles.imageWrapper}>
-                  <SafeImage
-                    uri={project.beforeImage}
-                    style={styles.image}
-                  />
+                  <SafeImage uri={project.beforeImage} style={styles.image} />
                   <View style={styles.labelBadge}>
-                    <Text style={styles.labelText}>Before</Text>
+                    <Text style={[styles.labelText, { color: colors.white }]}>
+                      Before
+                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.arrowDivider}>
-                  <View style={styles.arrowCircle}>
-                    <ArrowRightLeft size={16} color={Colors.white} />
+                <View
+                  style={[
+                    styles.arrowDivider,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.arrowCircle,
+                      { backgroundColor: colors.primary },
+                    ]}
+                  >
+                    <ArrowRightLeft size={16} color={colors.white} />
                   </View>
                 </View>
 
                 <View style={styles.imageWrapper}>
-                  <SafeImage
-                    uri={project.afterImage}
-                    style={styles.image}
-                  />
-                  <View style={[styles.labelBadge, styles.afterBadge]}>
-                    <Text style={styles.labelText}>After</Text>
+                  <SafeImage uri={project.afterImage} style={styles.image} />
+                  <View
+                    style={[
+                      styles.labelBadge,
+                      styles.afterBadge,
+                      { backgroundColor: colors.success + "DD" },
+                    ]}
+                  >
+                    <Text style={[styles.labelText, { color: colors.white }]}>
+                      After
+                    </Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.projectInfo}>
-                <Text style={styles.projectName} numberOfLines={2}>
+                <Text
+                  style={[styles.projectName, { color: colors.text }]}
+                  numberOfLines={2}
+                >
                   {project.projectName}
                 </Text>
-                <Text style={styles.category}>{project.category}</Text>
+                <Text
+                  style={[styles.category, { color: colors.textSecondary }]}
+                >
+                  {project.category}
+                </Text>
               </View>
             </Pressable>
           ))}
@@ -84,22 +139,31 @@ export default function BeforeAfterComparison({
       >
         {selectedProject && (
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View
+              style={[styles.modalContent, { backgroundColor: colors.surface }]}
+            >
               <Pressable
-                style={styles.closeButton}
+                style={[styles.closeButton, { backgroundColor: colors.surface }]}
                 onPress={() => setSelectedProject(null)}
               >
-                <X size={24} color={Colors.text} />
+                <X size={24} color={colors.text} />
               </Pressable>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {selectedProject.projectName}
                 </Text>
 
                 <View style={styles.modalImagesContainer}>
                   <View style={styles.modalImageSection}>
-                    <Text style={styles.modalImageLabel}>Before</Text>
+                    <Text
+                      style={[
+                        styles.modalImageLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Before
+                    </Text>
                     <SafeImage
                       uri={selectedProject.beforeImage}
                       style={styles.modalImage}
@@ -107,7 +171,14 @@ export default function BeforeAfterComparison({
                   </View>
 
                   <View style={styles.modalImageSection}>
-                    <Text style={styles.modalImageLabel}>After</Text>
+                    <Text
+                      style={[
+                        styles.modalImageLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      After
+                    </Text>
                     <SafeImage
                       uri={selectedProject.afterImage}
                       style={styles.modalImage}
@@ -116,20 +187,43 @@ export default function BeforeAfterComparison({
                 </View>
 
                 <View style={styles.modalDetails}>
-                  <Text style={styles.modalDescription}>
+                  <Text
+                    style={[
+                      styles.modalDescription,
+                      { color: colors.text },
+                    ]}
+                  >
                     {selectedProject.description}
                   </Text>
 
                   <View style={styles.modalMeta}>
                     <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Category</Text>
-                      <Text style={styles.metaValue}>
+                      <Text
+                        style={[
+                          styles.metaLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Category
+                      </Text>
+                      <Text
+                        style={[styles.metaValue, { color: colors.text }]}
+                      >
                         {selectedProject.category}
                       </Text>
                     </View>
                     <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Completed</Text>
-                      <Text style={styles.metaValue}>
+                      <Text
+                        style={[
+                          styles.metaLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Completed
+                      </Text>
+                      <Text
+                        style={[styles.metaValue, { color: colors.text }]}
+                      >
                         {new Date(
                           selectedProject.completionDate
                         ).toLocaleDateString()}
@@ -161,7 +255,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
   },
   scrollContent: {
     gap: 16,
@@ -170,11 +263,9 @@ const styles = StyleSheet.create({
   projectCard: {
     width: screenWidth - 80,
     maxWidth: 400,
-    backgroundColor: Colors.background,
     borderRadius: 12,
     overflow: "hidden" as const,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   imagesContainer: {
     flexDirection: "row" as const,
@@ -197,26 +288,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  afterBadge: {
-    backgroundColor: Colors.success + "DD",
-  },
+  afterBadge: {},
   labelText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.white,
     textTransform: "uppercase" as const,
   },
   arrowDivider: {
     width: 40,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.surface,
   },
   arrowCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -226,12 +312,10 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   category: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
   modalOverlay: {
     flex: 1,
@@ -240,7 +324,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
     borderRadius: 16,
     maxHeight: "90%",
     overflow: "hidden" as const,
@@ -250,14 +333,12 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     zIndex: 10,
-    backgroundColor: Colors.surface,
     borderRadius: 20,
     padding: 8,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
     padding: 20,
     paddingRight: 60,
   },
@@ -271,7 +352,6 @@ const styles = StyleSheet.create({
   modalImageLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.textSecondary,
     textTransform: "uppercase" as const,
   },
   modalImage: {
@@ -286,7 +366,6 @@ const styles = StyleSheet.create({
   modalDescription: {
     fontSize: 15,
     lineHeight: 22,
-    color: Colors.text,
   },
   modalMeta: {
     flexDirection: "row" as const,
@@ -298,11 +377,9 @@ const styles = StyleSheet.create({
   metaLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
     textTransform: "uppercase" as const,
   },
   metaValue: {
     fontSize: 14,
-    color: Colors.text,
   },
 });

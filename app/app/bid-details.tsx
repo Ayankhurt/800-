@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import {
   DollarSign,
@@ -23,426 +24,260 @@ import {
   Clock,
   Award,
   MessageCircle,
+  UserPlus,
+  Search,
+  Send,
+  User as UserIcon,
+  AlertCircle,
 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import Colors from "@/constants/colors";
-import { useBids } from "@/contexts/BidsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBids } from "@/contexts/BidsContext";
 import { useProjects } from "@/contexts/ProjectsContext";
+import { useJobs } from "@/contexts/JobsContext";
 import { BidSubmission, BidStatus } from "@/types";
 import { bidsAPI } from "@/services/api";
+import axios from "axios";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 
 export default function BidDetailsScreen() {
+  const { colors } = useAuth();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
   const { getBidById, getSubmissionsByBidId, hasUserSubmitted, awardBid, declineBid } = useBids();
   const { getUserProjects } = useProjects();
-  const [apiSubmissions, setApiSubmissions] = useState<any[]>([]);
-  const [apiBidComparison, setApiBidComparison] = useState<any>(null);
+  const { sendMessage } = useJobs();
+  
+  const [apiSubmissions, setApiSubmissions] = useState<BidSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<BidSubmission | null>(null);
   const [selectedTab, setSelectedTab] = useState<"details" | "submissions">("details");
 
   const bidId = Array.isArray(id) ? id[0] : id;
   const bid = getBidById(bidId as string);
 
-  // Fetch submissions from API
+  const isOwner = user && bid && (user.id === bid.projectManagerId || user.role === "PM" || user.role === "ADMIN");
+  const isContractor = user?.role === "GC" || user?.role === "SUB" || user?.role === "TS";
+  const userSubmitted = user ? hasUserSubmitted(bidId as string, user.id) : false;
+
   useEffect(() => {
     if (bidId) {
       fetchSubmissions();
-      // Fetch comparison if user is PM or ADMIN
-      if (user && (user.role === "PM" || user.role === "ADMIN") && bid?.jobId) {
-        fetchBidComparison();
-      }
     }
-  }, [bidId, user, bid?.jobId]);
+  }, [bidId]);
 
   const fetchSubmissions = async () => {
     if (!bidId) return;
-
     try {
       setIsLoading(true);
-      console.log("[API] GET /bids/:bidId/submissions", bidId);
       const response = await bidsAPI.getSubmissions(bidId);
-
       if (response.success && response.data) {
         const rawSubmissions = response.data.submissions || (Array.isArray(response.data) ? response.data : []);
         const mappedSubmissions = rawSubmissions.map((sub: any) => ({
           id: sub.id || sub.submission_id,
           bidId: sub.bid_id || sub.bidId,
           contractorId: sub.contractor_id || sub.contractorId,
-          contractorName: sub.contractor?.fullName || sub.contractor_name || sub.contractorName || "Contractor",
-          contractorCompany: sub.contractor?.company || sub.contractor_company || sub.contractorCompany || "",
+          contractorName: sub.contractor?.fullName || sub.contractor_name || "Contractor",
+          contractorCompany: sub.contractor?.company || sub.contractor_company || "",
           amount: sub.amount || sub.bid_amount,
-          notes: sub.notes || sub.comments || sub.proposal,
-          submittedAt: sub.submitted_at || sub.submittedAt,
+          notes: sub.notes || sub.proposal_text || sub.proposal || "",
+          submittedAt: sub.submitted_at || sub.created_at || new Date().toISOString(),
           status: sub.status || "pending",
           documents: sub.documents || [],
-          createdBy: sub.created_by || sub.createdBy,
+          createdBy: sub.created_by || sub.contractor_id,
         }));
         setApiSubmissions(mappedSubmissions);
       }
-    } catch (error: any) {
-      console.log("[API ERROR]", error);
-      // Fallback to context
+    } catch (error) {
+      console.log("[API ERROR] fetchSubmissions", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchBidComparison = async () => {
-    if (!bid?.jobId) return;
-
-    try {
-      console.log("[API] GET /bids/:jobId/compare", bid.jobId);
-      const response = await bidsAPI.compare(bid.jobId);
-
-      if (response.success && response.data) {
-        setApiBidComparison(response.data);
-      }
-    } catch (error: any) {
-      console.log("[API ERROR]", error);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchSubmissions(), fetchBidComparison()]);
+    await fetchSubmissions();
     setRefreshing(false);
   };
 
-  // Use API data if available, otherwise fallback to context
-  const submissions = apiSubmissions.length > 0 ? apiSubmissions : getSubmissionsByBidId(bidId as string);
-  const userSubmitted = user ? hasUserSubmitted(bidId as string, user.id) : false;
-  const userProjects = getUserProjects();
-  const awardedProject = bid ? userProjects.find(p => p.bidId === bid.id) : null;
-  const awardedSubmission = bid?.status === "awarded" ? submissions.find(s => s.contractorId === awardedProject?.contractorId) : null;
-
-  // Visible for PM/GC/ADMIN only (hide for VIEWER)
-  const canViewAllBids = user?.role === "PM" || user?.role === "GC" || user?.role === "ADMIN";
-  // Visible for GC/SUB/TS only (hide for VIEWER)
-  const isContractor = user?.role === "GC" || user?.role === "SUB" || user?.role === "TS";
-  // Visible for Admin only
-  const isAdmin = user?.role === "ADMIN";
-
   if (isLoading && !bid) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen
-          options={{
-            title: "Bid Details",
-            headerShown: true,
-          }}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading bid details...</Text>
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       </View>
     );
   }
 
   if (!bid) {
     return (
-      <View style={styles.container}>
-        <Stack.Screen
-          options={{
-            title: "Bid Details",
-            headerShown: true,
-          }}
-        />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Bid not found</Text>
+          <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>Bid not found</Text>
         </View>
       </View>
     );
   }
 
-  const statusColors: Record<BidStatus, string> = {
-    pending: Colors.warning,
-    submitted: Colors.info,
-    awarded: Colors.success,
-    declined: Colors.error,
+  const submissions = apiSubmissions.length > 0 ? apiSubmissions : getSubmissionsByBidId(bidId as string);
+  const statusColors: Record<string, string> = {
+    pending: colors.warning,
+    submitted: colors.info,
+    awarded: colors.success,
+    declined: colors.error,
   };
 
   const daysUntilDue = Math.ceil(
     (new Date(bid.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const handleAwardBid = (submissionId: string, contractorName: string) => {
-    Alert.alert(
-      "Award Bid",
-      `Award this bid to ${contractorName}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Award",
-          onPress: async () => {
-            await awardBid(bid.id, submissionId);
-            Alert.alert(
-              "Success",
-              "Bid awarded successfully. Ready to start the project?",
-              [
-                { text: "Later", style: "cancel" },
-                {
-                  text: "Start Project",
-                  onPress: () => router.push({ pathname: "/project-setup", params: { bidId: bid.id, submissionId } } as any)
-                }
-              ]
-            );
-          }
-        }
-      ]
-    );
-  };
-
-  const handleDeclineBid = () => {
-    Alert.alert(
-      "Decline Bid",
-      "Are you sure you want to decline this bid opportunity?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Decline",
-          style: "destructive",
-          onPress: async () => {
-            await declineBid(bid.id);
-            router.back();
-          }
-        }
-      ]
-    );
-  };
-
   return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: "Bid Details",
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: Colors.surface,
-          },
-          headerTintColor: Colors.text,
-          headerShadowVisible: false,
-        }}
-      />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ title: "Bid Details", headerShown: true }} />
 
-      <View style={styles.header}>
-        <Text style={styles.projectName}>{bid.projectName}</Text>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: statusColors[bid.status] },
-          ]}
-        >
-          <Text style={styles.statusText}>
-            {bid.status.charAt(0).toUpperCase() + bid.status.slice(1)}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.projectName, { color: colors.text }]}>{bid.projectName}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: statusColors[bid.status] || colors.primary }]}>
+          <Text style={[styles.statusText, { color: colors.white }]}>
+            {bid.status.toUpperCase()}
           </Text>
         </View>
       </View>
 
-      {canViewAllBids && (
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              selectedTab === "details" && styles.tabActive,
-            ]}
-            onPress={() => setSelectedTab("details")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "details" && styles.tabTextActive,
-              ]}
-            >
-              Details
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              selectedTab === "submissions" && styles.tabActive,
-            ]}
+      <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity 
+          style={[styles.tab, selectedTab === "details" && styles.tabActive]} 
+          onPress={() => setSelectedTab("details")}
+        >
+          <Text style={[styles.tabText, selectedTab === "details" && { color: colors.primary }]}>Details</Text>
+        </TouchableOpacity>
+        {(isOwner || isContractor) && (
+          <TouchableOpacity 
+            style={[styles.tab, selectedTab === "submissions" && styles.tabActive]} 
             onPress={() => setSelectedTab("submissions")}
           >
-            <Text
-              style={[
-                styles.tabText,
-                selectedTab === "submissions" && styles.tabTextActive,
-              ]}
-            >
+            <Text style={[styles.tabText, selectedTab === "submissions" && { color: colors.primary }]}>
               Submissions ({submissions.length})
             </Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      <ScrollView 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {selectedTab === "details" ? (
-          <>
-            <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Users size={24} color={Colors.primary} />
+          <View style={styles.detailsContent}>
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Users size={20} color={colors.primary} />
                 <Text style={styles.statValue}>{bid.contractorCount}</Text>
                 <Text style={styles.statLabel}>Contractors</Text>
               </View>
-              <View style={styles.statCard}>
-                <FileText size={24} color={Colors.success} />
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <FileText size={20} color={colors.success} />
                 <Text style={styles.statValue}>{submissions.length}</Text>
                 <Text style={styles.statLabel}>Submissions</Text>
               </View>
-              <View style={styles.statCard}>
-                <Clock size={24} color={daysUntilDue > 0 ? Colors.warning : Colors.error} />
-                <Text style={styles.statValue}>
-                  {daysUntilDue > 0 ? daysUntilDue : 0}
-                </Text>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Clock size={20} color={daysUntilDue > 0 ? colors.warning : colors.error} />
+                <Text style={styles.statValue}>{Math.max(0, daysUntilDue)}</Text>
                 <Text style={styles.statLabel}>Days Left</Text>
               </View>
             </View>
 
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
               <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{bid.description}</Text>
+              <Text style={styles.descriptionText}>{bid.description}</Text>
             </View>
 
-            {bid.budget && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Budget</Text>
-                <View style={styles.budgetContainer}>
-                  <DollarSign size={20} color={Colors.primary} />
-                  <Text style={styles.budgetText}>{bid.budget}</Text>
-                </View>
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+              <Text style={styles.sectionTitle}>Budget</Text>
+              <View style={styles.budgetRow}>
+                <DollarSign size={20} color={colors.success} />
+                <Text style={styles.budgetValue}>{bid.budget}</Text>
               </View>
-            )}
+            </View>
 
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
               <Text style={styles.sectionTitle}>Timeline</Text>
               <View style={styles.timelineItem}>
-                <Calendar size={18} color={Colors.textSecondary} />
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineLabel}>Created</Text>
-                  <Text style={styles.timelineValue}>
-                    {new Date(bid.createdAt).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.timelineItem}>
-                <Calendar size={18} color={Colors.textSecondary} />
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineLabel}>Due Date</Text>
-                  <Text style={[
-                    styles.timelineValue,
-                    daysUntilDue <= 0 && { color: Colors.error }
-                  ]}>
-                    {new Date(bid.dueDate).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </Text>
-                </View>
+                <Calendar size={18} color={colors.textSecondary} />
+                <Text style={styles.timelineText}>Due: {new Date(bid.dueDate).toLocaleDateString()}</Text>
               </View>
             </View>
 
-            {bid.status === "awarded" && awardedSubmission && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Awarded To</Text>
-                <View style={styles.awardedCard}>
-                  <View style={styles.awardedHeader}>
-                    <View>
-                      <Text style={styles.awardedContractor}>{awardedSubmission.contractorName}</Text>
-                      <Text style={styles.awardedCompany}>{awardedSubmission.contractorCompany}</Text>
-                    </View>
-                    <View style={styles.awardedAmount}>
-                      <Text style={styles.awardedAmountLabel}>Award Amount</Text>
-                      <Text style={styles.awardedAmountValue}>${awardedSubmission.amount.toLocaleString()}</Text>
-                    </View>
-                  </View>
-                  {awardedProject ? (
-                    <TouchableOpacity
-                      style={styles.viewProjectButton}
-                      onPress={() => router.push({ pathname: "/project-dashboard", params: { id: awardedProject.id } } as any)}
-                    >
-                      <FileText size={18} color={Colors.white} />
-                      <Text style={styles.viewProjectButtonText}>View Project Dashboard</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.setupProjectButton}
-                      onPress={() => router.push({ pathname: "/project-setup", params: { bidId: bid.id, submissionId: awardedSubmission.id } } as any)}
-                    >
-                      <FileText size={18} color={Colors.primary} />
-                      <Text style={styles.setupProjectButtonText}>Setup Project</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {canViewAllBids && bid.status !== "awarded" && bid.status !== "declined" && (
-              <View style={styles.section}>
-                <TouchableOpacity
-                  style={styles.declineButton}
-                  onPress={handleDeclineBid}
+            {isOwner && bid.status === "pending" && (
+              <View style={styles.ownerActions}>
+                <TouchableOpacity 
+                  style={[styles.primaryAction, { backgroundColor: colors.primary }]}
+                  onPress={() => setShowInviteModal(true)}
                 >
-                  <XCircle size={20} color={Colors.white} />
-                  <Text style={styles.declineButtonText}>Decline This Bid</Text>
+                  <UserPlus size={20} color={colors.white} />
+                  <Text style={styles.actionText}>Invite Contractors</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.secondaryAction, { borderColor: colors.error }]}
+                  onPress={() => declineBid(bid.id)}
+                >
+                  <XCircle size={20} color={colors.error} />
+                  <Text style={[styles.actionText, { color: colors.error }]}>Cancel Bid Request</Text>
                 </TouchableOpacity>
               </View>
             )}
-          </>
+          </View>
         ) : (
-          <View style={styles.submissionsContainer}>
-            {submissions.length === 0 ? (
-              <View style={styles.emptySubmissions}>
-                <FileText size={48} color={Colors.textTertiary} />
-                <Text style={styles.emptySubmissionsTitle}>
-                  No submissions yet
-                </Text>
-                <Text style={styles.emptySubmissionsText}>
-                  Waiting for contractors to submit their bids
-                </Text>
-              </View>
-            ) : (
-              submissions.map((submission) => (
-                <SubmissionCard
-                  key={submission.id}
-                  submission={submission}
-                  canAward={canViewAllBids && bid.status !== "awarded"}
-                  isAwarded={bid.status === "awarded" && submission.id === awardedSubmission?.id}
-                  onAward={() => handleAwardBid(submission.id, submission.contractorName)}
-                />
-              ))
+          <View style={styles.submissionsList}>
+            {submissions.map(sub => (
+              <SubmissionCard 
+                key={sub.id} 
+                submission={sub} 
+                colors={colors}
+                canAward={isOwner && bid.status === "pending"}
+                onAward={() => awardBid(bid.id, sub.id)}
+                onMessage={() => {
+                  setSelectedSubmission(sub);
+                  setShowMessageModal(true);
+                }}
+              />
+            ))}
+            {submissions.length === 0 && (
+              <Text style={styles.emptyText}>No submissions yet</Text>
             )}
           </View>
         )}
       </ScrollView>
 
-      {isContractor && bid.status === "pending" && !userSubmitted && user?.role !== "VIEWER" && (
+      {isContractor && bid.status === "pending" && !userSubmitted && (
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.submitButton}
+          <TouchableOpacity 
+            style={[styles.submitButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowSubmitModal(true)}
           >
-            <Text style={styles.submitButtonText}>Submit Bid</Text>
+            <Text style={styles.submitButtonText}>Submit Bid Proposal</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -450,110 +285,65 @@ export default function BidDetailsScreen() {
       {userSubmitted && (
         <View style={styles.footer}>
           <View style={styles.submittedBanner}>
-            <CheckCircle size={20} color={Colors.success} />
-            <Text style={styles.submittedText}>You have submitted your bid</Text>
+            <CheckCircle size={20} color={colors.success} />
+            <Text style={[styles.submittedText, { color: colors.success }]}>Proposal Submitted</Text>
           </View>
         </View>
       )}
 
-      <SubmitBidModal
-        visible={showSubmitModal}
+      <SubmitBidModal 
+        visible={showSubmitModal} 
         onClose={() => setShowSubmitModal(false)}
         bidId={bid.id}
         bidName={bid.projectName}
+        colors={colors}
+        onSuccess={fetchSubmissions}
+      />
+
+      <InviteModal 
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        bidId={bid.id}
+        bidName={bid.projectName}
+        colors={colors}
+      />
+      
+      <MessageModal
+        visible={showMessageModal}
+        onClose={() => setShowMessageModal(false)}
+        recipientName={selectedSubmission?.contractorName || ""}
+        colors={colors}
+        onSend={async (msg) => {
+          if (selectedSubmission) {
+            await sendMessage(bid.id, selectedSubmission.contractorId, msg);
+            setShowMessageModal(false);
+          }
+        }}
       />
     </View>
   );
 }
 
-function SubmissionCard({
-  submission,
-  canAward,
-  isAwarded,
-  onAward
-}: {
-  submission: BidSubmission;
-  canAward: boolean;
-  isAwarded?: boolean;
-  onAward: () => void;
-}) {
-  const router = useRouter();
-  const { user } = useAuth();
-
-  const handleSendMessage = () => {
-    router.push({
-      pathname: "/messages",
-      params: { userId: submission.contractorId }
-    } as any);
-  };
-
+function SubmissionCard({ submission, colors, canAward, onAward, onMessage }: any) {
   return (
-    <View style={[styles.submissionCard, isAwarded && styles.submissionCardAwarded]}>
-      <View style={styles.submissionHeader}>
-        <View style={styles.submissionInfo}>
-          <Text style={styles.submissionContractor}>
-            {submission.contractorName}
-          </Text>
-          <View style={styles.submissionCompanyRow}>
-            <Building size={14} color={Colors.textSecondary} />
-            <Text style={styles.submissionCompany}>
-              {submission.contractorCompany}
-            </Text>
-          </View>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={styles.cardTitle}>{submission.contractorName}</Text>
+          <Text style={styles.cardSubtitle}>{submission.contractorCompany}</Text>
         </View>
-        <View style={styles.submissionAmount}>
-          <Text style={styles.submissionAmountLabel}>Bid Amount</Text>
-          <Text style={styles.submissionAmountValue}>
-            ${submission.amount.toLocaleString()}
-          </Text>
-        </View>
+        <Text style={[styles.cardAmount, { color: colors.success }]}>${submission.amount.toLocaleString()}</Text>
       </View>
-
-      <View style={styles.submissionBody}>
-        <Text style={styles.submissionNotesLabel}>Notes:</Text>
-        <Text style={styles.submissionNotes}>{submission.notes}</Text>
-      </View>
-
-      {submission.documents.length > 0 && (
-        <View style={styles.documentsSection}>
-          <Text style={styles.documentsLabel}>Documents:</Text>
-          {submission.documents.map((doc, index) => (
-            <View key={index} style={styles.documentItem}>
-              <FileText size={16} color={Colors.primary} />
-              <Text style={styles.documentName}>{doc}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.submissionFooter}>
-        <Text style={styles.submissionDate}>
-          Submitted {new Date(submission.submittedAt).toLocaleDateString()}
-        </Text>
-      </View>
-
-      {isAwarded && (
-        <View style={styles.awardedBanner}>
-          <Award size={20} color={Colors.success} />
-          <Text style={styles.awardedBannerText}>Awarded Bid</Text>
-        </View>
-      )}
-
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.messageButton}
-          onPress={handleSendMessage}
-        >
-          <MessageCircle size={18} color={Colors.primary} />
-          <Text style={styles.messageButtonText}>Send Message</Text>
+      <Text style={styles.cardNotes} numberOfLines={3}>{submission.notes}</Text>
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.cardBtn} onPress={onMessage}>
+          <MessageCircle size={18} color={colors.primary} />
+          <Text style={{ color: colors.primary }}>Message</Text>
         </TouchableOpacity>
         {canAward && (
-          <TouchableOpacity
-            style={styles.awardButton}
-            onPress={onAward}
-          >
-            <Award size={18} color={Colors.white} />
-            <Text style={styles.awardButtonText}>Award Bid</Text>
+          <TouchableOpacity style={[styles.cardBtn, { backgroundColor: colors.success }]} onPress={onAward}>
+            <Award size={18} color={colors.white} />
+            <Text style={{ color: colors.white }}>Award</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -561,649 +351,188 @@ function SubmissionCard({
   );
 }
 
-function SubmitBidModal({
-  visible,
-  onClose,
-  bidId,
-  bidName,
-  onSuccess,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  bidId: string;
-  bidName: string;
-  onSuccess?: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    amount: "",
-    notes: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
+function SubmitBidModal({ visible, onClose, bidId, bidName, colors, onSuccess }: any) {
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!formData.amount || !formData.notes) {
-      Alert.alert("Error", "Please fill in all required fields");
-      return;
-    }
-
-    setSubmitting(true);
+    if (!amount || !notes) return Alert.alert("Error", "Required fields missing");
+    setLoading(true);
     try {
-      console.log("[API] POST /bids/:bidId/submit", bidId, formData);
-      const response = await bidsAPI.submit(bidId, {
-        amount: parseFloat(formData.amount),
-        notes: formData.notes,
-      });
-
-      if (response.success) {
-        Alert.alert("Success", "Your bid has been submitted successfully");
-        setFormData({ amount: "", notes: "" });
+      const res = await bidsAPI.submit(bidId, { amount: parseFloat(amount), notes });
+      if (res.success) {
+        Alert.alert("Success", "Bid submitted!");
         onClose();
-        // Refresh submissions
-        if (onSuccess) {
-          onSuccess();
-        }
-      } else {
-        Alert.alert("Error", response.message || "Failed to submit bid");
+        if (onSuccess) onSuccess();
       }
-    } catch (error: any) {
-      console.log("[API ERROR]", error);
-      Alert.alert("Error", error?.response?.data?.message || error?.message || "Something went wrong");
+    } catch (e) {
+      Alert.alert("Error", "Submission failed");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
+    <Modal visible={visible} animationType="slide">
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: 20 }}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Submit Bid</Text>
-          <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
-          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Submit Proposal</Text>
+          <TouchableOpacity onPress={onClose}><X size={24} color={colors.text} /></TouchableOpacity>
         </View>
-
-        <ScrollView
-          style={styles.modalContent}
-          contentContainerStyle={styles.modalContentInner}
+        <Text style={{ marginBottom: 20 }}>Project: {bidName}</Text>
+        <TextInput 
+          placeholder="Amount ($)" 
+          keyboardType="numeric" 
+          style={styles.modalInput} 
+          value={amount}
+          onChangeText={setAmount}
+        />
+        <TextInput 
+          placeholder="Proposal / Notes" 
+          multiline 
+          numberOfLines={6} 
+          style={[styles.modalInput, { height: 120 }]} 
+          value={notes}
+          onChangeText={setNotes}
+        />
+        <TouchableOpacity 
+          style={[styles.submitButton, { backgroundColor: colors.primary }]}
+          onPress={handleSubmit}
+          disabled={loading}
         >
-          <View style={styles.bidNameContainer}>
-            <Text style={styles.bidNameLabel}>Project:</Text>
-            <Text style={styles.bidName}>{bidName}</Text>
-          </View>
+          <Text style={styles.submitButtonText}>{loading ? "Submitting..." : "Submit Proposal"}</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Bid Amount *</Text>
-            <View style={styles.amountInputContainer}>
-              <Text style={styles.dollarSign}>$</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="50000"
-                value={formData.amount}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, amount: text })
-                }
-                keyboardType="numeric"
-                placeholderTextColor={Colors.textTertiary}
-              />
+function InviteModal({ visible, onClose, bidId, bidName, colors }: any) {
+  const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { sendMessage } = useJobs();
+
+  useEffect(() => {
+    if (visible) fetchUsers();
+  }, [visible]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000'}/api/users?role=CONTRACTOR`);
+      if (response.data?.success) setUsers(response.data.data || []);
+    } catch (e) {} finally { setLoading(false); }
+  };
+
+  const handleInvite = async (userId: string, name: string) => {
+    try {
+      await sendMessage(bidId, userId, `Hi ${name}! I invite you to bid on: ${bidName}`);
+      Alert.alert("Sent", `Invitation sent to ${name}`);
+    } catch (e) {
+      Alert.alert("Error", "Failed to send invitation");
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide">
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 50 }}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Invite Contractors</Text>
+          <TouchableOpacity onPress={onClose}><X size={24} color={colors.text} /></TouchableOpacity>
+        </View>
+        <TextInput placeholder="Search..." style={styles.modalInput} value={search} onChangeText={setSearch} />
+        <ScrollView>
+          {users.filter(u => u.fullName.toLowerCase().includes(search.toLowerCase())).map(u => (
+            <View key={u.id} style={styles.inviteRow}>
+              <View>
+                <Text style={styles.cardTitle}>{u.fullName}</Text>
+                <Text style={styles.cardSubtitle}>{u.company_name}</Text>
+              </View>
+              <TouchableOpacity onPress={() => handleInvite(u.id, u.fullName)}>
+                <Send size={20} color={colors.primary} />
+              </TouchableOpacity>
             </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Proposal & Notes *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe your approach, timeline, materials, and any important details..."
-              value={formData.notes}
-              onChangeText={(text) =>
-                setFormData({ ...formData, notes: text })
-              }
-              multiline
-              numberOfLines={8}
-              textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.modalSubmitButton,
-              submitting && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={submitting || !formData.amount || !formData.notes}
-          >
-            <Text style={styles.submitButtonText}>
-              {submitting ? "Submitting..." : "Submit Bid"}
-            </Text>
-          </TouchableOpacity>
+          ))}
         </ScrollView>
       </View>
     </Modal>
   );
 }
 
+function MessageModal({ visible, onClose, recipientName, onSend, colors }: any) {
+  const [msg, setMsg] = useState("");
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 20 }}>
+          <Text style={styles.modalTitle}>Message to {recipientName}</Text>
+          <TextInput 
+            multiline 
+            style={[styles.modalInput, { height: 100, marginTop: 10 }]} 
+            placeholder="Type your message..." 
+            value={msg}
+            onChangeText={setMsg}
+          />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+            <TouchableOpacity style={{ flex: 1, padding: 12 }} onPress={onClose}><Text style={{ textAlign: 'center' }}>Cancel</Text></TouchableOpacity>
+            <TouchableOpacity 
+              style={{ flex: 1, padding: 12, backgroundColor: colors.primary, borderRadius: 10 }} 
+              onPress={() => onSend(msg)}
+            >
+              <Text style={{ textAlign: 'center', color: colors.white }}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    backgroundColor: Colors.surface,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  projectName: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.primary,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-  },
-  tabTextActive: {
-    color: Colors.primary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    padding: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 8,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: "center",
-  },
-  section: {
-    backgroundColor: Colors.surface,
-    padding: 20,
-    marginBottom: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: Colors.textSecondary,
-  },
-  budgetContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  budgetText: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: Colors.primary,
-  },
-  timelineItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 16,
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineLabel: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-    marginBottom: 4,
-  },
-  timelineValue: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  submissionsContainer: {
-    padding: 16,
-  },
-  emptySubmissions: {
-    alignItems: "center",
-    paddingVertical: 64,
-  },
-  emptySubmissionsTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubmissionsText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  submissionCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  submissionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-    gap: 16,
-  },
-  submissionInfo: {
-    flex: 1,
-  },
-  submissionContractor: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 6,
-  },
-  submissionCompanyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  submissionCompany: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  submissionAmount: {
-    alignItems: "flex-end",
-  },
-  submissionAmountLabel: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginBottom: 4,
-  },
-  submissionAmountValue: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: Colors.success,
-  },
-  submissionBody: {
-    marginBottom: 12,
-  },
-  submissionNotesLabel: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-    marginBottom: 6,
-  },
-  submissionNotes: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: Colors.text,
-  },
-  documentsSection: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    marginBottom: 12,
-  },
-  documentsLabel: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
-  documentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 6,
-  },
-  documentName: {
-    fontSize: 14,
-    color: Colors.primary,
-  },
-  submissionFooter: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  submissionDate: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-  },
-  messageButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  messageButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.primary,
-  },
-  awardButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.success,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  awardButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  declineButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.error,
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  declineButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    padding: 16,
-  },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  submittedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-  },
-  submittedText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: Colors.success,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  modalContent: {
-    flex: 1,
-  },
-  modalContentInner: {
-    padding: 16,
-  },
-  bidNameContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  bidNameLabel: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginBottom: 4,
-  },
-  bidName: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  amountInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  dollarSign: {
-    fontSize: 20,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginRight: 4,
-  },
-  amountInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.text,
-  },
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  textArea: {
-    minHeight: 140,
-    paddingTop: 12,
-  },
-  modalSubmitButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  awardedCard: {
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: Colors.success,
-  },
-  awardedHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-    gap: 16,
-  },
-  awardedContractor: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  awardedCompany: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  awardedAmount: {
-    alignItems: "flex-end",
-  },
-  awardedAmountLabel: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    marginBottom: 4,
-  },
-  awardedAmountValue: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: Colors.success,
-  },
-  viewProjectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  viewProjectButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.white,
-  },
-  setupProjectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  setupProjectButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.primary,
-  },
-  submissionCardAwarded: {
-    borderColor: Colors.success,
-    borderWidth: 2,
-  },
-  awardedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: Colors.success + "20",
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  awardedBannerText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.success,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
-    paddingVertical: 64,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 20, borderBottomWidth: 1 },
+  projectName: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  tabContainer: { flexDirection: 'row', borderBottomWidth: 1 },
+  tab: { flex: 1, paddingVertical: 15, alignItems: 'center' },
+  tabActive: { borderBottomWidth: 3, borderBottomColor: staticColors.primary },
+  tabText: { fontWeight: '600', color: '#666' },
+  statsRow: { flexDirection: 'row', gap: 10, padding: 16 },
+  statCard: { flex: 1, padding: 16, borderRadius: 12, alignItems: 'center', elevation: 2 },
+  statValue: { fontSize: 18, fontWeight: '700' },
+  statLabel: { fontSize: 12, color: '#666' },
+  section: { padding: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+  descriptionText: { color: '#444', lineHeight: 22 },
+  budgetRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  budgetValue: { fontSize: 20, fontWeight: '700' },
+  timelineItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  timelineText: { color: '#666' },
+  ownerActions: { padding: 16, gap: 12 },
+  primaryAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: 12 },
+  secondaryAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: 12, borderWidth: 1 },
+  actionText: { fontWeight: '700', color: '#fff' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, borderTopWidth: 1 },
+  submitButton: { padding: 16, borderRadius: 12, alignItems: 'center' },
+  submitButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submittedBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  submittedText: { fontWeight: '700' },
+  card: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  cardTitle: { fontSize: 16, fontWeight: '700' },
+  cardSubtitle: { fontSize: 14, color: '#666' },
+  cardAmount: { fontSize: 18, fontWeight: '700' },
+  cardNotes: { color: '#444', marginBottom: 15 },
+  cardActions: { flexDirection: 'row', gap: 10 },
+  cardBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 22, fontWeight: '700' },
+  modalInput: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 10, marginBottom: 15 },
+  inviteRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { textAlign: 'center', color: '#666', marginTop: 20 },
 });

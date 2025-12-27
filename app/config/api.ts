@@ -33,57 +33,72 @@ if (__DEV__) {
 }
 
 function getBaseURL(): string {
-  // WEB PLATFORM - Always use localhost
+  // WEB PLATFORM - Dynamic detection
   if (Platform.OS === "web") {
-    console.log("🌐 Web platform detected - using localhost");
+    // Check if we are in a browser environment
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+
+      // If we are accessing via a tunnel (ngrok, expo, etc) or local IP
+      // we still want to hit the backend at 192.168.1.113 OR the current hostname
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        // If it looks like a tunnel URL, it's safer to use the hardcoded LAN IP 
+        // because the backend is likely NOT tunneled on the same URL
+        if (hostname.includes('.') && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+          return "http://192.168.1.113:5000/api/v1";
+        }
+        return `http://${hostname}:5000/api/v1`;
+      }
+    }
+    // Default for local web development
     return "http://localhost:5000/api/v1";
   }
 
   // MOBILE PLATFORMS - Use env variables or default IP
+  let url = "";
+  let source = "";
+
   // Priority 1: Full URL from environment variable
   if (process.env.EXPO_PUBLIC_API_URL) {
-    let url = process.env.EXPO_PUBLIC_API_URL.trim();
+    url = process.env.EXPO_PUBLIC_API_URL.trim();
+    source = "EXPO_PUBLIC_API_URL";
 
     // Check if URL is missing port (for http://)
-    // Pattern: http://IP/path (missing port) vs http://IP:PORT/path (has port)
-    if (url.startsWith('http://')) {
-      // Extract the part after http://
-      const afterProtocol = url.substring(7); // Remove 'http://'
-      const firstSlash = afterProtocol.indexOf('/');
-      const hostPart = firstSlash > 0 ? afterProtocol.substring(0, firstSlash) : afterProtocol;
-      const pathPart = firstSlash > 0 ? afterProtocol.substring(firstSlash) : '';
-
-      // Check if host part has a port (contains ':')
-      if (!hostPart.includes(':')) {
-        // Missing port, add default port 5000
-        url = `http://${hostPart}:5000${pathPart}`;
-      }
+    if (url.startsWith('http://') && !url.includes(':', 7)) {
+      // Extract host part and add 5000
+      const parts = url.replace('http://', '').split('/');
+      const host = parts[0];
+      const path = parts.slice(1).join('/');
+      url = `http://${host}:5000/${path}`;
     }
-
-    // Ensure URL ends with /api/v1 if not already present
-    if (!url.includes('/api/v1')) {
-      // Remove trailing slash if present
-      url = url.replace(/\/$/, '');
-      // Add /api/v1 if not present
-      if (!url.endsWith('/api/v1')) {
-        url = `${url}/api/v1`;
-      }
-    }
-    return url;
+  } else {
+    // Priority 2: IP and Port from environment variables
+    const API_IP = process.env.EXPO_PUBLIC_API_IP || "192.168.1.113";
+    const API_PORT = process.env.EXPO_PUBLIC_API_PORT || "5000";
+    url = `http://${API_IP}:${API_PORT}/api/v1`;
+    source = process.env.EXPO_PUBLIC_API_IP ? "EXPO_PUBLIC_API_IP" : "Default Fallback";
   }
 
-  // Priority 2: IP and Port from environment variables
-  const API_IP = process.env.EXPO_PUBLIC_API_IP || "192.168.2.10";
-  const API_PORT = process.env.EXPO_PUBLIC_API_PORT || "5000";
+  // Final cleanup: Ensure /api/v1
+  if (!url.includes('/api/v1')) {
+    url = url.replace(/\/$/, '') + '/api/v1';
+  }
 
-  // Check if we're in development
+  // MOBILE OVERRIDE: If URL is localhost but we are on Mobile, replace with target IP
+  // This helps when Expo caches old environment variables
+  if ((Platform.OS as string) !== 'web' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+    const oldUrl = url;
+    url = url.replace('localhost', '192.168.1.113').replace('127.0.0.1', '192.168.1.113');
+    if (__DEV__) {
+      console.log(`⚠️  [API Config] Mobile detected - Overriding ${oldUrl} with ${url}`);
+    }
+  }
+
   if (__DEV__) {
-    // All platforms use the same IP address from env or default
-    return `http://${API_IP}:${API_PORT}/api/v1`;
+    console.log(`📡 [API Config] Using URL: ${url} (from ${source})`);
   }
 
-  // Production URL (update this when deploying)
-  return "https://api.bidroom.com/api/v1";
+  return url;
 }
 
 // Helper to get your local IP for physical device testing

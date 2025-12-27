@@ -23,12 +23,31 @@ import {
   Edit3,
 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import Colors from "@/constants/colors";
 import { useAppointments } from "@/contexts/AppointmentsContext";
+import { useAuth } from "@/contexts/AuthContext";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 
 export default function AppointmentDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user, colors } = useAuth();
   const { appointments, updateAppointment } = useAppointments();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -37,7 +56,7 @@ export default function AppointmentDetailsScreen() {
 
   if (!appointment) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen
           options={{
             title: "Appointment Details",
@@ -52,9 +71,9 @@ export default function AppointmentDetailsScreen() {
   }
 
   const typeColors = {
-    estimate: Colors.info,
-    site_visit: Colors.secondary,
-    meeting: Colors.success,
+    estimate: colors.info || "#3B82F6",
+    site_visit: colors.secondary,
+    meeting: colors.success,
   };
 
   const typeLabels = {
@@ -64,10 +83,10 @@ export default function AppointmentDetailsScreen() {
   };
 
   const statusColors = {
-    scheduled: Colors.info,
-    completed: Colors.success,
-    cancelled: Colors.error,
-    no_show: Colors.warning,
+    scheduled: colors.info || "#3B82F6",
+    completed: colors.success,
+    cancelled: colors.error,
+    no_show: colors.warning,
   };
 
   const statusLabels = {
@@ -96,15 +115,15 @@ export default function AppointmentDetailsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Appointment Details",
           headerShown: true,
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
-          headerTintColor: Colors.text,
+          headerTintColor: colors.text,
           headerShadowVisible: false,
         }}
       />
@@ -114,7 +133,7 @@ export default function AppointmentDetailsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View
             style={[
               styles.typeIcon,
@@ -124,7 +143,7 @@ export default function AppointmentDetailsScreen() {
             <Calendar size={32} color={typeColors[appointment.type]} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.title}>{appointment.title}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{appointment.title}</Text>
             <View style={styles.headerBadges}>
               <View
                 style={[
@@ -132,7 +151,7 @@ export default function AppointmentDetailsScreen() {
                   { backgroundColor: typeColors[appointment.type] },
                 ]}
               >
-                <Text style={styles.typeBadgeText}>
+                <Text style={[styles.typeBadgeText, { color: colors.white }]}>
                   {typeLabels[appointment.type]}
                 </Text>
               </View>
@@ -142,7 +161,7 @@ export default function AppointmentDetailsScreen() {
                   { backgroundColor: statusColors[appointment.status] },
                 ]}
               >
-                <Text style={styles.statusBadgeText}>
+                <Text style={[styles.statusBadgeText, { color: colors.white }]}>
                   {statusLabels[appointment.status]}
                 </Text>
               </View>
@@ -150,53 +169,53 @@ export default function AppointmentDetailsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Date & Time</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Date & Time</Text>
           <View style={styles.dateTimeContainer}>
             <View style={styles.infoRow}>
-              <Calendar size={20} color={Colors.primary} />
+              <Calendar size={20} color={colors.primary} />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Date</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(appointment.date).toLocaleDateString("en-US", {
+                <Text style={[styles.infoLabel, { color: colors.textTertiary }]}>Date</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {appointment.date ? new Date(appointment.date).toLocaleDateString("en-US", {
                     weekday: "long",
                     month: "long",
                     day: "numeric",
                     year: "numeric",
-                  })}
+                  }) : 'N/A'}
                 </Text>
               </View>
             </View>
             <View style={styles.infoRow}>
-              <Clock size={20} color={Colors.primary} />
+              <Clock size={20} color={colors.primary} />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Time</Text>
-                <Text style={styles.infoValue}>{appointment.time}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textTertiary }]}>Time</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{appointment.time}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Location</Text>
           <View style={styles.locationContainer}>
-            <MapPin size={20} color={Colors.primary} />
-            <Text style={styles.locationText}>{appointment.location}</Text>
+            <MapPin size={20} color={colors.primary} />
+            <Text style={[styles.locationText, { color: colors.text }]}>{appointment.location}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contractor</Text>
-          <View style={styles.contractorCard}>
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Contractor</Text>
+          <View style={[styles.contractorCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.contractorRow}>
-              <User size={18} color={Colors.textSecondary} />
-              <Text style={styles.contractorName}>
+              <User size={18} color={colors.textSecondary} />
+              <Text style={[styles.contractorName, { color: colors.text }]}>
                 {appointment.contractorName}
               </Text>
             </View>
             <View style={styles.contractorRow}>
-              <Building size={18} color={Colors.textSecondary} />
-              <Text style={styles.contractorCompany}>
+              <Building size={18} color={colors.textSecondary} />
+              <Text style={[styles.contractorCompany, { color: colors.textSecondary }]}>
                 {appointment.contractorCompany}
               </Text>
             </View>
@@ -204,64 +223,64 @@ export default function AppointmentDetailsScreen() {
         </View>
 
         {!!appointment.notes && (
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Notes</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text>
               {appointment.status === "scheduled" && (
                 <TouchableOpacity
                   onPress={() => setShowNotesModal(true)}
                   style={styles.editButton}
                 >
-                  <Edit3 size={16} color={Colors.primary} />
+                  <Edit3 size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </View>
-            <Text style={styles.notesText}>{appointment.notes}</Text>
+            <Text style={[styles.notesText, { color: colors.textSecondary }]}>{appointment.notes}</Text>
           </View>
         )}
 
         {!appointment.notes && appointment.status === "scheduled" && (
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <TouchableOpacity
-              style={styles.addNotesButton}
+              style={[styles.addNotesButton, { backgroundColor: colors.background, borderColor: colors.border }]}
               onPress={() => setShowNotesModal(true)}
             >
-              <FileText size={20} color={Colors.primary} />
-              <Text style={styles.addNotesText}>Add Notes</Text>
+              <FileText size={20} color={colors.primary} />
+              <Text style={[styles.addNotesText, { color: colors.primary }]}>Add Notes</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Information</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Additional Information</Text>
           <View style={styles.metadataContainer}>
             {!!appointment.createdByName && (
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Created By:</Text>
-                <Text style={styles.metadataValue}>
+                <Text style={[styles.metadataLabel, { color: colors.textSecondary }]}>Created By:</Text>
+                <Text style={[styles.metadataValue, { color: colors.text }]}>
                   {appointment.createdByName}
                 </Text>
               </View>
             )}
             <View style={styles.metadataRow}>
-              <Text style={styles.metadataLabel}>Created:</Text>
-              <Text style={styles.metadataValue}>
-                {new Date(appointment.createdAt).toLocaleDateString()}
+              <Text style={[styles.metadataLabel, { color: colors.textSecondary }]}>Created:</Text>
+              <Text style={[styles.metadataValue, { color: colors.text }]}>
+                {appointment.createdAt ? new Date(appointment.createdAt).toLocaleDateString() : 'N/A'}
               </Text>
             </View>
             {appointment.updatedAt && (
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Last Updated:</Text>
-                <Text style={styles.metadataValue}>
-                  {new Date(appointment.updatedAt).toLocaleDateString()}
+                <Text style={[styles.metadataLabel, { color: colors.textSecondary }]}>Last Updated:</Text>
+                <Text style={[styles.metadataValue, { color: colors.text }]}>
+                  {appointment.updatedAt ? new Date(appointment.updatedAt).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
             )}
             {appointment.completedAt && (
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Completed:</Text>
-                <Text style={styles.metadataValue}>
-                  {new Date(appointment.completedAt).toLocaleDateString()}
+                <Text style={[styles.metadataLabel, { color: colors.textSecondary }]}>Completed:</Text>
+                <Text style={[styles.metadataValue, { color: colors.text }]}>
+                  {appointment.completedAt ? new Date(appointment.completedAt).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
             )}
@@ -269,41 +288,41 @@ export default function AppointmentDetailsScreen() {
         </View>
 
         {!!appointment.jobId && (
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <TouchableOpacity
-              style={styles.viewJobButton}
+              style={[styles.viewJobButton, { backgroundColor: colors.primary }]}
               onPress={() =>
                 router.push(`/job-details?id=${appointment.jobId}`)
               }
             >
-              <Text style={styles.viewJobButtonText}>View Related Job</Text>
+              <Text style={[styles.viewJobButtonText, { color: colors.white }]}>View Related Job</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
 
       {appointment.status === "scheduled" && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors.success }]}
+            style={[styles.actionButton, { backgroundColor: colors.success }]}
             onPress={() => handleStatusUpdate("completed")}
           >
-            <Check size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Complete</Text>
+            <Check size={20} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Complete</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors.warning }]}
+            style={[styles.actionButton, { backgroundColor: colors.warning }]}
             onPress={() => handleStatusUpdate("no_show")}
           >
-            <AlertCircle size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>No Show</Text>
+            <AlertCircle size={20} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>No Show</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors.error }]}
+            style={[styles.actionButton, { backgroundColor: colors.error }]}
             onPress={() => handleStatusUpdate("cancelled")}
           >
-            <XCircle size={20} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Cancel</Text>
+            <XCircle size={20} color={colors.white} />
+            <Text style={[styles.actionButtonText, { color: colors.white }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -312,6 +331,7 @@ export default function AppointmentDetailsScreen() {
         visible={showNotesModal}
         onClose={() => setShowNotesModal(false)}
         currentNotes={appointment.notes || ""}
+        colors={colors}
         onSave={async (notes) => {
           await updateAppointment(appointment.id, { notes });
           setShowNotesModal(false);
@@ -326,11 +346,13 @@ function NotesModal({
   onClose,
   currentNotes,
   onSave,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   currentNotes: string;
   onSave: (notes: string) => Promise<void>;
+  colors: any;
 }) {
   const [notes, setNotes] = useState(currentNotes);
   const [saving, setSaving] = useState(false);
@@ -346,33 +368,33 @@ function NotesModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Edit Notes</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Notes</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.modalContent}>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="Add notes about this appointment..."
             value={notes}
             onChangeText={setNotes}
             multiline
             numberOfLines={10}
             textAlignVertical="top"
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             autoFocus
           />
 
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            style={[styles.saveButton, { backgroundColor: colors.primary }, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={saving}
           >
-            <Text style={styles.saveButtonText}>
+            <Text style={[styles.saveButtonText, { color: colors.white }]}>
               {saving ? "Saving..." : "Save Notes"}
             </Text>
           </TouchableOpacity>
@@ -385,7 +407,7 @@ function NotesModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -394,13 +416,13 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   typeIcon: {
     width: 64,
@@ -415,7 +437,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 12,
   },
   headerBadges: {
@@ -430,7 +452,7 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -440,10 +462,10 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   section: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     padding: 20,
     marginBottom: 1,
   },
@@ -456,7 +478,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 12,
   },
   editButton: {
@@ -475,13 +497,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 13,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   locationContainer: {
     flexDirection: "row",
@@ -492,15 +514,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     lineHeight: 24,
-    color: Colors.text,
+    color: staticColors.text,
   },
   contractorCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   contractorRow: {
     flexDirection: "row",
@@ -510,16 +532,16 @@ const styles = StyleSheet.create({
   contractorName: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   contractorCompany: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   notesText: {
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   addNotesButton: {
     flexDirection: "row",
@@ -527,16 +549,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderStyle: "dashed",
   },
   addNotesText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   metadataContainer: {
     gap: 12,
@@ -548,15 +570,15 @@ const styles = StyleSheet.create({
   },
   metadataLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   metadataValue: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   viewJobButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -564,16 +586,16 @@ const styles = StyleSheet.create({
   viewJobButtonText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   footer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
     padding: 16,
     flexDirection: "row",
     gap: 8,
@@ -590,7 +612,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
   emptyState: {
     flex: 1,
@@ -601,11 +623,11 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   modalHeader: {
     flexDirection: "row",
@@ -614,34 +636,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderBottomColor: staticColors.border,
+    backgroundColor: staticColors.surface,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
   },
   modalContent: {
     flex: 1,
     padding: 16,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   textArea: {
     minHeight: 200,
     paddingTop: 12,
   },
   saveButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -653,6 +675,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: staticColors.white,
   },
 });

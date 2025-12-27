@@ -18,9 +18,24 @@ import {
   Grid3x3,
   List,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { PortfolioItem } from "@/types";
 import SafeImage from "@/components/SafeImage";
+
+const staticColors = {
+  primary: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  white: "#FFFFFF",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+};
 
 interface PortfolioGalleryProps {
   portfolio: PortfolioItem[];
@@ -36,11 +51,13 @@ function ImageViewer({
   initialIndex,
   onClose,
   projectName,
+  colors,
 }: {
   images: string[];
   initialIndex: number;
   onClose: () => void;
   projectName: string;
+  colors: any;
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
@@ -54,16 +71,23 @@ function ImageViewer({
 
   return (
     <Modal visible animationType="fade" onRequestClose={onClose}>
-      <View style={styles.viewerContainer}>
+      <View style={[styles.viewerContainer, { backgroundColor: "#000" }]}>
         <View style={styles.viewerHeader}>
           <View style={styles.viewerHeaderLeft}>
-            <Text style={styles.viewerTitle}>{projectName}</Text>
-            <Text style={styles.viewerCounter}>
+            <Text style={[styles.viewerTitle, { color: colors.white }]}>
+              {projectName}
+            </Text>
+            <Text
+              style={[
+                styles.viewerCounter,
+                { color: "rgba(255, 255, 255, 0.7)" },
+              ]}
+            >
               {currentIndex + 1} of {images.length}
             </Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.viewerCloseButton}>
-            <X size={24} color={Colors.white} />
+            <X size={24} color={colors.white} />
           </TouchableOpacity>
         </View>
 
@@ -80,14 +104,14 @@ function ImageViewer({
                 style={[styles.navButton, styles.navButtonLeft]}
                 onPress={goToPrevious}
               >
-                <ChevronLeft size={32} color={Colors.white} />
+                <ChevronLeft size={32} color={colors.white} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.navButton, styles.navButtonRight]}
                 onPress={goToNext}
               >
-                <ChevronRight size={32} color={Colors.white} />
+                <ChevronRight size={32} color={colors.white} />
               </TouchableOpacity>
             </>
           )}
@@ -106,7 +130,9 @@ function ImageViewer({
                   onPress={() => setCurrentIndex(index)}
                   style={[
                     styles.thumbnail,
-                    currentIndex === index && styles.thumbnailActive,
+                    currentIndex === index && {
+                      borderColor: colors.primary,
+                    },
                   ]}
                 >
                   <SafeImage
@@ -127,13 +153,20 @@ function ImageViewer({
 function PortfolioGridItem({
   item,
   onPress,
+  colors,
 }: {
   item: PortfolioItem;
   onPress: () => void;
+  colors: any;
 }) {
   return (
     <TouchableOpacity style={styles.gridItem} onPress={onPress}>
-      <View style={styles.gridImageContainer}>
+      <View
+        style={[
+          styles.gridImageContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <SafeImage
           uri={item.images[0]}
           style={styles.gridImage}
@@ -141,16 +174,23 @@ function PortfolioGridItem({
         />
         {item.images.length > 1 && (
           <View style={styles.imageCountBadge}>
-            <Grid3x3 size={12} color={Colors.white} />
-            <Text style={styles.imageCountText}>{item.images.length}</Text>
+            <Grid3x3 size={12} color={colors.white} />
+            <Text style={[styles.imageCountText, { color: colors.white }]}>
+              {item.images.length}
+            </Text>
           </View>
         )}
       </View>
       <View style={styles.gridItemInfo}>
-        <Text style={styles.gridItemTitle} numberOfLines={2}>
+        <Text
+          style={[styles.gridItemTitle, { color: colors.text }]}
+          numberOfLines={2}
+        >
           {item.projectName}
         </Text>
-        <Text style={styles.gridItemCategory}>{item.category}</Text>
+        <Text style={[styles.gridItemCategory, { color: colors.textSecondary }]}>
+          {item.category}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -159,13 +199,29 @@ function PortfolioGridItem({
 function PortfolioListItem({
   item,
   onPress,
+  colors,
 }: {
   item: PortfolioItem;
   onPress: () => void;
+  colors: any;
 }) {
   return (
-    <TouchableOpacity style={styles.listItem} onPress={onPress}>
-      <View style={styles.listImageContainer}>
+    <TouchableOpacity
+      style={[
+        styles.listItem,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+      onPress={onPress}
+    >
+      <View
+        style={[
+          styles.listImageContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <SafeImage
           uri={item.images[0]}
           style={styles.listImage}
@@ -173,26 +229,40 @@ function PortfolioListItem({
         />
         {item.images.length > 1 && (
           <View style={styles.imageCountBadge}>
-            <Grid3x3 size={12} color={Colors.white} />
-            <Text style={styles.imageCountText}>{item.images.length}</Text>
+            <Grid3x3 size={12} color={colors.white} />
+            <Text style={[styles.imageCountText, { color: colors.white }]}>
+              {item.images.length}
+            </Text>
           </View>
         )}
       </View>
       <View style={styles.listItemInfo}>
-        <Text style={styles.listItemTitle} numberOfLines={1}>
+        <Text
+          style={[styles.listItemTitle, { color: colors.text }]}
+          numberOfLines={1}
+        >
           {item.projectName}
         </Text>
-        <Text style={styles.listItemDescription} numberOfLines={2}>
+        <Text
+          style={[styles.listItemDescription, { color: colors.textSecondary }]}
+          numberOfLines={2}
+        >
           {item.description}
         </Text>
         <View style={styles.listItemMeta}>
           <View style={styles.listItemMetaItem}>
-            <MapPin size={12} color={Colors.textTertiary} />
-            <Text style={styles.listItemMetaText}>{item.location}</Text>
+            <MapPin size={12} color={colors.textTertiary} />
+            <Text
+              style={[styles.listItemMetaText, { color: colors.textTertiary }]}
+            >
+              {item.location}
+            </Text>
           </View>
           <View style={styles.listItemMetaItem}>
-            <Calendar size={12} color={Colors.textTertiary} />
-            <Text style={styles.listItemMetaText}>
+            <Calendar size={12} color={colors.textTertiary} />
+            <Text
+              style={[styles.listItemMetaText, { color: colors.textTertiary }]}
+            >
               {new Date(item.completedDate).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
@@ -201,13 +271,24 @@ function PortfolioListItem({
           </View>
           {item.budget && (
             <View style={styles.listItemMetaItem}>
-              <DollarSign size={12} color={Colors.textTertiary} />
-              <Text style={styles.listItemMetaText}>{item.budget}</Text>
+              <DollarSign size={12} color={colors.textTertiary} />
+              <Text
+                style={[styles.listItemMetaText, { color: colors.textTertiary }]}
+              >
+                {item.budget}
+              </Text>
             </View>
           )}
         </View>
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{item.category}</Text>
+        <View
+          style={[
+            styles.categoryBadge,
+            { backgroundColor: colors.primary + "15" },
+          ]}
+        >
+          <Text style={[styles.categoryText, { color: colors.primary }]}>
+            {item.category}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -215,6 +296,7 @@ function PortfolioListItem({
 }
 
 export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
+  const { colors } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedProject, setSelectedProject] = useState<PortfolioItem | null>(
     null
@@ -238,9 +320,11 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
   if (portfolio.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Grid3x3 size={48} color={Colors.textTertiary} />
-        <Text style={styles.emptyStateTitle}>No Portfolio Items</Text>
-        <Text style={styles.emptyStateText}>
+        <Grid3x3 size={48} color={colors.textTertiary} />
+        <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+          No Portfolio Items
+        </Text>
+        <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
           This contractor has not added any portfolio items yet.
         </Text>
       </View>
@@ -250,32 +334,42 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>
-          Portfolio ({portfolio.length} project{portfolio.length !== 1 ? "s" : ""})
+        <Text style={[styles.title, { color: colors.text }]}>
+          Portfolio ({portfolio.length} project
+          {portfolio.length !== 1 ? "s" : ""})
         </Text>
-        <View style={styles.viewModeToggle}>
+        <View
+          style={[
+            styles.viewModeToggle,
+            { backgroundColor: colors.background },
+          ]}
+        >
           <TouchableOpacity
             style={[
               styles.viewModeButton,
-              viewMode === "grid" && styles.viewModeButtonActive,
+              viewMode === "grid" && { backgroundColor: colors.surface },
             ]}
             onPress={() => setViewMode("grid")}
           >
             <Grid3x3
               size={18}
-              color={viewMode === "grid" ? Colors.primary : Colors.textSecondary}
+              color={
+                viewMode === "grid" ? colors.primary : colors.textSecondary
+              }
             />
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.viewModeButton,
-              viewMode === "list" && styles.viewModeButtonActive,
+              viewMode === "list" && { backgroundColor: colors.surface },
             ]}
             onPress={() => setViewMode("list")}
           >
             <List
               size={18}
-              color={viewMode === "list" ? Colors.primary : Colors.textSecondary}
+              color={
+                viewMode === "list" ? colors.primary : colors.textSecondary
+              }
             />
           </TouchableOpacity>
         </View>
@@ -288,6 +382,7 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
               key={item.id}
               item={item}
               onPress={() => openProject(item)}
+              colors={colors}
             />
           ))}
         </View>
@@ -298,6 +393,7 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
               key={item.id}
               item={item}
               onPress={() => openProject(item)}
+              colors={colors}
             />
           ))}
         </View>
@@ -310,11 +406,26 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
         onRequestClose={closeProject}
       >
         {selectedProject && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedProject.projectName}</Text>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalHeader,
+                {
+                  backgroundColor: colors.surface,
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {selectedProject.projectName}
+              </Text>
               <TouchableOpacity onPress={closeProject}>
-                <X size={24} color={Colors.text} />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -326,7 +437,10 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
                 {selectedProject.images.map((image, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.galleryImage}
+                    style={[
+                      styles.galleryImage,
+                      { backgroundColor: colors.surface },
+                    ]}
                     onPress={() => openImageViewer(index)}
                   >
                     <SafeImage
@@ -338,50 +452,88 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
                 ))}
               </View>
 
-              <View style={styles.projectDetails}>
+              <View
+                style={[
+                  styles.projectDetails,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <View style={styles.projectDetailRow}>
-                  <Text style={styles.projectDetailLabel}>Category</Text>
-                  <Text style={styles.projectDetailValue}>
+                  <Text
+                    style={[
+                      styles.projectDetailLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Category
+                  </Text>
+                  <Text style={[styles.projectDetailValue, { color: colors.text }]}>
                     {selectedProject.category}
                   </Text>
                 </View>
 
                 <View style={styles.projectDetailRow}>
-                  <Text style={styles.projectDetailLabel}>Location</Text>
+                  <Text
+                    style={[
+                      styles.projectDetailLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Location
+                  </Text>
                   <View style={styles.projectDetailValueRow}>
-                    <MapPin size={16} color={Colors.textSecondary} />
-                    <Text style={styles.projectDetailValue}>
+                    <MapPin size={16} color={colors.textSecondary} />
+                    <Text style={[styles.projectDetailValue, { color: colors.text }]}>
                       {selectedProject.location}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.projectDetailRow}>
-                  <Text style={styles.projectDetailLabel}>Completed</Text>
+                  <Text
+                    style={[
+                      styles.projectDetailLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Completed
+                  </Text>
                   <View style={styles.projectDetailValueRow}>
-                    <Calendar size={16} color={Colors.textSecondary} />
-                    <Text style={styles.projectDetailValue}>
-                      {new Date(selectedProject.completedDate).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )}
+                    <Calendar size={16} color={colors.textSecondary} />
+                    <Text style={[styles.projectDetailValue, { color: colors.text }]}>
+                      {new Date(
+                        selectedProject.completedDate
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </Text>
                   </View>
                 </View>
 
                 {selectedProject.budget && (
                   <View style={styles.projectDetailRow}>
-                    <Text style={styles.projectDetailLabel}>Budget</Text>
+                    <Text
+                      style={[
+                        styles.projectDetailLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Budget
+                    </Text>
                     <View style={styles.projectDetailValueRow}>
-                      <DollarSign size={16} color={Colors.success} />
+                      <DollarSign size={16} color={colors.success} />
                       <Text
                         style={[
                           styles.projectDetailValue,
-                          { color: Colors.success, fontWeight: "700" as const },
+                          {
+                            color: colors.success,
+                            fontWeight: "700" as const,
+                          },
                         ]}
                       >
                         {selectedProject.budget}
@@ -391,9 +543,26 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
                 )}
               </View>
 
-              <View style={styles.projectDescription}>
-                <Text style={styles.projectDescriptionTitle}>Description</Text>
-                <Text style={styles.projectDescriptionText}>
+              <View
+                style={[
+                  styles.projectDescription,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.projectDescriptionTitle,
+                    { color: colors.text },
+                  ]}
+                >
+                  Description
+                </Text>
+                <Text
+                  style={[styles.projectDescriptionText, { color: colors.text }]}
+                >
                   {selectedProject.description}
                 </Text>
               </View>
@@ -408,6 +577,7 @@ export default function PortfolioGallery({ portfolio }: PortfolioGalleryProps) {
           initialIndex={imageViewerIndex}
           onClose={() => setShowImageViewer(false)}
           projectName={selectedProject.projectName}
+          colors={colors}
         />
       )}
     </View>
@@ -427,21 +597,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
   },
   viewModeToggle: {
     flexDirection: "row" as const,
     gap: 4,
-    backgroundColor: Colors.background,
     borderRadius: 8,
     padding: 4,
   },
   viewModeButton: {
     padding: 8,
     borderRadius: 6,
-  },
-  viewModeButtonActive: {
-    backgroundColor: Colors.surface,
   },
   grid: {
     flexDirection: "row" as const,
@@ -458,7 +623,6 @@ const styles = StyleSheet.create({
     height: imageSize,
     borderRadius: 12,
     overflow: "hidden" as const,
-    backgroundColor: Colors.background,
   },
   gridImage: {
     width: "100%",
@@ -479,7 +643,6 @@ const styles = StyleSheet.create({
   imageCountText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.white,
   },
   gridItemInfo: {
     marginTop: 8,
@@ -487,24 +650,20 @@ const styles = StyleSheet.create({
   gridItemTitle: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   gridItemCategory: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
   list: {
     gap: 12,
   },
   listItem: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   listImageContainer: {
     position: "relative" as const,
@@ -512,7 +671,6 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     overflow: "hidden" as const,
-    backgroundColor: Colors.background,
   },
   listImage: {
     width: "100%",
@@ -525,12 +683,10 @@ const styles = StyleSheet.create({
   listItemTitle: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   listItemDescription: {
     fontSize: 13,
-    color: Colors.textSecondary,
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -547,11 +703,9 @@ const styles = StyleSheet.create({
   },
   listItemMetaText: {
     fontSize: 12,
-    color: Colors.textTertiary,
   },
   categoryBadge: {
     alignSelf: "flex-start" as const,
-    backgroundColor: Colors.primary + "15",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
@@ -559,7 +713,6 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.primary,
   },
   emptyState: {
     alignItems: "center" as const,
@@ -570,18 +723,15 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: "center" as const,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   modalHeader: {
     flexDirection: "row" as const,
@@ -590,13 +740,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
     flex: 1,
     marginRight: 16,
   },
@@ -617,20 +764,17 @@ const styles = StyleSheet.create({
     height: (screenWidth - 48) / 2,
     borderRadius: 8,
     overflow: "hidden" as const,
-    backgroundColor: Colors.surface,
   },
   galleryImageView: {
     width: "100%",
     height: "100%",
   },
   projectDetails: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     gap: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   projectDetailRow: {
     flexDirection: "row" as const,
@@ -640,12 +784,10 @@ const styles = StyleSheet.create({
   projectDetailLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
   },
   projectDetailValue: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
   },
   projectDetailValueRow: {
     flexDirection: "row" as const,
@@ -653,26 +795,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   projectDescription: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   projectDescriptionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
     marginBottom: 12,
   },
   projectDescriptionText: {
     fontSize: 14,
     lineHeight: 20,
-    color: Colors.text,
   },
   viewerContainer: {
     flex: 1,
-    backgroundColor: "#000",
   },
   viewerHeader: {
     flexDirection: "row" as const,
@@ -689,12 +826,10 @@ const styles = StyleSheet.create({
   viewerTitle: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
     marginBottom: 4,
   },
   viewerCounter: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.7)",
   },
   viewerCloseButton: {
     padding: 8,
@@ -737,9 +872,6 @@ const styles = StyleSheet.create({
     overflow: "hidden" as const,
     borderWidth: 2,
     borderColor: "transparent",
-  },
-  thumbnailActive: {
-    borderColor: Colors.primary,
   },
   thumbnailImage: {
     width: "100%",

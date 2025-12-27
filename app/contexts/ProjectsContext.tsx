@@ -18,6 +18,7 @@ import {
   ChangeOrderStatus,
 } from "@/types";
 import { useAuth } from "./AuthContext";
+import { projectsAPI, milestonesAPI } from "@/services/api";
 
 const STORAGE_KEYS = {
   PROJECTS: "projects",
@@ -52,8 +53,34 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
 
   const loadData = async () => {
     try {
+      setIsLoading(true);
+      const response = await projectsAPI.getAll();
+      if (response.success && response.data) {
+        const mappedProjects: Project[] = response.data.map((p: any) => ({
+          ...p,
+          id: p.id,
+          title: p.title || "Unnamed Project",
+          description: p.description || "",
+          ownerId: p.owner_id,
+          contractorId: p.contractor_id,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+          completionPercentage: p.completion_percentage || 0,
+          paidAmount: p.paid_amount || 0,
+          totalAmount: p.total_amount || p.budget || 0,
+          escrowBalance: p.escrow_balance || 0,
+          startDate: p.start_date || p.created_at,
+          endDate: p.end_date,
+        }));
+        setProjects(mappedProjects);
+      } else {
+        // Fallback to local storage if API fails or returns nothing
+        const storedProjects = await AsyncStorage.getItem(STORAGE_KEYS.PROJECTS);
+        if (storedProjects) setProjects(JSON.parse(storedProjects));
+      }
+
+      // Load other data from storage for now to maintain consistency
       const [
-        storedProjects,
         storedScopes,
         storedContracts,
         storedMilestones,
@@ -64,7 +91,6 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
         storedDocuments,
         storedPunchList,
       ] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.PROJECTS),
         AsyncStorage.getItem(STORAGE_KEYS.SCOPES),
         AsyncStorage.getItem(STORAGE_KEYS.CONTRACTS),
         AsyncStorage.getItem(STORAGE_KEYS.MILESTONES),
@@ -76,7 +102,6 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
         AsyncStorage.getItem(STORAGE_KEYS.PUNCH_LIST),
       ]);
 
-      setProjects(storedProjects ? JSON.parse(storedProjects) : []);
       setScopes(storedScopes ? JSON.parse(storedScopes) : []);
       setContracts(storedContracts ? JSON.parse(storedContracts) : []);
       setMilestones(storedMilestones ? JSON.parse(storedMilestones) : []);
@@ -186,20 +211,33 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
   const createProject = useCallback(async (projectData: Omit<Project, "id" | "createdAt" | "updatedAt" | "completionPercentage" | "paidAmount">) => {
     if (!user) return null;
 
-    const newProject: Project = {
-      ...projectData,
-      id: `proj-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completionPercentage: 0,
-      paidAmount: 0,
-    };
+    try {
+      const response = await projectsAPI.create({
+        ...projectData,
+        owner_id: user.id,
+      });
 
-    const updatedProjects = [...projects, newProject];
-    await saveProjects(updatedProjects);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("[ProjectsContext] Create project failed:", error);
+      return null;
+    }
+  }, [user, loadData]);
 
-    return newProject;
-  }, [projects, saveProjects, user]);
+  const updateProjectStatus = useCallback(async (projectId: string, status: Project["status"]) => {
+    try {
+      const response = await projectsAPI.update(projectId, { status });
+      if (response.success) {
+        await loadData();
+      }
+    } catch (error) {
+      console.error("[ProjectsContext] Update project status failed:", error);
+    }
+  }, [loadData]);
 
   const createScopeOfWork = useCallback(async (scopeData: Omit<ScopeOfWork, "id" | "createdAt" | "version">) => {
     const existingScopes = scopes.filter(s => s.projectId === scopeData.projectId);
@@ -253,61 +291,37 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
   }, [contracts, saveContracts]);
 
   const createMilestone = useCallback(async (milestoneData: Omit<Milestone, "id" | "createdAt" | "updatedAt" | "revisionCount">) => {
-    const newMilestone: Milestone = {
-      ...milestoneData,
-      id: `milestone-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      revisionCount: 0,
-    };
+    try {
+      const response = await milestonesAPI.create(milestoneData.projectId, {
+        title: milestoneData.title,
+        description: milestoneData.description,
+        due_date: milestoneData.dueDate,
+        amount: milestoneData.paymentAmount,
+        order_index: milestoneData.orderNumber,
+      });
 
-    const updatedMilestones = [...milestones, newMilestone];
-    await saveMilestones(updatedMilestones);
-
-    return newMilestone;
-  }, [milestones, saveMilestones]);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("[ProjectsContext] Create milestone failed:", error);
+      return null;
+    }
+  }, [loadData]);
 
   const updateMilestoneStatus = useCallback(async (milestoneId: string, status: MilestoneStatus, metadata?: any) => {
-    const updatedMilestones = milestones.map(milestone => {
-      if (milestone.id === milestoneId) {
-        const updated = {
-          ...milestone,
-          status,
-          updatedAt: new Date().toISOString(),
-        };
-        if (status === "approved") {
-          updated.approvedAt = new Date().toISOString();
-          updated.approvedBy = metadata?.approvedBy;
-        } else if (status === "needs_revision") {
-          updated.revisionCount = milestone.revisionCount + 1;
-          updated.rejectionReason = metadata?.reason;
-        } else if (status === "pending_review") {
-          updated.submittedAt = new Date().toISOString();
-        }
-        return updated;
+    try {
+      // Mapping frontend status to backend if necessary
+      const response = await milestonesAPI.updateStatus(milestoneId, status, metadata);
+      if (response.success) {
+        await loadData();
       }
-      return milestone;
-    });
-    await saveMilestones(updatedMilestones);
-
-    const milestone = milestones.find(m => m.id === milestoneId);
-    if (milestone && status === "approved") {
-      const project = projects.find(p => p.id === milestone.projectId);
-      if (project) {
-        const projectMilestones = milestones.filter(m => m.projectId === milestone.projectId);
-        const completedCount = projectMilestones.filter(m => m.status === "approved").length + 1;
-        const totalMilestones = projectMilestones.length;
-        const completionPercentage = Math.round((completedCount / totalMilestones) * 100);
-
-        const updatedProjects = projects.map(p =>
-          p.id === milestone.projectId
-            ? { ...p, completionPercentage, updatedAt: new Date().toISOString() }
-            : p
-        );
-        await saveProjects(updatedProjects);
-      }
+    } catch (error) {
+      console.error("[ProjectsContext] Update milestone status failed:", error);
     }
-  }, [milestones, projects, saveMilestones, saveProjects]);
+  }, [loadData]);
 
   const addProgressUpdate = useCallback(async (updateData: Omit<ProgressUpdate, "id" | "createdAt">) => {
     const newUpdate: ProgressUpdate = {
@@ -338,11 +352,11 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
         const updatedProjects = projects.map(p =>
           p.id === newPayment.projectId
             ? {
-                ...p,
-                paidAmount: p.paidAmount + newPayment.amount,
-                escrowBalance: p.escrowBalance - newPayment.amount,
-                updatedAt: new Date().toISOString(),
-              }
+              ...p,
+              paidAmount: p.paidAmount + newPayment.amount,
+              escrowBalance: p.escrowBalance - newPayment.amount,
+              updatedAt: new Date().toISOString(),
+            }
             : p
         );
         await saveProjects(updatedProjects);
@@ -368,11 +382,11 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
       const updatedProjects = projects.map(p =>
         p.id === payment.projectId
           ? {
-              ...p,
-              paidAmount: p.paidAmount + payment.amount,
-              escrowBalance: p.escrowBalance - payment.amount,
-              updatedAt: new Date().toISOString(),
-            }
+            ...p,
+            paidAmount: p.paidAmount + payment.amount,
+            escrowBalance: p.escrowBalance - payment.amount,
+            updatedAt: new Date().toISOString(),
+          }
           : p
       );
       await saveProjects(updatedProjects);
@@ -412,11 +426,11 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
         const updatedProjects = projects.map(p =>
           p.id === changeOrder.projectId
             ? {
-                ...p,
-                totalAmount: p.totalAmount + changeOrder.costImpact,
-                escrowBalance: p.escrowBalance + changeOrder.costImpact,
-                updatedAt: new Date().toISOString(),
-              }
+              ...p,
+              totalAmount: p.totalAmount + changeOrder.costImpact,
+              escrowBalance: p.escrowBalance + changeOrder.costImpact,
+              updatedAt: new Date().toISOString(),
+            }
             : p
         );
         await saveProjects(updatedProjects);
@@ -550,6 +564,7 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
     punchList,
     isLoading,
     createProject,
+    updateProjectStatus,
     createScopeOfWork,
     createContract,
     signContract,
@@ -587,6 +602,7 @@ export const [ProjectsProvider, useProjects] = createContextHook(() => {
     punchList,
     isLoading,
     createProject,
+    updateProjectStatus,
     createScopeOfWork,
     createContract,
     signContract,

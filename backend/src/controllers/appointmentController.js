@@ -12,7 +12,8 @@ export const getAppointments = async (req, res) => {
       .select(`
         *,
         creator:users!appointments_created_by_fkey(id, first_name, last_name, company_name),
-        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name)
+        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name),
+        job:jobs(id, title)
       `);
 
     // Filter by user
@@ -23,7 +24,8 @@ export const getAppointments = async (req, res) => {
       query = supabase.from('appointments').select(`
         *,
         creator:users!appointments_created_by_fkey(id, first_name, last_name, company_name),
-        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name)
+        attendee:users!appointments_attendee_id_fkey(id, first_name, last_name, company_name),
+        job:jobs(id, title)
       `);
     }
 
@@ -45,19 +47,26 @@ export const getAppointments = async (req, res) => {
 export const createAppointment = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { project_id, attendee_id, title, description, start_time, end_time, status } = req.body;
+    const { project_id, job_id, attendee_id, title, description, start_time, end_time, status } = req.body;
 
     if (!title || !start_time) {
       return res.status(400).json(formatResponse(false, 'Missing required fields: title, start_time', null));
     }
 
+    // Validate start_time format
+    const startDate = new Date(start_time);
+    if (isNaN(startDate.getTime())) {
+      return res.status(400).json(formatResponse(false, 'Invalid start_time format. Expected valid ISO timestamp.', null));
+    }
+
     const appointmentData = {
       created_by: userId,
       project_id: project_id || null,
+      job_id: job_id || null,
       attendee_id: attendee_id || null,
       title,
       description: description || null,
-      start_time,
+      start_time: startDate.toISOString(), // Ensure uniform format
       end_time: end_time || null,
       status: status || 'scheduled',
     };
@@ -72,10 +81,20 @@ export const createAppointment = async (req, res) => {
 
     // Notify attendee
     if (attendee_id) {
+      let formattedDate = start_time;
+      try {
+        const dateObj = new Date(start_time);
+        if (!isNaN(dateObj.getTime())) {
+          formattedDate = dateObj.toLocaleString();
+        }
+      } catch (e) {
+        console.warn('Error formatting date for notification:', e);
+      }
+
       await notificationService.send(
         attendee_id,
         "New Appointment",
-        `You have a new appointment: "${title}" scheduled for ${new Date(start_time).toLocaleString()}`,
+        `You have a new appointment: "${title}" scheduled for ${formattedDate}`,
         "appointment",
         { appointment_id: data.id }
       );
@@ -103,7 +122,8 @@ export const updateAppointment = async (req, res) => {
       return res.status(404).json(formatResponse(false, 'Appointment not found', null));
     }
 
-    if (appointment.created_by !== userId && role !== 'admin') {
+    // Allow Creator OR Attendee to update
+    if (appointment.created_by !== userId && appointment.attendee_id !== userId && role !== 'admin') {
       return res.status(403).json(formatResponse(false, 'Permission denied', null));
     }
 
@@ -113,7 +133,15 @@ export const updateAppointment = async (req, res) => {
     if (attendee_id !== undefined) updateData.attendee_id = attendee_id;
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
-    if (start_time !== undefined) updateData.start_time = start_time;
+
+    if (start_time !== undefined) {
+      const startDate = new Date(start_time);
+      if (isNaN(startDate.getTime())) {
+        return res.status(400).json(formatResponse(false, 'Invalid start_time format', null));
+      }
+      updateData.start_time = startDate.toISOString();
+    }
+
     if (end_time !== undefined) updateData.end_time = end_time;
     if (status !== undefined) updateData.status = status;
 
@@ -125,6 +153,21 @@ export const updateAppointment = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // Notify if status changed
+    if (status && status !== appointment.status) {
+      // Determine target (if creator updated, notify attendee; vice versa)
+      const targetId = (userId === appointment.created_by) ? appointment.attendee_id : appointment.created_by;
+      if (targetId) {
+        await notificationService.send(
+          targetId,
+          "Appointment Updated",
+          `Appointment "${appointment.title}" status changed to ${status}`,
+          "appointment_update",
+          { appointment_id: id }
+        );
+      }
+    }
 
     return res.json(formatResponse(true, 'Appointment updated successfully', data));
   } catch (error) {

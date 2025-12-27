@@ -1,8 +1,23 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Users, Quote } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { Endorsement } from "@/types";
+
+const staticColors = {
+  primary: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  white: "#FFFFFF",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+};
 
 interface EndorsementsProps {
   endorsements: Endorsement[];
@@ -16,6 +31,8 @@ const relationshipLabels: Record<string, string> = {
 };
 
 export default function Endorsements({ endorsements }: EndorsementsProps) {
+  const { colors } = useAuth();
+
   if (!endorsements || endorsements.length === 0) {
     return null;
   }
@@ -23,10 +40,12 @@ export default function Endorsements({ endorsements }: EndorsementsProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Users size={20} color={Colors.primary} />
-        <Text style={styles.title}>Endorsements</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{endorsements.length}</Text>
+        <Users size={20} color={colors.primary} />
+        <Text style={[styles.title, { color: colors.text }]}>Endorsements</Text>
+        <View style={[styles.badge, { backgroundColor: colors.primary + "20" }]}>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>
+            {endorsements.length}
+          </Text>
         </View>
       </View>
 
@@ -36,32 +55,58 @@ export default function Endorsements({ endorsements }: EndorsementsProps) {
         contentContainerStyle={styles.scrollContent}
       >
         {endorsements.map((endorsement) => (
-          <View key={endorsement.id} style={styles.endorsementCard}>
+          <View
+            key={endorsement.id}
+            style={[
+              styles.endorsementCard,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              },
+            ]}
+          >
             <View style={styles.quoteIcon}>
-              <Quote size={16} color={Colors.primary} />
+              <Quote size={16} color={colors.primary} />
             </View>
 
-            <Text style={styles.skill}>{endorsement.skill}</Text>
-            <Text style={styles.comment} numberOfLines={4}>
+            <Text style={[styles.skill, { color: colors.text }]}>
+              {endorsement.skill}
+            </Text>
+            <Text
+              style={[styles.comment, { color: colors.textSecondary }]}
+              numberOfLines={4}
+            >
               {endorsement.comment}
             </Text>
 
             <View style={styles.footer}>
               <View style={styles.authorInfo}>
-                <Text style={styles.authorName}>{endorsement.fromName}</Text>
-                <Text style={styles.authorCompany}>
+                <Text style={[styles.authorName, { color: colors.text }]}>
+                  {endorsement.fromName}
+                </Text>
+                <Text
+                  style={[
+                    styles.authorCompany,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {endorsement.fromCompany}
                 </Text>
               </View>
-              <View style={styles.relationshipBadge}>
-                <Text style={styles.relationshipText}>
+              <View
+                style={[
+                  styles.relationshipBadge,
+                  { backgroundColor: colors.info + "15" },
+                ]}
+              >
+                <Text style={[styles.relationshipText, { color: colors.info }]}>
                   {relationshipLabels[endorsement.relationship] ||
                     endorsement.relationship}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.date}>
+            <Text style={[styles.date, { color: colors.textTertiary }]}>
               {new Date(endorsement.date).toLocaleDateString("en-US", {
                 month: "short",
                 year: "numeric",
@@ -87,10 +132,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
   },
   badge: {
-    backgroundColor: Colors.primary + "20",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -98,7 +141,6 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
   },
   scrollContent: {
     gap: 12,
@@ -106,11 +148,9 @@ const styles = StyleSheet.create({
   },
   endorsementCard: {
     width: 280,
-    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   quoteIcon: {
     marginBottom: 8,
@@ -118,13 +158,11 @@ const styles = StyleSheet.create({
   skill: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.text,
     marginBottom: 8,
   },
   comment: {
     fontSize: 13,
     lineHeight: 18,
-    color: Colors.textSecondary,
     marginBottom: 12,
   },
   footer: {
@@ -139,14 +177,11 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.text,
   },
   authorCompany: {
     fontSize: 11,
-    color: Colors.textSecondary,
   },
   relationshipBadge: {
-    backgroundColor: Colors.info + "15",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -154,10 +189,8 @@ const styles = StyleSheet.create({
   relationshipText: {
     fontSize: 10,
     fontWeight: "600" as const,
-    color: Colors.info,
   },
   date: {
     fontSize: 11,
-    color: Colors.textTertiary,
   },
 });

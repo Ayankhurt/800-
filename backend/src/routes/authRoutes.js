@@ -21,6 +21,8 @@ import {
   verifyMFASetup,
   disableMFA,
   oauthSync,
+  requestMfaReset,
+  verifyMfaReset,
 } from "../controllers/authController.js";
 import { adminLogin } from "../controllers/adminAuthController.js";
 import { auth } from "../middlewares/auth.js";
@@ -77,6 +79,8 @@ router.post("/resend-verification", resendVerification);
 router.post("/mfa/setup", auth, setupMFA);
 router.post("/mfa/verify-setup", auth, verifyMFASetup);
 router.post("/mfa/disable", auth, disableMFA);
+router.post("/mfa/request-reset", requestMfaReset);
+router.post("/mfa/verify-reset", verifyMfaReset);
 router.post("/verify-otp", verifyOtp);
 router.post("/toggle-mfa", auth, toggleMfa);
 /* CURSOR PATCH END */

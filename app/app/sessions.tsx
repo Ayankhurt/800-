@@ -1,10 +1,12 @@
+import { useAuth } from '@/contexts/AuthContext';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function SessionsScreen() {
+    const { colors } = useAuth();
     return (
-        <View style={styles.container}>
-            <Text style={styles.text}>Sessions</Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <Text style={[styles.text, { color: colors.text }]}>Sessions</Text>
         </View>
     );
 }

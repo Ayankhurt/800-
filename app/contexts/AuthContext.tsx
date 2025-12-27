@@ -1,10 +1,12 @@
 import createContextHook from "@nkzw/create-context-hook";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authAPI, setAuthToken, getStoredToken } from "@/services/api";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabaseClient";
-import { Platform } from "react-native";
+import { Platform, useColorScheme, Linking } from "react-native";
+import { lightPalette, darkPalette } from "@/constants/colors";
 
 // App roles + ADMIN (for login only, not signup)
 export type AppRole = "PM" | "GC" | "SUB" | "TS" | "VIEWER" | "ADMIN";
@@ -17,6 +19,8 @@ export interface User {
   company?: string;
   phone?: string;
   avatar?: string | null;
+  two_factor_enabled?: boolean;
+  settings?: any;
 }
 
 interface AuthContextType {
@@ -26,8 +30,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isNavigationReady: boolean;
   hydrationComplete: boolean;
+  isDarkMode: boolean;
+  colors: typeof lightPalette;
   setNavigationReady: (ready: boolean) => void;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, mfaCode?: string) => Promise<{ success: boolean; error?: string; requiresMFA?: boolean }>;
   signup: (data: {
     fullName: string;
     email: string;
@@ -45,12 +51,53 @@ interface AuthContextType {
 }
 
 export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => {
+  const systemColorScheme = useColorScheme();
   const [user, setUser] = useState<User | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isNavigationReady, setNavigationReady] = useState(false);
   const [hydrationComplete, setHydrationComplete] = useState(false);
+
+  // Theme logic
+  const [cachedTheme, setCachedTheme] = useState<'light' | 'dark' | null>(null);
+
+  // Load cached theme from storage on mount
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const theme = await AsyncStorage.getItem('app_theme');
+        if (theme === 'light' || theme === 'dark') {
+          setCachedTheme(theme);
+        }
+      } catch (e) {
+        console.warn('Failed to load cached theme', e);
+      }
+    };
+    loadTheme();
+  }, []);
+
+  const isDarkMode = useMemo(() => {
+    // 1. Check user settings (highest priority)
+    if (user?.settings?.dark_mode !== undefined) {
+      const isDark = !!user.settings.dark_mode;
+      // Persist to simple storage for next restart
+      AsyncStorage.setItem('app_theme', isDark ? 'dark' : 'light').catch(() => { });
+      return isDark;
+    }
+
+    // 2. Check cached theme from last session
+    if (cachedTheme) {
+      return cachedTheme === 'dark';
+    }
+
+    // 3. Fallback to system theme
+    return systemColorScheme === 'dark';
+  }, [user?.settings?.dark_mode, cachedTheme, systemColorScheme]);
+
+  const colors = useMemo(() => {
+    return isDarkMode ? darkPalette : lightPalette;
+  }, [isDarkMode]);
 
   // Safe navigation function - only navigates if navigator is ready AND Stack is rendered
   // Uses retry mechanism to handle cases where navigator isn't ready yet
@@ -133,6 +180,11 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
   // Used by restoreSession to avoid circular dependencies
   const clearAuthState = useCallback(async () => {
     await setAuthToken(null);
+    try {
+      await AsyncStorage.removeItem('auth_user');
+    } catch (e) {
+      console.warn('Failed to clear user cache', e);
+    }
     setTokenState(null);
     setUser(null);
     setIsAuthenticated(false);
@@ -171,7 +223,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
             }
             const appRole = mapBackendRoleToAppRole(roleCode) || 'PM';
 
-            setUser({
+            const mappedUser: User = {
               id: backendUser.id,
               email: backendUser.email || '',
               fullName: backendUser.first_name + ' ' + backendUser.last_name,
@@ -179,13 +231,20 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
               company: backendUser.company_name,
               phone: backendUser.phone,
               avatar: backendUser.avatar_url,
-            });
+              settings: backendUser.settings, // Preserve settings
+            };
+            setUser(mappedUser);
 
             // Use backend JWT token
             await setAuthToken(backendToken);
             setTokenState(backendToken);
             setIsAuthenticated(true);
             setHydrationComplete(true);
+
+            // Save to cache
+            try {
+              await AsyncStorage.setItem('auth_user', JSON.stringify(mappedUser));
+            } catch (e) { console.warn('Cache save failed', e); }
 
             console.log('[OAuth] Backend sync successful, using backend JWT');
 
@@ -197,7 +256,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
         } catch (error) {
           console.error('[OAuth] Backend sync failed:', error);
           // Fallback to basic Supabase user data
-          setUser({
+          const mappedUser: User = {
             id: supabaseUser.id,
             email: supabaseUser.email || '',
             fullName: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
@@ -205,13 +264,19 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
             company: supabaseUser.user_metadata?.company,
             phone: supabaseUser.user_metadata?.phone,
             avatar: supabaseUser.user_metadata?.avatar_url,
-          });
+          };
+          setUser(mappedUser);
 
           // CRITICAL FIX: Store the Supabase token so API calls work
           await setAuthToken(session.access_token);
           setTokenState(session.access_token);
           setIsAuthenticated(true);
           setHydrationComplete(true);
+
+          // Save to cache
+          try {
+            await AsyncStorage.setItem('auth_user', JSON.stringify(mappedUser));
+          } catch (e) { console.warn('Cache save failed', e); }
 
           setTimeout(() => {
             navigateByRole('PM', true);
@@ -225,16 +290,34 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
     };
   }, [navigateByRole]);
 
-  // Restore session from SecureStore
+  // Restore session from SecureStore + AsyncStorage
   const restoreSession = useCallback(async () => {
-    // Use clearAuthState helper to avoid circular dependency with logout
     try {
       setLoading(true);
       const storedToken = await getStoredToken();
+      let cachedUser: User | null = null;
+
+      try {
+        const cachedUserJson = await AsyncStorage.getItem('auth_user');
+        if (cachedUserJson) {
+          cachedUser = JSON.parse(cachedUserJson);
+        }
+      } catch (e) {
+        console.warn('Failed to load cached user', e);
+      }
 
       if (storedToken) {
         await setAuthToken(storedToken);
         setTokenState(storedToken);
+
+        // Optimistic restore
+        if (cachedUser) {
+          console.log("Restoring session from cache optimistically");
+          setUser(cachedUser);
+          setIsAuthenticated(true);
+          setHydrationComplete(true);
+          // We are "logged in" now, but we verify with backend below
+        }
 
         // Fetch user profile - ALWAYS get fresh role from backend
         try {
@@ -262,9 +345,18 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
                 company: userData.company || userData.companyName || userData.company_name,
                 phone: userData.phone || userData.phoneNumber || userData.phone_number,
                 avatar: userData.avatar || userData.avatar_url,
+                settings: userData.settings, // Preserve settings
               };
+
               setUser(mappedUser);
               setIsAuthenticated(true);
+
+              // Update cache
+              try {
+                await AsyncStorage.setItem('auth_user', JSON.stringify(mappedUser));
+              } catch (e) {
+                console.warn('Failed to update user cache', e);
+              }
 
               // Mark hydration as complete after token + user/role are loaded
               setHydrationComplete(true);
@@ -276,23 +368,46 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
               await clearAuthState();
             }
           } else {
-            // No user data - clear session (without navigation)
-            await clearAuthState();
+            // If we had a cached user, maybe keep it? verify response success logic.
+            // If backend explicitly says success=false, likely invalid token or error.
+            if (cachedUser) {
+              // Keep cached user if response was weird but not 401
+              console.warn("Backend response invalid, keeping cached user");
+              setUser(cachedUser); // Ensure user is set from cache
+              setIsAuthenticated(true);
+              setHydrationComplete(true);
+            } else {
+              await clearAuthState();
+            }
           }
-        } catch (error) {
-          console.error("Failed to fetch profile:", error);
-          // Clear session on error (without navigation)
-          await clearAuthState();
+        } catch (error: any) {
+          console.error("Failed to fetch profile during restore:", error);
+
+          if (error?.response?.status === 401 || error?.response?.status === 403) {
+            console.warn("Token confirmed invalid by backend (401/403), logging out.");
+            await clearAuthState();
+          } else {
+            console.warn("Backend unreachable or error (500), keeping session if cached.");
+            // If we have cachedUser, we stay logged in.
+            // If not, we can't do anything, effectively logged out.
+            if (cachedUser) {
+              setUser(cachedUser); // Ensure user is set from cache
+              setIsAuthenticated(true);
+              setHydrationComplete(true);
+            } else {
+              // No cache, no backend => waiting or logged out?
+              // Let's set hydrationComplete=true so at least we stop spinning
+              setHydrationComplete(true);
+            }
+          }
         }
       } else {
         setIsAuthenticated(false);
-        // No token - hydration complete (no user to load)
         setHydrationComplete(true);
       }
     } catch (error) {
-      console.error("Failed to restore session:", error);
+      console.error("Failed to restore session (outer):", error);
       setIsAuthenticated(false);
-      // Error occurred - mark hydration complete to prevent infinite loading
       setHydrationComplete(true);
     } finally {
       setLoading(false);
@@ -318,32 +433,54 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
 
     // Map backend codes to app roles + ADMIN
     const roleMap: Record<string, AppRole> = {
+      // Uppercase codes (legacy/frontend)
       PM: "PM",
       GC: "GC",
       SUB: "SUB",
       TS: "TS",
       VIEWER: "VIEWER",
       ADMIN: "ADMIN",
-      ADMIN_APP: "ADMIN", // Map ADMIN_APP to ADMIN
-      // Handle full names
+      SUPER: "ADMIN",
+      ADMIN_APP: "ADMIN",
+
+      // Full names with spaces
       "PROJECT MANAGER": "PM",
       "GENERAL CONTRACTOR": "GC",
       "SUBCONTRACTOR": "SUB",
       "TRADE SPECIALIST": "TS",
       "ADMIN CONSOLE": "ADMIN",
-      // Handle database enum values (backend returns these)
+
+      // Database enum values with underscores (backend returns these)
       "PROJECT_MANAGER": "PM",
       "GENERAL_CONTRACTOR": "GC",
       "TRADE_SPECIALIST": "TS",
+
+      // Admin role variants (all map to ADMIN)
+      "SUPER_ADMIN": "ADMIN",
+      "FINANCE_MANAGER": "ADMIN",
+      "MODERATOR": "ADMIN",
+      "SUPPORT_AGENT": "ADMIN",
+
+      // Legacy roles
+      "CLIENT": "PM",
+      "CONTRACTOR": "GC",
     };
 
     return roleMap[upperRoleCode] || null;
   };
 
   // Login
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
     try {
-      const response = await authAPI.login(email, password);
+      const response = await authAPI.login(email, password, mfaCode);
+
+      if (!response.success) {
+        // Check for MFA requirement
+        if (response.data && response.data.requires_mfa) {
+          return { success: false, requiresMFA: true, error: "Please enter your 2FA code" };
+        }
+        return { success: false, error: response.message || "Login failed" };
+      }
 
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
@@ -390,10 +527,16 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
           company: userData.company || userData.companyName || userData.company_name,
           phone: userData.phone || userData.phoneNumber || userData.phone_number,
           avatar: userData.avatar || userData.avatar_url,
+          settings: userData.settings,
         };
 
         setUser(mappedUser);
         setIsAuthenticated(true);
+
+        // Save to cache
+        try {
+          await AsyncStorage.setItem('auth_user', JSON.stringify(mappedUser));
+        } catch (e) { console.warn('Cache save failed', e); }
 
         // Mark hydration as complete after successful login
         setHydrationComplete(true);
@@ -515,10 +658,16 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
           company: userData.company || userData.companyName || userData.company_name,
           phone: userData.phone || userData.phoneNumber || userData.phone_number,
           avatar: userData.avatar || userData.avatar_url,
+          settings: userData.settings,
         };
 
         setUser(mappedUser);
         setIsAuthenticated(true);
+
+        // Save to cache
+        try {
+          await AsyncStorage.setItem('auth_user', JSON.stringify(mappedUser));
+        } catch (e) { console.warn('Cache save failed', e); }
 
         // Mark hydration as complete after successful signup
         setHydrationComplete(true);
@@ -616,7 +765,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       // Redirect to app root - Supabase stores session automatically
       const redirectTo = Platform.OS === 'web'
         ? `${window.location.origin}/`
-        : 'exp://localhost:8082/';
+        : 'exp://192.168.1.113:8081/'; // Updated IP for mobile redirect
+
+      console.log(`[OAuth] Redirect URL: ${redirectTo}`);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -632,8 +783,19 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       }
 
       console.log(`[OAuth] ${provider} login initiated successfully`);
-      // On web, browser will redirect automatically
-      // On mobile, need to handle the URL callback
+
+      // On mobile, we need to explicitly open the URL returned by Supabase
+      if (Platform.OS !== 'web' && data?.url) {
+        console.log(`[OAuth] Opening browser for ${provider}: ${data.url}`);
+        const supported = await Linking.canOpenURL(data.url);
+        if (supported) {
+          await Linking.openURL(data.url);
+        } else {
+          console.error(`[OAuth] Cannot open URL: ${data.url}`);
+          return { success: false, error: "Cannot open browser for login" };
+        }
+      }
+
       return { success: true };
 
     } catch (error: any) {
@@ -645,7 +807,14 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
   // Update user in local state (for profile updates)
   const updateUser = useCallback(async (updates: Partial<User>) => {
     if (user) {
-      setUser({ ...user, ...updates });
+      const newUser = { ...user, ...updates };
+      setUser(newUser);
+      // Persist to local storage as well for better state retention
+      try {
+        await AsyncStorage.setItem("user", JSON.stringify(newUser));
+      } catch (e) {
+        console.warn("Failed to save user to cache:", e);
+      }
     }
   }, [user]);
 
@@ -657,6 +826,8 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       isAuthenticated,
       isNavigationReady,
       hydrationComplete,
+      isDarkMode,
+      colors,
       setNavigationReady,
       login,
       signup,
@@ -667,6 +838,23 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       updateUser,
       loginWithOAuth,
     }),
-    [user, token, loading, isAuthenticated, isNavigationReady, hydrationComplete, login, signup, logout, restoreSession, navigateByRole, safeNavigate, updateUser, loginWithOAuth]
+    [
+      user,
+      token,
+      loading,
+      isAuthenticated,
+      isNavigationReady,
+      hydrationComplete,
+      isDarkMode,
+      colors,
+      login,
+      signup,
+      logout,
+      restoreSession,
+      navigateByRole,
+      safeNavigate,
+      updateUser,
+      loginWithOAuth,
+    ]
   );
 });

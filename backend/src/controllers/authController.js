@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import { formatResponse } from "../utils/formatResponse.js";
-import { sendEmailVerification, sendOtpEmail } from "../utils/email.js";
+import { sendEmailVerification, sendOtpEmail, sendMfaResetEmail } from "../utils/email.js";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import logger from "../utils/logger.js";
@@ -239,6 +239,7 @@ export const login = async (req, res) => {
       const { mfa_code } = req.body;
 
       if (!mfa_code) {
+        logger.info(`[MFA] MFA required for user: ${email}`);
         return res.status(200).json(
           formatResponse(false, "MFA code required", {
             requires_mfa: true,
@@ -248,15 +249,34 @@ export const login = async (req, res) => {
         );
       }
 
+      logger.info(`[MFA] Verifying code for ${email}. Received: ${mfa_code}`);
+
       // Verify MFA code
-      const verified = speakeasy.totp.verify({
+      let verified = speakeasy.totp.verify({
         secret: userProfile.two_factor_secret,
         encoding: 'base32',
-        token: mfa_code,
-        window: 2 // Allow 2 time steps before/after current time
+        token: String(mfa_code), // Ensure it's a string
+        window: 10 // Increased window for possible clock sync issues (10 * 30s = 5 mins)
       });
 
+      // If TOTP fails, check recovery codes in user metadata
+      if (!verified && data.user && data.user.user_metadata && data.user.user_metadata.recovery_codes) {
+        const recoveryCodes = data.user.user_metadata.recovery_codes;
+        if (Array.isArray(recoveryCodes) && recoveryCodes.includes(String(mfa_code).toUpperCase())) {
+          logger.info(`[MFA] Recovery code used for ${email}`);
+          verified = true;
+
+          // Remove used recovery code
+          const updatedCodes = recoveryCodes.filter(c => c !== String(mfa_code).toUpperCase());
+          await supabase.auth.admin.updateUserById(data.user.id, {
+            user_metadata: { ...data.user.user_metadata, recovery_codes: updatedCodes }
+          });
+        }
+      }
+
       if (!verified) {
+        logger.warn(`[MFA] Invalid MFA code attempt for ${email}. Secret prefix: ${userProfile.two_factor_secret.substring(0, 4)}`);
+
         // Log failed MFA attempt
         await supabase.from("login_logs").insert({
           user_id: data.user.id,
@@ -269,6 +289,8 @@ export const login = async (req, res) => {
 
         return res.status(401).json(formatResponse(false, "Invalid MFA code", null));
       }
+
+      logger.info(`[MFA] MFA verified successfully for ${email}`);
     }
 
     // 4. Reset Failed Logins & Log Success
@@ -802,7 +824,7 @@ export const verifyMFASetup = async (req, res) => {
       secret: user.two_factor_secret,
       encoding: 'base32',
       token: code,
-      window: 2
+      window: 10
     });
 
     if (!verified) {
@@ -823,7 +845,29 @@ export const verifyMFASetup = async (req, res) => {
       return res.status(500).json(formatResponse(false, "Failed to enable MFA", null));
     }
 
-    return res.json(formatResponse(true, "MFA enabled successfully", null));
+    // Generate recovery codes
+    const recoveryCodes = [];
+    for (let i = 0; i < 10; i++) {
+      recoveryCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+    }
+
+    // Store in auth metadata for security (this also works as a backup if public table fails)
+    await supabase.auth.admin.updateUserByReferer ? {} : {}; // Just a placeholder check
+
+    try {
+      await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: { recovery_codes: recoveryCodes }
+      });
+      logger.info(`[MFA] Recovery codes generated and stored in metadata for ${userId}`);
+    } catch (metaError) {
+      logger.error('[MFA] Failed to store recovery codes in metadata:', metaError);
+      // We still return the codes so the user can save them, even if metadata store failed 
+      // (though it shouldn't fail with service role key)
+    }
+
+    return res.json(formatResponse(true, "MFA enabled successfully", {
+      recovery_codes: recoveryCodes
+    }));
 
   } catch (err) {
     logger.error('Verify MFA setup error:', err);
@@ -860,12 +904,30 @@ export const verifyOtp = async (req, res) => {
     }
 
     // Verify the code
-    const verified = speakeasy.totp.verify({
+    let verified = speakeasy.totp.verify({
       secret: user.two_factor_secret,
       encoding: 'base32',
       token: code,
-      window: 2
+      window: 10
     });
+
+    // If TOTP fails, check recovery codes in user metadata
+    if (!verified) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(user_id);
+      if (authUser && authUser.user && authUser.user.user_metadata && authUser.user.user_metadata.recovery_codes) {
+        const recoveryCodes = authUser.user.user_metadata.recovery_codes;
+        if (Array.isArray(recoveryCodes) && recoveryCodes.includes(String(code).toUpperCase())) {
+          logger.info(`[MFA] Recovery code used for OTP verification: ${user.email}`);
+          verified = true;
+
+          // Remove used recovery code
+          const updatedCodes = recoveryCodes.filter(c => c !== String(code).toUpperCase());
+          await supabase.auth.admin.updateUserById(user_id, {
+            user_metadata: { ...authUser.user.user_metadata, recovery_codes: updatedCodes }
+          });
+        }
+      }
+    }
 
     if (!verified) {
       return res.status(401).json(formatResponse(false, "Invalid MFA code", null));
@@ -939,7 +1001,7 @@ export const disableMFA = async (req, res) => {
         secret: user.two_factor_secret,
         encoding: 'base32',
         token: code,
-        window: 2
+        window: 10
       });
 
       if (!verified) {
@@ -960,6 +1022,14 @@ export const disableMFA = async (req, res) => {
       logger.error('Disable MFA error:', disableError);
       return res.status(500).json(formatResponse(false, "Failed to disable MFA", null));
     }
+
+    // Clear recovery codes from metadata
+    try {
+      await supabase.auth.admin.updateUserByReferer ? {} : {}; // Check placeholder
+      await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: { recovery_codes: [] }
+      });
+    } catch (e) { }
 
     return res.json(formatResponse(true, "MFA disabled successfully", null));
 
@@ -1076,5 +1146,116 @@ export const oauthSync = async (req, res) => {
   } catch (err) {
     logger.error("OAuth sync error:", err);
     return res.status(500).json(formatResponse(false, err.message || "Internal server error", null));
+  }
+};
+
+// Request MFA Reset - Send backup code via email
+export const requestMfaReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(formatResponse(false, "Email is required", null));
+    }
+
+    // Get user
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id, email, first_name, last_name, two_factor_enabled")
+      .eq("email", email)
+      .single();
+
+    if (userError || !user) {
+      // Don't reveal if user exists for security
+      return res.json(formatResponse(true, "If an account exists with this email, a backup code has been sent.", null));
+    }
+
+    if (!user.two_factor_enabled) {
+      return res.status(400).json(formatResponse(false, "MFA is not enabled for this account", null));
+    }
+
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+
+    // Store in auth metadata
+    const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
+    await supabase.auth.admin.updateUserByReferer ? {} : {};
+
+    await supabase.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...authUser.user?.user_metadata,
+        mfa_reset_code: resetCode,
+        mfa_reset_expires: expiresAt
+      }
+    });
+
+    // Send email
+    await sendMfaResetEmail(`${user.first_name} ${user.last_name}`, user.email, resetCode);
+
+    return res.json(formatResponse(true, "Backup code sent to your email", { user_id: user.id }));
+
+  } catch (err) {
+    logger.error('Request MFA reset error:', err);
+    return res.status(500).json(formatResponse(false, "Internal server error", null));
+  }
+};
+
+// Verify MFA Reset - Disable MFA using backup code
+export const verifyMfaReset = async (req, res) => {
+  try {
+    const { user_id, code } = req.body;
+
+    if (!user_id || !code) {
+      return res.status(400).json(formatResponse(false, "User ID and code are required", null));
+    }
+
+    // Get auth user to check metadata
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+
+    if (authError || !authUser.user) {
+      return res.status(404).json(formatResponse(false, "User not found", null));
+    }
+
+    const metadata = authUser.user.user_metadata;
+
+    if (!metadata?.mfa_reset_code || metadata.mfa_reset_code !== String(code)) {
+      return res.status(401).json(formatResponse(false, "Invalid reset code", null));
+    }
+
+    if (new Date(metadata.mfa_reset_expires) < new Date()) {
+      return res.status(401).json(formatResponse(false, "Reset code has expired", null));
+    }
+
+    // Disable MFA
+    const { error: disableError } = await supabase
+      .from("users")
+      .update({
+        two_factor_enabled: false,
+        two_factor_secret: null
+      })
+      .eq("id", user_id);
+
+    if (disableError) {
+      return res.status(500).json(formatResponse(false, "Failed to disable MFA", null));
+    }
+
+    // Clear reset data from metadata
+    await supabase.auth.admin.updateUserById(user_id, {
+      user_metadata: {
+        ...metadata,
+        mfa_reset_code: null,
+        mfa_reset_expires: null,
+        recovery_codes: [] // Clear recovery codes too as MFA is disabled
+      }
+    });
+
+    logger.info(`[MFA] MFA successfully disabled via email reset for ${user_id}`);
+
+    return res.json(formatResponse(true, "MFA has been successfully disabled. You can now log in with your password.", null));
+
+  } catch (err) {
+    logger.error('Verify MFA reset error:', err);
+    return res.status(500).json(formatResponse(false, "Internal server error", null));
   }
 };

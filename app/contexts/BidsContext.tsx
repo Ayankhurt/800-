@@ -19,178 +19,139 @@ export const [BidsProvider, useBids] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      loadData();
+    } else {
+      setBids([]);
+      setBidSubmissions([]);
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [storedBids, storedSubmissions] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.BIDS),
-        AsyncStorage.getItem(STORAGE_KEYS.BID_SUBMISSIONS),
+      // Fetch from API
+      const [bidsResponse, submissionsResponse] = await Promise.all([
+        bidsAPI.getAll(),
+        bidsAPI.getMyBids()
       ]);
 
-      let initialBids = storedBids ? JSON.parse(storedBids) : [];
-      let initialSubmissions = storedSubmissions ? JSON.parse(storedSubmissions) : [];
+      if (bidsResponse.success && bidsResponse.data) {
+        const rawData = bidsResponse.data.bids || (Array.isArray(bidsResponse.data) ? bidsResponse.data : []);
+        const mappedBids = rawData.map((bid: any) => {
+          // Parse budget from descriptions if amount is missing
+          // descriptions often looks like "[Budget: $1000]\n\nActual description"
+          let budget = bid.amount ? `$${bid.amount}` : "TBD";
+          let description = bid.descriptions || bid.notes || bid.description || "No description provided";
 
-      // Fetch from API if logged in
-      if (user) {
-        try {
-          const [bidsResponse, submissionsResponse] = await Promise.all([
-            bidsAPI.getAll(),
-            bidsAPI.getMyBids() // This unified route in backend now returns relevant job apps/bids
-          ]);
-
-          if (bidsResponse.success && bidsResponse.data) {
-            const rawData = bidsResponse.data.bids || (Array.isArray(bidsResponse.data) ? bidsResponse.data : []);
-            initialBids = rawData.map((bid: any) => ({
-              id: bid.id || bid.bid_id,
-              projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
-              description: bid.notes || bid.description || "No description provided",
-              dueDate: bid.due_date || bid.dueDate || bid.created_at,
-              status: (bid.status || "pending") as BidStatus,
-              budget: bid.amount ? `$${bid.amount}` : (bid.budget || "TBD"),
-              contractorCount: bid.contractor_count || bid.contractorCount || 0,
-              submittedCount: bid.submitted_count || bid.submittedCount || 0,
-              createdAt: bid.created_at || bid.createdAt,
-            }));
+          if (budget === "TBD" && description.includes("[Budget: $")) {
+            const match = description.match(/\[Budget: \$(\d+)\]/);
+            if (match) {
+              budget = `$${match[1]}`;
+              // Optionally strip the budget tag from description for cleaner UI
+              description = description.replace(/\[Budget: \$(\d+)\]\n\n/, "").trim();
+            }
           }
 
-          if (submissionsResponse.success && submissionsResponse.data) {
-            const rawSubs = Array.isArray(submissionsResponse.data) ? submissionsResponse.data : [];
-            initialSubmissions = rawSubs.map((sub: any) => ({
-              id: sub.id,
-              bidId: sub.bid_id || sub.job_id,
-              contractorId: sub.contractor_id,
-              amount: sub.amount || sub.proposed_rate,
-              status: sub.status,
-              submittedAt: sub.created_at
-            }));
+          if (budget === "TBD") {
+            if (bid.project?.budget_min && bid.project?.budget_max) {
+              budget = `$${bid.project.budget_min} - $${bid.project.budget_max}`;
+            } else if (bid.budget_min && bid.budget_max) {
+              budget = `$${bid.budget_min} - $${bid.budget_max}`;
+            } else if (bid.budget) {
+              budget = bid.budget;
+            }
           }
-        } catch (apiError) {
-          console.error("Failed to fetch data from API:", apiError);
-        }
+
+          return {
+            id: bid.id || bid.bid_id,
+            projectName: bid.project?.title || bid.project_name || bid.projectName || bid.title || "Unnamed Project",
+            description: description,
+            dueDate: bid.due_date || bid.dueDate || bid.created_at,
+            status: (bid.status || "pending") as BidStatus,
+            budget: budget,
+            contractorCount: bid.contractor_count || bid.contractorCount || 0,
+            submittedCount: bid.submitted_count || bid.submittedCount || 0,
+            createdAt: bid.created_at || bid.createdAt,
+            projectManagerId: bid.project_manager_id || bid.owner_id,
+            jobId: bid.job_id || bid.jobs_id,
+          };
+        });
+        setBids(mappedBids);
       }
 
-      setBids(initialBids);
-      setBidSubmissions(initialSubmissions);
+      if (submissionsResponse.success && submissionsResponse.data) {
+        const rawSubs = Array.isArray(submissionsResponse.data) ? submissionsResponse.data : [];
+        const mappedSubs = rawSubs.map((sub: any) => ({
+          id: sub.id,
+          bidId: sub.bid_id || sub.job_id,
+          contractorId: sub.contractor_id,
+          amount: sub.amount || sub.proposed_rate,
+          status: sub.status,
+          submittedAt: sub.created_at
+        }));
+        setBidSubmissions(mappedSubs);
+      }
     } catch (error) {
-      console.error("Failed to load bids data:", error);
-      setBids([]);
-      setBidSubmissions([]);
+      console.error("[BidsContext] Failed to load bids data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveBids = useCallback(async (updatedBids: Bid[]) => {
+  const createBid = useCallback(async (bidData: any) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.BIDS, JSON.stringify(updatedBids));
-      setBids(updatedBids);
+      const response = await bidsAPI.create(bidData);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
     } catch (error) {
-      console.error("Failed to save bids:", error);
-    }
-  }, []);
-
-  const saveBidSubmissions = useCallback(async (updatedSubmissions: BidSubmission[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.BID_SUBMISSIONS, JSON.stringify(updatedSubmissions));
-      setBidSubmissions(updatedSubmissions);
-    } catch (error) {
-      console.error("Failed to save bid submissions:", error);
-    }
-  }, []);
-
-  const createBid = useCallback(async (bidData: Omit<Bid, "id" | "createdAt" | "submittedCount">) => {
-    if (!user) return null;
-
-    const newBid: Bid = {
-      ...bidData,
-      id: `bid-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      submittedCount: 0,
-    };
-
-    const updatedBids = [...bids, newBid];
-    await saveBids(updatedBids);
-
-    return newBid;
-  }, [bids, saveBids, user]);
-
-  const updateBid = useCallback(async (bidId: string, updates: Partial<Bid>) => {
-    const updatedBids = bids.map(bid =>
-      bid.id === bidId ? { ...bid, ...updates } : bid
-    );
-    await saveBids(updatedBids);
-  }, [bids, saveBids]);
-
-  const deleteBid = useCallback(async (bidId: string) => {
-    const updatedBids = bids.filter(bid => bid.id !== bidId);
-    await saveBids(updatedBids);
-
-    const updatedSubmissions = bidSubmissions.filter(sub => sub.bidId !== bidId);
-    await saveBidSubmissions(updatedSubmissions);
-  }, [bids, bidSubmissions, saveBids, saveBidSubmissions]);
-
-  const submitBid = useCallback(async (
-    bidId: string,
-    submissionData: {
-      amount: number;
-      notes: string;
-      documents?: string[];
-    }
-  ) => {
-    if (!user) return null;
-
-    const bid = bids.find(b => b.id === bidId);
-    if (!bid) return null;
-
-    const existingSubmission = bidSubmissions.find(
-      sub => sub.bidId === bidId && sub.contractorId === user.id
-    );
-    if (existingSubmission) {
+      console.error("[BidsContext] Create bid failed:", error);
       return null;
     }
+  }, [loadData]);
 
-    const newSubmission: BidSubmission = {
-      id: `sub-${Date.now()}`,
-      bidId,
-      contractorId: user.id,
-      contractorName: user.fullName,
-      contractorCompany: user.company || "",
-      amount: submissionData.amount,
-      notes: submissionData.notes,
-      submittedAt: new Date().toISOString(),
-      documents: submissionData.documents || [],
-      createdBy: user.id, // Always set to current user id
-    };
+  const updateBid = useCallback(async (bidId: string, updates: Partial<Bid>) => {
+    // Only implemented locally for now, should call API if needed
+    setBids(prev => prev.map(bid => bid.id === bidId ? { ...bid, ...updates } : bid));
+  }, []);
 
-    const updatedSubmissions = [...bidSubmissions, newSubmission];
-    await saveBidSubmissions(updatedSubmissions);
+  const deleteBid = useCallback(async (bidId: string) => {
+    // Only implemented locally for now
+    setBids(prev => prev.filter(bid => bid.id !== bidId));
+  }, []);
 
-    const updatedBids = bids.map(b =>
-      b.id === bidId
-        ? { ...b, submittedCount: b.submittedCount + 1, status: "submitted" as const }
-        : b
-    );
-    await saveBids(updatedBids);
-
-    return newSubmission;
-  }, [bids, bidSubmissions, saveBids, saveBidSubmissions, user]);
+  const submitBid = useCallback(async (bidId: string, submissionData: any) => {
+    try {
+      const response = await bidsAPI.submit(bidId, submissionData);
+      if (response.success) {
+        await loadData();
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("[BidsContext] Submit bid failed:", error);
+      return null;
+    }
+  }, [loadData]);
 
   const awardBid = useCallback(async (bidId: string, submissionId: string) => {
-    const updatedBids = bids.map(bid =>
-      bid.id === bidId ? { ...bid, status: "awarded" as const } : bid
-    );
-    await saveBids(updatedBids);
-  }, [bids, saveBids]);
+    try {
+      const response = await bidsAPI.updateStatus(submissionId, { status: 'awarded' });
+      if (response.success) {
+        await loadData();
+      }
+    } catch (error) {
+      console.error("[BidsContext] Award bid failed:", error);
+    }
+  }, [loadData]);
 
   const declineBid = useCallback(async (bidId: string) => {
-    const updatedBids = bids.map(bid =>
-      bid.id === bidId ? { ...bid, status: "declined" as const } : bid
-    );
-    await saveBids(updatedBids);
-  }, [bids, saveBids]);
+    setBids(prev => prev.map(bid => bid.id === bidId ? { ...bid, status: "declined" as const } : bid));
+  }, []);
 
   const getBidById = useCallback((bidId: string) => {
     return bids.find(bid => bid.id === bidId);
@@ -222,6 +183,7 @@ export const [BidsProvider, useBids] = createContextHook(() => {
     getSubmissionsByBidId,
     getSubmissionsByUserId,
     hasUserSubmitted,
+    refreshBids: loadData
   }), [
     bids,
     bidSubmissions,
@@ -236,5 +198,6 @@ export const [BidsProvider, useBids] = createContextHook(() => {
     getSubmissionsByBidId,
     getSubmissionsByUserId,
     hasUserSubmitted,
+    loadData
   ]);
 });

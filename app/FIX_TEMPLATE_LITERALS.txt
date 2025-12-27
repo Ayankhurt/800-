@@ -1,0 +1,4 @@
+// TEMP FIX - Remove spaces from template literals
+// Line 574: console.log(`[API] Retrieved ${responseData.users.length} users (new format with pagination)`);
+// Line 575: console.log(`[API] Next cursor: ${responseData.nextCursor}, Has more: ${responseData.hasMore}`);
+// Line 587: console.log(`[API] Retrieved ${responseData.length} users (old format - direct array)`);

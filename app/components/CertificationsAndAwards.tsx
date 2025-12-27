@@ -1,8 +1,28 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Award as AwardIcon, GraduationCap, CheckCircle, ExternalLink } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import {
+  Award as AwardIcon,
+  GraduationCap,
+  CheckCircle,
+  ExternalLink,
+} from "lucide-react-native";
+import { useAuth } from "@/contexts/AuthContext";
 import { Certification, Award } from "@/types";
+
+const staticColors = {
+  primary: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
+  white: "#FFFFFF",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+};
 
 interface CertificationsAndAwardsProps {
   certifications?: Certification[];
@@ -13,6 +33,7 @@ export default function CertificationsAndAwards({
   certifications,
   awards,
 }: CertificationsAndAwardsProps) {
+  const { colors } = useAuth();
   const hasCertifications = certifications && certifications.length > 0;
   const hasAwards = awards && awards.length > 0;
 
@@ -25,8 +46,10 @@ export default function CertificationsAndAwards({
       {hasCertifications && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <GraduationCap size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Certifications</Text>
+            <GraduationCap size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Certifications
+            </Text>
           </View>
 
           {certifications.map((cert) => {
@@ -35,30 +58,52 @@ export default function CertificationsAndAwards({
               : false;
 
             return (
-              <View key={cert.id} style={styles.certCard}>
+              <View
+                key={cert.id}
+                style={[
+                  styles.certCard,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <View style={styles.certHeader}>
                   <View style={styles.certInfo}>
-                    <Text style={styles.certName}>{cert.name}</Text>
-                    <Text style={styles.certOrg}>
+                    <Text style={[styles.certName, { color: colors.text }]}>
+                      {cert.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.certOrg,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {cert.issuingOrganization}
                     </Text>
                   </View>
                   {!isExpired && (
                     <View style={styles.verifiedBadge}>
-                      <CheckCircle size={16} color={Colors.success} />
+                      <CheckCircle size={16} color={colors.success} />
                     </View>
                   )}
                 </View>
 
                 <View style={styles.certDetails}>
-                  <Text style={styles.certDate}>
+                  <Text
+                    style={[
+                      styles.certDate,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Issued: {new Date(cert.issueDate).toLocaleDateString()}
                   </Text>
                   {cert.expiryDate && (
                     <Text
                       style={[
                         styles.certDate,
-                        isExpired && styles.expiredText,
+                        { color: colors.textSecondary },
+                        isExpired && { color: colors.error },
                       ]}
                     >
                       {isExpired ? "Expired" : "Expires"}:{" "}
@@ -68,15 +113,27 @@ export default function CertificationsAndAwards({
                 </View>
 
                 {cert.credentialId && (
-                  <Text style={styles.credentialId}>
+                  <Text
+                    style={[
+                      styles.credentialId,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
                     ID: {cert.credentialId}
                   </Text>
                 )}
 
                 {cert.verificationUrl && (
                   <View style={styles.verificationLink}>
-                    <ExternalLink size={12} color={Colors.primary} />
-                    <Text style={styles.verificationText}>Verify Credential</Text>
+                    <ExternalLink size={12} color={colors.primary} />
+                    <Text
+                      style={[
+                        styles.verificationText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Verify Credential
+                    </Text>
                   </View>
                 )}
               </View>
@@ -88,26 +145,63 @@ export default function CertificationsAndAwards({
       {hasAwards && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <AwardIcon size={20} color={Colors.warning} />
-            <Text style={styles.sectionTitle}>Awards & Recognition</Text>
+            <AwardIcon size={20} color={colors.warning} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Awards & Recognition
+            </Text>
           </View>
 
           {awards.map((award) => (
-            <View key={award.id} style={styles.awardCard}>
+            <View
+              key={award.id}
+              style={[
+                styles.awardCard,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <View style={styles.awardHeader}>
-                <View style={styles.awardIconContainer}>
-                  <AwardIcon size={20} color={Colors.warning} />
+                <View
+                  style={[
+                    styles.awardIconContainer,
+                    { backgroundColor: colors.warning + "20" },
+                  ]}
+                >
+                  <AwardIcon size={20} color={colors.warning} />
                 </View>
                 <View style={styles.awardInfo}>
-                  <Text style={styles.awardTitle}>{award.title}</Text>
-                  <Text style={styles.awardOrg}>{award.organization}</Text>
+                  <Text style={[styles.awardTitle, { color: colors.text }]}>
+                    {award.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.awardOrg,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {award.organization}
+                  </Text>
                 </View>
-                <View style={styles.yearBadge}>
-                  <Text style={styles.yearText}>{award.year}</Text>
+                <View
+                  style={[
+                    styles.yearBadge,
+                    { backgroundColor: colors.warning + "15" },
+                  ]}
+                >
+                  <Text style={[styles.yearText, { color: colors.warning }]}>
+                    {award.year}
+                  </Text>
                 </View>
               </View>
               {award.description && (
-                <Text style={styles.awardDescription}>
+                <Text
+                  style={[
+                    styles.awardDescription,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   {award.description}
                 </Text>
               )}
@@ -135,14 +229,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
   },
   certCard: {
-    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
     gap: 8,
   },
   certHeader: {
@@ -156,12 +247,10 @@ const styles = StyleSheet.create({
   certName: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   certOrg: {
     fontSize: 13,
-    color: Colors.textSecondary,
   },
   verifiedBadge: {
     marginLeft: 8,
@@ -172,14 +261,9 @@ const styles = StyleSheet.create({
   },
   certDate: {
     fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  expiredText: {
-    color: Colors.error,
   },
   credentialId: {
     fontSize: 11,
-    color: Colors.textTertiary,
     fontFamily: "monospace" as const,
   },
   verificationLink: {
@@ -190,15 +274,12 @@ const styles = StyleSheet.create({
   },
   verificationText: {
     fontSize: 12,
-    color: Colors.primary,
     fontWeight: "600" as const,
   },
   awardCard: {
-    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   awardHeader: {
     flexDirection: "row" as const,
@@ -210,7 +291,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.warning + "20",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -220,15 +300,12 @@ const styles = StyleSheet.create({
   awardTitle: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
     marginBottom: 2,
   },
   awardOrg: {
     fontSize: 13,
-    color: Colors.textSecondary,
   },
   yearBadge: {
-    backgroundColor: Colors.warning + "15",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -236,11 +313,9 @@ const styles = StyleSheet.create({
   yearText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.warning,
   },
   awardDescription: {
     fontSize: 13,
     lineHeight: 18,
-    color: Colors.textSecondary,
   },
 });

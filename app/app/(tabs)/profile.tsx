@@ -1,7 +1,14 @@
-import Colors from "@/constants/colors";
-import { useAuth } from "@/contexts/AuthContext";
-import { useJobs } from "@/contexts/JobsContext";
-import { Stack, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 import {
   Bell,
   Building2,
@@ -20,21 +27,34 @@ import {
   User,
   AlertTriangle,
   Users,
+  Eye,
+  Smartphone,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { useJobs } from "@/contexts/JobsContext";
 import { userAPI } from "@/services/api";
 import { useToast } from "@/hooks/useToast";
 import Toast from "@/components/Toast";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
+
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -42,24 +62,25 @@ interface MenuItemProps {
   value?: string;
   onPress: () => void;
   destructive?: boolean;
+  colors: any;
 }
 
-function MenuItem({ icon, label, value, onPress, destructive }: MenuItemProps) {
+function MenuItem({ icon, label, value, onPress, destructive, colors }: MenuItemProps) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={onPress}>
       <View style={styles.menuItemLeft}>
         <View style={styles.menuIcon}>{icon}</View>
         <Text
-          style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}
+          style={[styles.menuLabel, { color: colors.text }, destructive && [styles.menuLabelDestructive, { color: colors.error }]]}
         >
           {label}
         </Text>
       </View>
       <View style={styles.menuItemRight}>
-        {value && <Text style={styles.menuValue}>{value}</Text>}
+        {value && <Text style={[styles.menuValue, { color: colors.textSecondary }]}>{value}</Text>}
         <ChevronRight
           size={20}
-          color={destructive ? Colors.error : Colors.textTertiary}
+          color={destructive ? colors.error : colors.textTertiary}
         />
       </View>
     </TouchableOpacity>
@@ -69,21 +90,22 @@ function MenuItem({ icon, label, value, onPress, destructive }: MenuItemProps) {
 interface MenuSectionProps {
   title: string;
   children: React.ReactNode;
+  colors: any;
 }
 
-function MenuSection({ title, children }: MenuSectionProps) {
+function MenuSection({ title, children, colors }: MenuSectionProps) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>{children}</View>
+      <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{title}</Text>
+      <View style={[styles.sectionContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>{children}</View>
     </View>
   );
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user: contextUser, logout } = useAuth();
-  const { getUnreadNotificationsCount } = useJobs();
+  const { user: contextUser, logout, colors } = useAuth();
+  const { unreadCount: contextUnreadCount } = useNotifications();
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,9 +116,9 @@ export default function ProfileScreen() {
     fetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (!isRefresh) setIsLoading(true);
       console.log("[API] GET /users/me");
       const response = await userAPI.getProfile();
 
@@ -124,7 +146,7 @@ export default function ProfileScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchProfile();
+    await fetchProfile(true);
     setRefreshing(false);
   };
 
@@ -136,6 +158,7 @@ export default function ProfileScreen() {
     phone: profileData.phone || profileData.phone_number || contextUser?.phone,
     company: profileData.company || profileData.company_name || profileData.companyName || contextUser?.company,
     avatar: profileData.avatar || profileData.avatar_url || contextUser?.avatar,
+    two_factor_enabled: profileData.two_factor_enabled ?? profileData.twoFactorEnabled ?? contextUser?.two_factor_enabled,
   } : contextUser;
 
   // Visible for Admin only
@@ -210,6 +233,10 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleViewPublicProfile = () => {
+    router.push(`/contractor-profile?id=${user?.id}`);
+  };
+
   const handleEditProfile = () => {
     router.push("/edit-profile");
   };
@@ -238,18 +265,22 @@ export default function ProfileScreen() {
     router.push("/terms");
   };
 
+  const handleMFASetup = () => {
+    router.push("/mfa-setup");
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Profile",
           headerLargeTitle: true,
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
         }}
@@ -264,141 +295,165 @@ export default function ProfileScreen() {
       >
         {isLoading && !profileData ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
           <>
-            <View style={styles.profileHeader}>
-              <View style={styles.avatarLarge}>
-                <Text style={styles.avatarLargeText}>
+            <View style={[styles.profileHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <View style={[styles.avatarLarge, { backgroundColor: colors.primary + "20" }]}>
+                <Text style={[styles.avatarLargeText, { color: colors.primary }]}>
                   {user?.fullName
                     ?.split(" ")
                     .map((n: string) => n[0])
                     .join("") || "?"}
                 </Text>
               </View>
-              <Text style={styles.profileName}>{user?.fullName || "User"}</Text>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleText}>{user?.role}</Text>
+              <Text style={[styles.profileName, { color: colors.text }]}>{user?.fullName || "User"}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: colors.primary + "15" }]}>
+                <Text style={[styles.roleText, { color: colors.primary }]}>{user?.role}</Text>
               </View>
               {/* Admin badge - only visible for ADMIN role */}
               {isAdmin && (
-                <View style={styles.adminBadge}>
-                  <Text style={styles.adminBadgeText}>ADMIN</Text>
+                <View style={[styles.adminBadge, { backgroundColor: colors.error + "15", borderColor: colors.error }]}>
+                  <Text style={[styles.adminBadgeText, { color: colors.error }]}>ADMIN</Text>
                 </View>
               )}
-              <Text style={styles.companyName}>{user?.company}</Text>
+              <Text style={[styles.companyName, { color: colors.textSecondary }]}>{user?.company}</Text>
             </View>
 
-            <MenuSection title="Account Information">
+            <MenuSection title="Account Information" colors={colors}>
               <MenuItem
-                icon={<Mail size={20} color={Colors.primary} />}
+                icon={<Mail size={20} color={colors.primary} />}
                 label="Email"
                 value={user?.email}
                 onPress={handleEditProfile}
+                colors={colors}
               />
               <MenuItem
-                icon={<Phone size={20} color={Colors.primary} />}
+                icon={<Phone size={20} color={colors.primary} />}
                 label="Phone"
                 value={user?.phone}
                 onPress={handleEditProfile}
+                colors={colors}
               />
               <MenuItem
-                icon={<Building2 size={20} color={Colors.primary} />}
+                icon={<Building2 size={20} color={colors.primary} />}
                 label="Company"
                 value={user?.company}
                 onPress={handleEditProfile}
+                colors={colors}
               />
               <MenuItem
-                icon={<User size={20} color={Colors.primary} />}
+                icon={<User size={20} color={colors.primary} />}
                 label="Edit Profile"
                 onPress={handleEditProfile}
+                colors={colors}
               />
+              {(user?.role === "SUB" || user?.role === "TS") && (
+                <MenuItem
+                  icon={<Eye size={20} color={colors.info} />}
+                  label="View My Public Profile"
+                  onPress={handleViewPublicProfile}
+                  colors={colors}
+                />
+              )}
             </MenuSection>
 
-            <MenuSection title="Communication">
+            <MenuSection title="Communication" colors={colors}>
               <MenuItem
-                icon={<Bell size={20} color={Colors.textSecondary} />}
+                icon={<Bell size={20} color={colors.textSecondary} />}
                 label="Notifications"
-                value={getUnreadNotificationsCount() > 0 ? `${getUnreadNotificationsCount()} new` : undefined}
+                value={contextUnreadCount > 0 ? `${contextUnreadCount} new` : undefined}
                 onPress={handleNotifications}
+                colors={colors}
               />
               <MenuItem
-                icon={<MessageCircle size={20} color={Colors.textSecondary} />}
+                icon={<MessageCircle size={20} color={colors.textSecondary} />}
                 label="Messages"
                 onPress={handleMessages}
+                colors={colors}
               />
             </MenuSection>
 
-            <MenuSection title="Preferences">
+            <MenuSection title="Security & Privacy" colors={colors}>
               <MenuItem
-                icon={<Settings size={20} color={Colors.textSecondary} />}
-                label="Settings"
+                icon={<Settings size={20} color={colors.textSecondary} />}
+                label="Account Settings"
                 onPress={handleSettings}
+                colors={colors}
               />
               <MenuItem
-                icon={<Shield size={20} color={Colors.textSecondary} />}
-                label="Privacy & Security"
+                icon={<Shield size={20} color={colors.textSecondary} />}
+                label="Privacy Policy"
                 onPress={handlePrivacy}
+                colors={colors}
               />
             </MenuSection>
 
-            <MenuSection title="Support">
+            <MenuSection title="Support" colors={colors}>
               <MenuItem
-                icon={<HelpCircle size={20} color={Colors.textSecondary} />}
+                icon={<HelpCircle size={20} color={colors.textSecondary} />}
                 label="Help & Support"
                 onPress={handleHelp}
+                colors={colors}
               />
               <MenuItem
-                icon={<FileText size={20} color={Colors.textSecondary} />}
+                icon={<FileText size={20} color={colors.textSecondary} />}
                 label="Terms of Service"
                 onPress={handleTerms}
+                colors={colors}
               />
             </MenuSection>
 
             {/* Admin-only section */}
             {isAdmin && (
-              <MenuSection title="Admin">
+              <MenuSection title="Admin" colors={colors}>
                 <MenuItem
-                  icon={<Shield size={20} color={Colors.primary} />}
+                  icon={<Shield size={20} color={colors.primary} />}
                   label="User Management"
                   onPress={handleUserManagement}
+                  colors={colors}
                 />
                 <MenuItem
-                  icon={<FolderKanban size={20} color={Colors.primary} />}
+                  icon={<FolderKanban size={20} color={colors.primary} />}
                   label="Project Approvals"
                   onPress={handleProjectApprovals}
+                  colors={colors}
                 />
                 <MenuItem
-                  icon={<AlertTriangle size={20} color={Colors.primary} />}
+                  icon={<AlertTriangle size={20} color={colors.primary} />}
                   label="Disputes Panel"
                   onPress={handleDisputesPanel}
+                  colors={colors}
                 />
                 <MenuItem
-                  icon={<DollarSign size={20} color={Colors.primary} />}
+                  icon={<DollarSign size={20} color={colors.primary} />}
                   label="Finance"
                   onPress={handleFinance}
+                  colors={colors}
                 />
                 <MenuItem
-                  icon={<Bell size={20} color={Colors.primary} />}
+                  icon={<Bell size={20} color={colors.primary} />}
                   label="Notifications Center"
                   onPress={handleNotificationsCenter}
+                  colors={colors}
                 />
               </MenuSection>
             )}
 
-            <MenuSection title="Account">
+            <MenuSection title="Account" colors={colors}>
               <MenuItem
-                icon={<LogOut size={20} color={Colors.error} />}
+                icon={<LogOut size={20} color={colors.error} />}
                 label="Log Out"
                 onPress={handleLogout}
                 destructive
+                colors={colors}
               />
             </MenuSection>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Bidroom v1.0.0</Text>
-              <Text style={styles.footerText}>© 2025 Bidroom. All rights reserved.</Text>
+              <Text style={[styles.footerText, { color: colors.textTertiary }]}>Bidroom v1.0.0</Text>
+              <Text style={[styles.footerText, { color: colors.textTertiary }]}>© 2025 Bidroom. All rights reserved.</Text>
             </View>
           </>
         )}
@@ -421,7 +476,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -430,15 +485,15 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingVertical: 32,
     paddingHorizontal: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   avatarLarge: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primary + "20",
+    backgroundColor: staticColors.primary + "20",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -446,16 +501,16 @@ const styles = StyleSheet.create({
   avatarLargeText: {
     fontSize: 36,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   profileName: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 8,
   },
   roleBadge: {
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: staticColors.primary + "15",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
@@ -464,12 +519,12 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   adminBadge: {
-    backgroundColor: Colors.error + "15",
+    backgroundColor: staticColors.error + "15",
     borderWidth: 1,
-    borderColor: Colors.error,
+    borderColor: staticColors.error,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -478,12 +533,12 @@ const styles = StyleSheet.create({
   adminBadgeText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: staticColors.error,
     letterSpacing: 0.5,
   },
   companyName: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   section: {
     marginTop: 24,
@@ -491,17 +546,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   sectionContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   menuItem: {
     flexDirection: "row" as const,
@@ -510,7 +565,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   menuItemLeft: {
     flexDirection: "row" as const,
@@ -526,11 +581,11 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
     fontWeight: "500" as const,
   },
   menuLabelDestructive: {
-    color: Colors.error,
+    color: staticColors.error,
   },
   menuItemRight: {
     flexDirection: "row" as const,
@@ -539,7 +594,7 @@ const styles = StyleSheet.create({
   },
   menuValue: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     maxWidth: 150,
   },
   footer: {
@@ -549,7 +604,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginBottom: 4,
   },
   loadingContainer: {

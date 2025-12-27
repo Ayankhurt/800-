@@ -1,5 +1,22 @@
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 import { Stack, useRouter } from "expo-router";
 import {
   Building2,
@@ -8,8 +25,14 @@ import {
   Phone,
   User,
   Video,
+  MapPin,
+  Briefcase,
+  Clock,
+  Shield,
+  FileText,
+  Sparkles,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Alert,
   Platform,
@@ -23,9 +46,12 @@ import {
 } from "react-native";
 import { userAPI } from "@/services/api";
 
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, colors } = useAuth();
 
   const [name, setName] = useState(user?.fullName || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -33,37 +59,120 @@ export default function EditProfileScreen() {
   const [company, setCompany] = useState(user?.company || "");
   const [bio, setBio] = useState("");
   const [trade, setTrade] = useState("");
+  const [location, setLocation] = useState("");
+  const [experienceYears, setExperienceYears] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [insuranceAmount, setInsuranceAmount] = useState("");
+  const [specialties, setSpecialties] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleImageUpload = () => {
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Upload Profile Photo",
-        "Image upload integration coming soon!\n\nWill support:\n- Camera capture\n- Photo library selection\n- Image cropping\n- Auto-resize & optimization"
-      );
-    } else {
-      Alert.alert(
-        "Upload Profile Photo",
-        "Choose an option",
-        [
-          {
-            text: "Take Photo",
-            onPress: () => {
-              Alert.alert("Camera", "Camera integration coming soon!");
-            },
-          },
-          {
-            text: "Choose from Library",
-            onPress: () => {
-              Alert.alert("Library", "Photo library integration coming soon!");
-            },
-          },
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-        ]
-      );
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    const fetchFullProfile = async () => {
+      try {
+        setIsLoading(true);
+        const response = await userAPI.getProfile();
+        if (response.success && response.data) {
+          const data = response.data;
+          setName(data.fullName || data.full_name || user?.fullName || "");
+          setEmail(data.email || user?.email || "");
+          setPhone(data.phone || data.phone_number || data.phoneNumber || user?.phone || "");
+          setCompany(data.company || data.company_name || data.companyName || user?.company || "");
+          setBio(data.bio || "");
+          setTrade(data.trade_specialization || data.trade || "");
+          setLocation(data.location || "");
+
+          if (data.contractor_profile) {
+            setExperienceYears(data.contractor_profile.experience_years?.toString() || "");
+            setLicenseNumber(data.contractor_profile.license_number || "");
+            setInsuranceAmount(data.contractor_profile.insurance_amount?.toString() || "");
+            setSpecialties(Array.isArray(data.contractor_profile.specialties) ? data.contractor_profile.specialties.join(", ") : "");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch full profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFullProfile();
+  }, [user]);
+
+
+  const uploadImage = async (uri: string) => {
+    try {
+      setIsUploading(true);
+
+      // Create form data
+      const formData = new FormData();
+
+      // Determine file type
+      const filename = uri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // Append file
+      // @ts-ignore - React Native FormData expects an object with uri, name, type
+      formData.append('file', {
+        uri,
+        name: filename,
+        type,
+      });
+
+      console.log("[Client] Uploading avatar...", { filename, type });
+
+      const response = await userAPI.uploadAvatar(formData);
+
+      if (response && response.success) {
+        setAvatarUrl(response.data.url);
+
+        // Update local context
+        if (updateUser) {
+          await updateUser({
+            avatar: response.data.url
+          });
+        }
+
+        Alert.alert("Success", "Profile photo updated!");
+      } else {
+        throw new Error(response?.message || "Upload failed");
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      Alert.alert("Error", error.message || "Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to update your profile photo!');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        await uploadImage(selectedImage.uri);
+      }
+    } catch (error) {
+      console.error("Image picker error:", error);
+      Alert.alert("Error", "Failed to select image");
     }
   };
 
@@ -110,29 +219,48 @@ export default function EditProfileScreen() {
       const firstName = nameParts[0];
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
 
-      // Map frontend fields to backend expected format
-      const backendData = {
+      // Map frontend fields to backend expected format for basic profile
+      const basicProfileData = {
         first_name: firstName,
         last_name: lastName,
         email: email,
         phone: phone,
         company_name: company || undefined,
         bio: bio || undefined,
+        location: location || undefined,
       };
 
       // Remove undefined fields
-      Object.keys(backendData).forEach(key =>
-        backendData[key as keyof typeof backendData] === undefined && delete backendData[key as keyof typeof backendData]
+      const cleanBasicData = Object.fromEntries(
+        Object.entries(basicProfileData).filter(([_, v]) => v !== undefined)
       );
 
-      console.log("[API] PUT /users/profile with data:", backendData);
+      console.log("[API] PUT /users/profile with data:", cleanBasicData);
 
-      // Call API to update profile
-      const response = await userAPI.updateProfile(backendData);
+      // Call API to update basic profile
+      const basicResponse = await userAPI.updateProfile(cleanBasicData);
 
-      console.log("[API] Update profile response:", response);
+      // If user is a contractor, also update contractor profile
+      if (user?.role === "SUB" || user?.role === "TS" || user?.role === "GC") {
+        const contractorData = {
+          experience_years: experienceYears ? parseInt(experienceYears) : undefined,
+          license_number: licenseNumber || undefined,
+          insurance_amount: insuranceAmount ? parseFloat(insuranceAmount) : undefined,
+          specialties: specialties ? specialties.split(",").map(s => s.trim()) : undefined,
+          trade_specialization: trade || undefined,
+        };
 
-      if (response.success) {
+        const cleanContractorData = Object.fromEntries(
+          Object.entries(contractorData).filter(([_, v]) => v !== undefined)
+        );
+
+        if (Object.keys(cleanContractorData).length > 0) {
+          console.log("[API] PUT /users/contractor-profile with data:", cleanContractorData);
+          await userAPI.updateContractorProfile(cleanContractorData);
+        }
+      }
+
+      if (basicResponse.success) {
         // Also update local context
         if (updateUser) {
           await updateUser({
@@ -146,16 +274,24 @@ export default function EditProfileScreen() {
         Alert.alert("Success", "Profile updated successfully!");
         router.back();
       } else {
-        Alert.alert("Error", response.message || "Failed to save profile. Please try again.");
+        Alert.alert("Error", basicResponse.message || "Failed to save profile. Please try again.");
       }
     } catch (error: any) {
       console.error("[API] Failed to save profile:", error);
-      console.error("[API] Error response:", error.response?.data);
       Alert.alert("Error", error.response?.data?.message || error.message || "Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -164,10 +300,10 @@ export default function EditProfileScreen() {
           headerShown: true,
           headerTitle: "Edit Profile",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
           headerRight: () => (
@@ -192,14 +328,14 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <TouchableOpacity style={styles.cameraButton} onPress={handleImageUpload}>
-              <Camera size={20} color={Colors.surface} />
+              <Camera size={20} color={colors.surface} />
             </TouchableOpacity>
           </View>
           <Text style={styles.avatarLabel}>Profile Photo</Text>
 
           <View style={styles.videoPlaceholder}>
             <View style={styles.videoPlaceholderContent}>
-              <Video size={48} color={Colors.textTertiary} />
+              <Video size={48} color={colors.textTertiary} />
               <Text style={styles.videoPlaceholderTitle}>Introduction Video</Text>
               <Text style={styles.videoPlaceholderSubtitle}>
                 Showcase your work or introduce your team
@@ -219,7 +355,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <User size={18} color={Colors.textSecondary} />
+              <User size={18} color={colors.textSecondary} />
               <Text style={styles.inputLabelText}>Full Name</Text>
             </View>
             <TextInput
@@ -227,13 +363,13 @@ export default function EditProfileScreen() {
               value={name}
               onChangeText={setName}
               placeholder="Enter your full name"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <Mail size={18} color={Colors.textSecondary} />
+              <Mail size={18} color={colors.textSecondary} />
               <Text style={styles.inputLabelText}>Email</Text>
             </View>
             <TextInput
@@ -241,7 +377,7 @@ export default function EditProfileScreen() {
               value={email}
               onChangeText={setEmail}
               placeholder="Enter your email"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -249,7 +385,7 @@ export default function EditProfileScreen() {
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <Phone size={18} color={Colors.textSecondary} />
+              <Phone size={18} color={colors.textSecondary} />
               <Text style={styles.inputLabelText}>Phone</Text>
             </View>
             <TextInput
@@ -257,14 +393,14 @@ export default function EditProfileScreen() {
               value={phone}
               onChangeText={setPhone}
               placeholder="Enter your phone number"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="phone-pad"
             />
           </View>
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <Building2 size={18} color={Colors.textSecondary} />
+              <Building2 size={18} color={colors.textSecondary} />
               <Text style={styles.inputLabelText}>Company</Text>
             </View>
             <TextInput
@@ -272,13 +408,27 @@ export default function EditProfileScreen() {
               value={company}
               onChangeText={setCompany}
               placeholder="Enter your company name"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <User size={18} color={Colors.textSecondary} />
+              <MapPin size={18} color={colors.textSecondary} />
+              <Text style={styles.inputLabelText}>Location</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="City, State"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <User size={18} color={colors.textSecondary} />
               <Text style={styles.inputLabelText}>Bio</Text>
             </View>
             <TextInput
@@ -286,7 +436,7 @@ export default function EditProfileScreen() {
               value={bio}
               onChangeText={setBio}
               placeholder="Tell us about yourself and your experience..."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -294,13 +444,13 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        {(user?.role === "Subcontractor" || user?.role === "Trade Specialist") && (
+        {(user?.role === "SUB" || user?.role === "TS" || user?.role === "GC") && (
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Professional Information</Text>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputLabel}>
-                <Building2 size={18} color={Colors.textSecondary} />
+                <Briefcase size={18} color={colors.textSecondary} />
                 <Text style={styles.inputLabelText}>Primary Trade</Text>
               </View>
               <TextInput
@@ -308,11 +458,66 @@ export default function EditProfileScreen() {
                 value={trade}
                 onChangeText={setTrade}
                 placeholder="e.g., Electrical, Plumbing, HVAC"
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
-              <Text style={styles.inputHint}>
-                This helps others find you for specific jobs
-              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabel}>
+                <Clock size={18} color={colors.textSecondary} />
+                <Text style={styles.inputLabelText}>Years of Experience</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={experienceYears}
+                onChangeText={setExperienceYears}
+                placeholder="e.g., 10"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabel}>
+                <Shield size={18} color={colors.textSecondary} />
+                <Text style={styles.inputLabelText}>License Number</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={licenseNumber}
+                onChangeText={setLicenseNumber}
+                placeholder="State License #"
+                placeholderTextColor={colors.textTertiary}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabel}>
+                <FileText size={18} color={colors.textSecondary} />
+                <Text style={styles.inputLabelText}>General Liability Amount ($)</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={insuranceAmount}
+                onChangeText={setInsuranceAmount}
+                placeholder="e.g., 1000000"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputLabel}>
+                <Sparkles size={18} color={colors.textSecondary} />
+                <Text style={styles.inputLabelText}>Specialties</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={specialties}
+                onChangeText={setSpecialties}
+                placeholder="e.g., Kitchens, Bathrooms, Smart Home (comma separated)"
+                placeholderTextColor={colors.textTertiary}
+              />
             </View>
           </View>
         )}
@@ -326,7 +531,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   scrollView: {
     flex: 1,
@@ -334,19 +539,19 @@ const styles = StyleSheet.create({
   saveButton: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
     marginRight: 16,
   },
   saveButtonDisabled: {
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   mediaSection: {
     alignItems: "center" as const,
     paddingVertical: 32,
     paddingHorizontal: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   avatarContainer: {
     position: "relative" as const,
@@ -356,16 +561,16 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.primary + "20",
+    backgroundColor: staticColors.primary + "20",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 4,
-    borderColor: Colors.surface,
+    borderColor: staticColors.surface,
   },
   avatarLargeText: {
     fontSize: 40,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: staticColors.primary,
   },
   cameraButton: {
     position: "absolute" as const,
@@ -374,24 +579,24 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 3,
-    borderColor: Colors.surface,
+    borderColor: staticColors.surface,
   },
   avatarLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginBottom: 24,
   },
   videoPlaceholder: {
     width: "100%" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed" as const,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     overflow: "hidden" as const,
   },
   videoPlaceholderContent: {
@@ -401,26 +606,26 @@ const styles = StyleSheet.create({
   videoPlaceholderTitle: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginTop: 12,
     marginBottom: 4,
   },
   videoPlaceholderSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: "center" as const,
     marginBottom: 16,
   },
   uploadVideoButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: staticColors.primary,
     borderRadius: 8,
   },
   uploadVideoButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.surface,
+    color: staticColors.surface,
   },
   formSection: {
     paddingHorizontal: 16,
@@ -429,7 +634,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: staticColors.text,
     marginBottom: 16,
   },
   inputGroup: {
@@ -444,17 +649,17 @@ const styles = StyleSheet.create({
   inputLabelText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
   },
   textArea: {
     minHeight: 100,
@@ -462,10 +667,21 @@ const styles = StyleSheet.create({
   },
   inputHint: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
     marginTop: 4,
   },
   bottomSpacer: {
     height: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: staticColors.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: staticColors.textSecondary,
   },
 });

@@ -1,12 +1,18 @@
-import { Stack , useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import Colors from "@/constants/colors";
 import { AlertCircle } from "lucide-react-native";
 
+const staticColors = {
+  primary: "#2563EB",
+  error: "#EF4444",
+  background: "#F8FAFC",
+  textSecondary: "#64748B",
+};
+
 export default function AdminLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, colors } = useAuth();
   const router = useRouter();
 
   // Role security - redirect non-admin users
@@ -19,8 +25,8 @@ export default function AdminLayout() {
   // Show loading while checking auth
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -28,10 +34,12 @@ export default function AdminLayout() {
   // Block non-admin access
   if (user && user.role !== "ADMIN") {
     return (
-      <View style={styles.container}>
-        <AlertCircle size={48} color={Colors.error} />
-        <Text style={styles.errorText}>Access Denied</Text>
-        <Text style={styles.errorSubtext}>Only Admin users can access this area.</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <AlertCircle size={48} color={colors.error} />
+        <Text style={[styles.errorText, { color: colors.error }]}>Access Denied</Text>
+        <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
+          Only Admin users can access this area.
+        </Text>
       </View>
     );
   }
@@ -52,19 +60,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.background,
     padding: 32,
     gap: 16,
   },
   errorText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
   },
   errorSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: "center",
+    textAlign: "center" as const,
   },
 });
-

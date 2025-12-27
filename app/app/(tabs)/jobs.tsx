@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
 import {
   Briefcase,
@@ -21,70 +22,100 @@ import {
   X,
 } from "lucide-react-native";
 import { Stack, useRouter } from "expo-router";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useJobs } from "@/contexts/JobsContext";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+};
 import { Job, JobUrgency } from "@/types";
 import { TRADES } from "@/constants/trades";
 import { jobsAPI } from "@/services/api";
 
 export default function JobsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { jobs: contextJobs, createJob: contextCreateJob, isLoading: contextLoading } = useJobs();
+  const { user, colors } = useAuth();
+  const { jobs: contextJobs, createJob: contextCreateJob, isLoading: contextLoading, refreshJobs: contextRefresh } = useJobs();
   const [apiJobs, setApiJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTrade, setSelectedTrade] = useState("All");
   const [showPostModal, setShowPostModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch jobs from API
-  useEffect(() => {
-    const fetchJobs = async () => {
-      if (!user) return;
+  const fetchJobs = useCallback(async (isRefresh = false) => {
+    if (!user) return;
 
-      setIsLoading(true);
-      try {
-        console.log("[API] GET /jobs");
-        const response = await jobsAPI.getAll();
-
-        if (response.success && response.data) {
-          // Backend returns {jobs: [...], total, page, pages} - need to access .jobs
-          const jobsArray = response.data.jobs || response.data;
-          const mappedJobs = Array.isArray(jobsArray) ? jobsArray.map((job: any) => ({
-            id: job.id || job.job_id,
-            title: job.title || job.job_title,
-            description: job.description,
-            trade: job.trade_type || job.trade || "All",
-            location: job.location,
-            status: job.status || "open",
-            urgency: (job.urgency || "medium") as JobUrgency,
-            startDate: job.start_date || job.startDate,
-            endDate: job.end_date || job.endDate,
-            budget: job.budget_min ? `$${job.budget_min}` : null,
-            payRate: job.pay_rate || job.payRate,
-            postedBy: job.posted_by || job.postedBy || user?.id || '',
-            postedByName: job.posted_by_name || job.postedByName || user?.fullName || '',
-            postedByCompany: job.posted_by_company || job.postedByCompany || user?.company || '',
-            applicationsCount: job.applications_count || job.applicationsCount || 0,
-            createdAt: job.created_at || job.createdAt,
-            updatedAt: job.updated_at || job.updatedAt,
-            requirements: job.requirements || [],
-          })) : [];
-          setApiJobs(mappedJobs);
-        }
-      } catch (error: any) {
-        console.error("[API] Failed to fetch jobs:", error);
-        Alert.alert("Error", "Failed to load jobs. Please try again.");
-      } finally {
-        setIsLoading(false);
+    // Only show full loading spinner on initial load, not refresh
+    if (!isRefresh) setIsLoading(true);
+    setError(null);
+    try {
+      // Also refresh context if available
+      if (contextRefresh && typeof contextRefresh === 'function') {
+        contextRefresh();
       }
-    };
 
+      console.log("[API] GET /jobs");
+      const response = await jobsAPI.getAll();
+
+      if (response.success && response.data) {
+        // Backend returns {jobs: [...], total, page, pages} - need to access .jobs
+        const jobsArray = response.data.jobs || response.data;
+        const mappedJobs = Array.isArray(jobsArray) ? jobsArray.map((job: any) => ({
+          id: job.id || job.job_id,
+          title: job.title || job.job_title,
+          description: job.descriptions || job.description || '', // FIXED: Backend uses 'descriptions' (plural)
+          trade: job.trade_type || job.trade || "All",
+          location: job.locations || job.location || '',
+          status: job.status || "open",
+          urgency: (job.urgency || "medium") as JobUrgency,
+          startDate: job.start_date || job.startDate,
+          endDate: job.end_date || job.endDate,
+          budget: job.budget_min ? `$${job.budget_min}` : undefined,
+          payRate: job.pay_rate || job.payRate,
+          postedBy: job.posted_by || job.postedBy || user?.id || '',
+          postedByName: job.posted_by_name || job.postedByName || user?.fullName || '',
+          postedByCompany: job.posted_by_company || job.postedByCompany || user?.company || '',
+          applicationsCount: job.applications_count || job.applicationsCount || 0,
+          createdAt: job.created_at || job.createdAt,
+          updatedAt: job.updated_at || job.updatedAt,
+          requirements: job.requirements || [],
+        })) : [];
+        setApiJobs(mappedJobs);
+      }
+    } catch (error: any) {
+      console.error("[API] Failed to fetch jobs:", error);
+      setError("Failed to load jobs. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, contextRefresh]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchJobs(true);
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
     fetchJobs();
-  }, [user]);
+  }, [user]); // fetchJobs dependency removed to prevent loop if refreshing state changes? No, useCallback handles it. But stick to [user].
 
-  // Use API jobs only - no mock data fallback
+  // Use API jobs only
   const jobs = apiJobs;
 
   // Visible for PM only (hide for VIEWER), Admin sees everything
@@ -106,7 +137,7 @@ export default function JobsScreen() {
             title: job.title || job.job_title,
             description: job.description,
             trade: job.trade || job.category || "All",
-            location: job.location,
+            location: job.locations || job.location || '',
             status: job.status || "open",
             urgency: (job.urgency || "medium") as JobUrgency,
             startDate: job.start_date || job.startDate,
@@ -134,38 +165,7 @@ export default function JobsScreen() {
         searchJobs();
       } else {
         // If search is cleared, reload all jobs
-        const fetchAll = async () => {
-          try {
-            const response = await jobsAPI.getAll();
-            if (response.success && response.data) {
-              const jobsArray = response.data.jobs || response.data;
-              const mappedJobs = Array.isArray(jobsArray) ? jobsArray.map((job: any) => ({
-                id: job.id || job.job_id,
-                title: job.title || job.job_title,
-                description: job.description,
-                trade: job.trade_type || job.trade || "All",
-                location: job.location,
-                status: job.status || "open",
-                urgency: (job.urgency || "medium") as JobUrgency,
-                startDate: job.start_date || job.startDate,
-                endDate: job.end_date || job.endDate,
-                budget: job.budget_min ? `$${job.budget_min}` : null,
-                payRate: job.pay_rate || job.payRate,
-                postedBy: job.posted_by || job.postedBy || user?.id || '',
-                postedByName: job.posted_by_name || job.postedByName || user?.fullName || '',
-                postedByCompany: job.posted_by_company || job.postedByCompany || user?.company || '',
-                applicationsCount: job.applications_count || job.applicationsCount || 0,
-                createdAt: job.created_at || job.createdAt,
-                updatedAt: job.updated_at || job.updatedAt,
-                requirements: job.requirements || [],
-              })) : [];
-              setApiJobs(mappedJobs);
-            }
-          } catch (error) {
-            console.error("[API] Failed to reload jobs:", error);
-          }
-        };
-        fetchAll();
+        fetchJobs();
       }
     }, 500);
 
@@ -187,15 +187,15 @@ export default function JobsScreen() {
 
   const renderJobCard = ({ item }: { item: Job }) => {
     const urgencyColors: Record<JobUrgency, string> = {
-      low: Colors.success,
-      medium: Colors.warning,
-      high: Colors.secondary,
-      urgent: Colors.error,
+      low: colors.success,
+      medium: colors.warning,
+      high: colors.secondary,
+      urgent: colors.error,
     };
 
     return (
       <TouchableOpacity
-        style={styles.jobCard}
+        style={[styles.jobCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => {
           console.log('Navigating to job details from jobs page:', item.id, item.title);
           router.push(`/job-details?id=${item.id}`);
@@ -203,8 +203,8 @@ export default function JobsScreen() {
       >
         <View style={styles.jobHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.jobTitle}>{item.title}</Text>
-            <Text style={styles.jobCompany}>{item.postedByCompany}</Text>
+            <Text style={[styles.jobTitle, { color: colors.text }]}>{item.title}</Text>
+            <Text style={[styles.jobCompany, { color: colors.textSecondary }]}>{item.postedByCompany}</Text>
           </View>
           <View
             style={[
@@ -212,48 +212,48 @@ export default function JobsScreen() {
               { backgroundColor: urgencyColors[item.urgency] },
             ]}
           >
-            <Text style={styles.urgencyText}>
+            <Text style={[styles.urgencyText, { color: colors.white }]}>
               {item.urgency.toUpperCase()}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.jobDescription} numberOfLines={2}>
+        <Text style={[styles.jobDescription, { color: colors.textSecondary }]} numberOfLines={2}>
           {item.description}
         </Text>
 
         <View style={styles.jobDetails}>
           <View style={styles.detailItem}>
-            <Briefcase size={16} color={Colors.textSecondary} />
-            <Text style={styles.detailText}>{item.trade}</Text>
+            <Briefcase size={16} color={colors.textSecondary} />
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.trade}</Text>
           </View>
           <View style={styles.detailItem}>
-            <MapPin size={16} color={Colors.textSecondary} />
-            <Text style={styles.detailText}>{item.location}</Text>
+            <MapPin size={16} color={colors.textSecondary} />
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.location}</Text>
           </View>
         </View>
 
         <View style={styles.jobDetails}>
           {item.payRate && (
             <View style={styles.detailItem}>
-              <DollarSign size={16} color={Colors.textSecondary} />
-              <Text style={styles.detailText}>{item.payRate}</Text>
+              <DollarSign size={16} color={colors.textSecondary} />
+              <Text style={[styles.detailText, { color: colors.textSecondary }]}>{item.payRate}</Text>
             </View>
           )}
           <View style={styles.detailItem}>
-            <Clock size={16} color={Colors.textSecondary} />
-            <Text style={styles.detailText}>
+            <Clock size={16} color={colors.textSecondary} />
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
               Starts {new Date(item.startDate).toLocaleDateString()}
             </Text>
           </View>
         </View>
 
         <View style={styles.jobFooter}>
-          <Text style={styles.applicationsCount}>
+          <Text style={[styles.applicationsCount, { color: colors.primary }]}>
             {item.applicationsCount} application
             {item.applicationsCount !== 1 ? "s" : ""}
           </Text>
-          <Text style={styles.postedTime}>
+          <Text style={[styles.postedTime, { color: colors.textTertiary }]}>
             Posted {new Date(item.createdAt).toLocaleDateString()}
           </Text>
         </View>
@@ -262,15 +262,15 @@ export default function JobsScreen() {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: "Jobs & Gigs",
           headerShown: true,
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
-          headerTintColor: Colors.text,
+          headerTintColor: colors.text,
           headerShadowVisible: false,
           headerRight: () =>
             // Visible for PM only
@@ -279,22 +279,22 @@ export default function JobsScreen() {
                 onPress={() => setShowPostModal(true)}
                 style={styles.headerButton}
               >
-                <Plus size={24} color={Colors.primary} />
+                <Plus size={24} color={colors.primary} />
               </TouchableOpacity>
             ) : null,
         }}
       />
 
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Search size={20} color={Colors.textSecondary} />
+          <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Search size={20} color={colors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search jobs..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
         </View>
@@ -310,14 +310,16 @@ export default function JobsScreen() {
               key={trade}
               style={[
                 styles.filterChip,
-                selectedTrade === trade && styles.filterChipActive,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                selectedTrade === trade && [styles.filterChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
               ]}
               onPress={() => setSelectedTrade(trade)}
             >
               <Text
                 style={[
                   styles.filterChipText,
-                  selectedTrade === trade && styles.filterChipTextActive,
+                  { color: colors.textSecondary },
+                  selectedTrade === trade && [styles.filterChipTextActive, { color: colors.white }],
                 ]}
               >
                 {trade}
@@ -326,22 +328,30 @@ export default function JobsScreen() {
           ))}
         </ScrollView>
 
-        {isLoading ? (
+        {isLoading && !refreshing ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Loading jobs...</Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>Loading jobs...</Text>
           </View>
         ) : filteredJobs.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Briefcase size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyStateText}>No jobs found</Text>
-            <Text style={styles.emptyStateSubtext}>
-              {searchQuery || selectedTrade !== "All"
-                ? "Try adjusting your filters"
-                : canPostJobs
-                  ? "Be the first to post a job!"
-                  : "Check back later for new opportunities"}
-            </Text>
-          </View>
+          <ScrollView
+            contentContainerStyle={{ flex: 1 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            }
+          >
+            <View style={styles.emptyState}>
+              <Briefcase size={48} color={colors.textTertiary} />
+              <Text style={[styles.emptyStateText, { color: colors.text }]}>No jobs found</Text>
+              <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                {searchQuery || selectedTrade !== "All"
+                  ? "Try adjusting your filters"
+                  : canPostJobs
+                    ? "Be the first to post a job!"
+                    : "Check back later for new opportunities"}
+              </Text>
+            </View>
+          </ScrollView>
         ) : (
           <FlatList
             data={filteredJobs}
@@ -349,6 +359,9 @@ export default function JobsScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.jobsList}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            }
           />
         )}
       </View>
@@ -356,7 +369,8 @@ export default function JobsScreen() {
       <PostJobModal
         visible={showPostModal}
         onClose={() => setShowPostModal(false)}
-        onSubmit={async (jobData) => {
+        colors={colors}
+        onSubmit={async (jobData: any) => {
           if (!user) return;
 
           try {
@@ -375,7 +389,7 @@ export default function JobsScreen() {
               // Parse budget string to numbers
               budget_min: jobData.budget ? parseInt(jobData.budget.replace(/[^0-9]/g, '')) : null,
               budget_max: jobData.budget ? parseInt(jobData.budget.replace(/[^0-9]/g, '')) : null,
-              pay_rate: jobData.payRate || null,
+              pay_rate: jobData.pay_rate || null, // FIX: Consistency with formData key in PostJobModal
               urgency: jobData.urgency,
               status: jobData.status || "open",
               requirements: jobData.requirements || {},  // Changed from array to object
@@ -388,29 +402,7 @@ export default function JobsScreen() {
               Alert.alert("Success", "Job posted successfully!");
               setShowPostModal(false);
               // Refresh jobs list
-              const refreshResponse = await jobsAPI.getAll();
-              if (refreshResponse.success && refreshResponse.data) {
-                const mappedJobs = Array.isArray(refreshResponse.data) ? refreshResponse.data.map((job: any) => ({
-                  id: job.id || job.job_id,
-                  title: job.title || job.job_title,
-                  description: job.description,
-                  trade: job.trade || job.category || "All",
-                  location: job.location,
-                  status: job.status || "open",
-                  urgency: (job.urgency || "medium") as JobUrgency,
-                  startDate: job.start_date || job.startDate,
-                  endDate: job.end_date || job.endDate,
-                  budget: job.budget,
-                  payRate: job.pay_rate || job.payRate,
-                  postedBy: job.posted_by || job.postedBy || user.id,
-                  postedByName: job.posted_by_name || job.postedByName || user.fullName,
-                  postedByCompany: job.posted_by_company || job.postedByCompany || user.company,
-                  applicationsCount: job.applications_count || job.applicationsCount || 0,
-                  createdAt: job.created_at || job.createdAt,
-                  updatedAt: job.updated_at || job.updatedAt,
-                })) : [];
-                setApiJobs(mappedJobs);
-              }
+              fetchJobs();
             } else {
               Alert.alert("Error", response.message || "Failed to post job");
             }
@@ -430,10 +422,12 @@ function PostJobModal({
   visible,
   onClose,
   onSubmit,
+  colors,
 }: {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
+  colors: any;
 }) {
   const [formData, setFormData] = useState({
     title: "",
@@ -482,11 +476,11 @@ function PostJobModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Post New Job</Text>
+      <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Post New Job</Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={24} color={Colors.text} />
+            <X size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -496,22 +490,22 @@ function PostJobModal({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Job Title *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Job Title *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="e.g., Senior Electrician Needed"
               value={formData.title}
               onChangeText={(text) =>
                 setFormData({ ...formData, title: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Description *</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Describe the job requirements and responsibilities..."
               value={formData.description}
               onChangeText={(text) =>
@@ -520,28 +514,28 @@ function PostJobModal({
               multiline
               numberOfLines={4}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Trade *</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Trade *</Text>
               <TouchableOpacity
-                style={styles.pickerContainer}
+                style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowTradePicker(true)}
               >
-                <Text style={styles.pickerText}>{formData.trade}</Text>
+                <Text style={[styles.pickerText, { color: colors.text }]}>{formData.trade}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Urgency</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Urgency</Text>
               <TouchableOpacity
-                style={styles.pickerContainer}
+                style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowUrgencyPicker(true)}
               >
-                <Text style={styles.pickerText}>
+                <Text style={[styles.pickerText, { color: colors.text }]}>
                   {formData.urgency.charAt(0).toUpperCase() +
                     formData.urgency.slice(1)}
                 </Text>
@@ -550,78 +544,78 @@ function PostJobModal({
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Location</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="City, State"
               value={formData.location}
               onChangeText={(text) =>
                 setFormData({ ...formData, location: text })
               }
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Start Date</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 placeholder="YYYY-MM-DD"
                 value={formData.startDate}
                 onChangeText={(text) =>
                   setFormData({ ...formData, startDate: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>End Date (Optional)</Text>
+              <Text style={[styles.label, { color: colors.text }]}>End Date (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 placeholder="YYYY-MM-DD"
                 value={formData.endDate}
                 onChangeText={(text) =>
                   setFormData({ ...formData, endDate: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
           </View>
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Budget (Optional)</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Budget (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 placeholder="e.g., $50,000"
                 value={formData.budget}
                 onChangeText={(text) =>
                   setFormData({ ...formData, budget: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
 
             <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Pay Rate (Optional)</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Pay Rate (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                 placeholder="e.g., $50/hour"
                 value={formData.payRate}
                 onChangeText={(text) =>
                   setFormData({ ...formData, payRate: text })
                 }
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Requirements (one per line)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Requirements (one per line)</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Valid license&#10;5+ years experience&#10;Own tools"
               value={formData.requirements}
               onChangeText={(text) =>
@@ -630,19 +624,20 @@ function PostJobModal({
               multiline
               numberOfLines={4}
               textAlignVertical="top"
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
+              { backgroundColor: colors.primary },
               submitting && styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={submitting || !formData.title || !formData.description}
           >
-            <Text style={styles.submitButtonText}>
+            <Text style={[styles.submitButtonText, { color: colors.white }]}>
               {submitting ? "Posting..." : "Post Job"}
             </Text>
           </TouchableOpacity>
@@ -660,11 +655,11 @@ function PostJobModal({
           activeOpacity={1}
           onPress={() => setShowTradePicker(false)}
         >
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Trade</Text>
+          <View style={[styles.pickerModal, { backgroundColor: colors.background }]}>
+            <View style={[styles.pickerHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>Select Trade</Text>
               <TouchableOpacity onPress={() => setShowTradePicker(false)}>
-                <X size={24} color={Colors.text} />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerList}>
@@ -683,7 +678,8 @@ function PostJobModal({
                   <Text
                     style={[
                       styles.pickerItemText,
-                      formData.trade === trade && styles.pickerItemTextActive,
+                      { color: colors.text },
+                      formData.trade === trade && [styles.pickerItemTextActive, { color: colors.primary }],
                     ]}
                   >
                     {trade}
@@ -706,11 +702,11 @@ function PostJobModal({
           activeOpacity={1}
           onPress={() => setShowUrgencyPicker(false)}
         >
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Urgency</Text>
+          <View style={[styles.pickerModal, { backgroundColor: colors.background }]}>
+            <View style={[styles.pickerHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>Select Urgency</Text>
               <TouchableOpacity onPress={() => setShowUrgencyPicker(false)}>
-                <X size={24} color={Colors.text} />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerList}>
@@ -729,7 +725,8 @@ function PostJobModal({
                   <Text
                     style={[
                       styles.pickerItemText,
-                      formData.urgency === urgency && styles.pickerItemTextActive,
+                      { color: colors.text },
+                      formData.urgency === urgency && [styles.pickerItemTextActive, { color: colors.primary }],
                     ]}
                   >
                     {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
@@ -747,11 +744,11 @@ function PostJobModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   headerButton: {
     padding: 8,
@@ -765,18 +762,18 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
   },
   filterContainer: {
     maxHeight: 50,
@@ -790,71 +787,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: staticColors.primary,
+    borderColor: staticColors.primary,
   },
   filterChipText: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
+    fontWeight: "500",
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: staticColors.white,
   },
   jobsList: {
     padding: 16,
-    paddingTop: 8,
   },
   jobCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
+    backgroundColor: staticColors.surface,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
   },
   jobHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   jobTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+    color: staticColors.text,
     marginBottom: 4,
   },
   jobCompany: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   urgencyBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    marginLeft: 8,
   },
   urgencyText: {
     fontSize: 10,
-    fontWeight: "700" as const,
-    color: Colors.white,
+    fontWeight: "700",
+    color: staticColors.white,
   },
   jobDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
     marginBottom: 12,
     lineHeight: 20,
   },
   jobDetails: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 16,
     marginBottom: 8,
   },
@@ -865,62 +859,60 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   jobFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: staticColors.border,
   },
   applicationsCount: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.primary,
+    fontSize: 12,
+    color: staticColors.primary,
+    fontWeight: "500",
   },
   postedTime: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: staticColors.textTertiary,
   },
   emptyState: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    justifyContent: "center",
+    padding: 24,
   },
   emptyStateText: {
     fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    fontWeight: "600",
+    color: staticColors.text,
     marginTop: 16,
-    marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: Colors.textTertiary,
+    color: staticColors.textSecondary,
     textAlign: "center",
+    marginTop: 8,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: staticColors.background,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
+    borderBottomColor: staticColors.border,
+    backgroundColor: staticColors.surface,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "600",
+    color: staticColors.text,
   },
   modalContent: {
     flex: 1,
@@ -929,69 +921,66 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   formRow: {
     flexDirection: "row",
-    marginHorizontal: -8,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.text,
+    fontWeight: "500",
+    color: staticColors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.text,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: staticColors.text,
   },
   textArea: {
-    minHeight: 100,
-    paddingTop: 12,
+    height: 100,
   },
   pickerContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: staticColors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: staticColors.border,
+    borderRadius: 8,
+    padding: 12,
   },
   pickerText: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
   },
   submitButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: staticColors.primary,
+    padding: 16,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 24,
     marginBottom: 32,
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
   submitButtonText: {
+    color: staticColors.white,
     fontSize: 16,
-    fontWeight: "700" as const,
-    color: Colors.white,
+    fontWeight: "600",
   },
   pickerOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   pickerModal: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: staticColors.surface,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: "70%",
   },
   pickerHeader: {
@@ -1000,30 +989,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   pickerTitle: {
     fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
+    fontWeight: "600",
+    color: staticColors.text,
   },
   pickerList: {
-    maxHeight: 400,
+    padding: 16,
   },
   pickerItem: {
-    padding: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: staticColors.border,
   },
   pickerItemActive: {
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: staticColors.primary + "10",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0,
   },
   pickerItemText: {
     fontSize: 16,
-    color: Colors.text,
+    color: staticColors.text,
   },
   pickerItemTextActive: {
-    color: Colors.primary,
-    fontWeight: "600" as const,
+    color: staticColors.primary,
+    fontWeight: "600",
   },
 });

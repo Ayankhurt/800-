@@ -1,6 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const getAdminApiUrl = () => {
+  // Priority 1: Environment Variable
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+  }
+
+  // Priority 2: In Browser environment, detect if we are on local network
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
@@ -8,11 +14,11 @@ const getAdminApiUrl = () => {
       if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
         return `http://${hostname}:5000`;
       }
-      // If tunnel/other, fallback to the target LAN IP
-      return 'http://192.168.1.110:5000';
     }
   }
-  return 'http://localhost:5000';
+
+  // Priority 3: Fallback to Production Vercel
+  return 'https://800-phi.vercel.app';
 };
 
 const API_URL = getAdminApiUrl();

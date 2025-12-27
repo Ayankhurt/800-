@@ -1,0 +1,19 @@
+node_modules
+.expo
+.git
+web-build
+dist
+ios
+android
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.DS_Store
+*.tsbuildinfo
+.vercel
+# Keep lockfiles for consistent builds
+#!bun.lock
+#!package-lock.json

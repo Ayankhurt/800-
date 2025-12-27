@@ -37,6 +37,7 @@ import { useProjects } from "@/contexts/ProjectsContext";
 import { useJobs } from "@/contexts/JobsContext";
 import { BidSubmission, BidStatus } from "@/types";
 import { bidsAPI } from "@/services/api";
+import { API_CONFIG } from "@/config/api";
 import axios from "axios";
 
 const staticColors = {
@@ -421,7 +422,7 @@ function InviteModal({ visible, onClose, bidId, bidName, colors }: any) {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000'}/api/users?role=CONTRACTOR`);
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/users?role=CONTRACTOR`);
       if (response.data?.success) setUsers(response.data.data || []);
     } catch (e) {} finally { setLoading(false); }
   };

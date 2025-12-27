@@ -62,21 +62,10 @@ function getBaseURL(): string {
   if (process.env.EXPO_PUBLIC_API_URL) {
     url = process.env.EXPO_PUBLIC_API_URL.trim();
     source = "EXPO_PUBLIC_API_URL";
-
-    // Check if URL is missing port (for http://)
-    if (url.startsWith('http://') && !url.includes(':', 7)) {
-      // Extract host part and add 5000
-      const parts = url.replace('http://', '').split('/');
-      const host = parts[0];
-      const path = parts.slice(1).join('/');
-      url = `http://${host}:5000/${path}`;
-    }
   } else {
-    // Priority 2: IP and Port from environment variables
-    const API_IP = process.env.EXPO_PUBLIC_API_IP || "192.168.1.113";
-    const API_PORT = process.env.EXPO_PUBLIC_API_PORT || "5000";
-    url = `http://${API_IP}:${API_PORT}/api/v1`;
-    source = process.env.EXPO_PUBLIC_API_IP ? "EXPO_PUBLIC_API_IP" : "Default Fallback";
+    // Priority 2: Fallback to Production Vercel URL
+    url = "https://800-phi.vercel.app/api/v1";
+    source = "Production Fallback";
   }
 
   // Final cleanup: Ensure /api/v1

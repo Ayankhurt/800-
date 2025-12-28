@@ -48,23 +48,28 @@ export const [QuotesProvider, useQuotes] = createContextHook(() => {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       total: item.quantity * item.unitPrice,
+      totalPrice: item.quantity * item.unitPrice,
     }));
 
-    const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = lineItems.reduce((sum, item) => sum + item.total!, 0);
     const total = subtotal + data.tax;
 
     const newQuote: Quote = {
       id: `quote_${Date.now()}`,
+      contractorId: user.id,
       senderId: user.id,
-      senderName: user.name,
+      senderName: user.fullName || user.name || "Unknown",
+      contractorName: user.fullName || user.name || "Unknown",
       receiverId: data.receiverId,
       jobId: data.jobId,
       title: data.title,
       description: data.description,
+      items: lineItems,
       lineItems,
       subtotal,
       tax: data.tax,
       total,
+      amount: total,
       validUntil: data.validUntil,
       status: 'sent',
       createdAt: new Date().toISOString(),

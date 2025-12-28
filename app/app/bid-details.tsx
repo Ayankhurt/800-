@@ -66,7 +66,7 @@ export default function BidDetailsScreen() {
   const { getBidById, getSubmissionsByBidId, hasUserSubmitted, awardBid, declineBid } = useBids();
   const { getUserProjects } = useProjects();
   const { sendMessage } = useJobs();
-  
+
   const [apiSubmissions, setApiSubmissions] = useState<BidSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -168,15 +168,15 @@ export default function BidDetailsScreen() {
       </View>
 
       <View style={[styles.tabContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
-          style={[styles.tab, selectedTab === "details" && styles.tabActive]} 
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === "details" && styles.tabActive]}
           onPress={() => setSelectedTab("details")}
         >
           <Text style={[styles.tabText, selectedTab === "details" && { color: colors.primary }]}>Details</Text>
         </TouchableOpacity>
         {(isOwner || isContractor) && (
-          <TouchableOpacity 
-            style={[styles.tab, selectedTab === "submissions" && styles.tabActive]} 
+          <TouchableOpacity
+            style={[styles.tab, selectedTab === "submissions" && styles.tabActive]}
             onPress={() => setSelectedTab("submissions")}
           >
             <Text style={[styles.tabText, selectedTab === "submissions" && { color: colors.primary }]}>
@@ -186,7 +186,7 @@ export default function BidDetailsScreen() {
         )}
       </View>
 
-      <ScrollView 
+      <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
@@ -233,14 +233,14 @@ export default function BidDetailsScreen() {
 
             {isOwner && bid.status === "pending" && (
               <View style={styles.ownerActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.primaryAction, { backgroundColor: colors.primary }]}
                   onPress={() => setShowInviteModal(true)}
                 >
                   <UserPlus size={20} color={colors.white} />
                   <Text style={styles.actionText}>Invite Contractors</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.secondaryAction, { borderColor: colors.error }]}
                   onPress={() => declineBid(bid.id)}
                 >
@@ -253,9 +253,9 @@ export default function BidDetailsScreen() {
         ) : (
           <View style={styles.submissionsList}>
             {submissions.map(sub => (
-              <SubmissionCard 
-                key={sub.id} 
-                submission={sub} 
+              <SubmissionCard
+                key={sub.id}
+                submission={sub}
                 colors={colors}
                 canAward={isOwner && bid.status === "pending"}
                 onAward={() => awardBid(bid.id, sub.id)}
@@ -274,7 +274,7 @@ export default function BidDetailsScreen() {
 
       {isContractor && bid.status === "pending" && !userSubmitted && (
         <View style={styles.footer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.submitButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowSubmitModal(true)}
           >
@@ -292,8 +292,8 @@ export default function BidDetailsScreen() {
         </View>
       )}
 
-      <SubmitBidModal 
-        visible={showSubmitModal} 
+      <SubmitBidModal
+        visible={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
         bidId={bid.id}
         bidName={bid.projectName}
@@ -301,20 +301,20 @@ export default function BidDetailsScreen() {
         onSuccess={fetchSubmissions}
       />
 
-      <InviteModal 
+      <InviteModal
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         bidId={bid.id}
         bidName={bid.projectName}
         colors={colors}
       />
-      
+
       <MessageModal
         visible={showMessageModal}
         onClose={() => setShowMessageModal(false)}
         recipientName={selectedSubmission?.contractorName || ""}
         colors={colors}
-        onSend={async (msg) => {
+        onSend={async (msg: string) => {
           if (selectedSubmission) {
             await sendMessage(bid.id, selectedSubmission.contractorId, msg);
             setShowMessageModal(false);
@@ -382,22 +382,22 @@ function SubmitBidModal({ visible, onClose, bidId, bidName, colors, onSuccess }:
           <TouchableOpacity onPress={onClose}><X size={24} color={colors.text} /></TouchableOpacity>
         </View>
         <Text style={{ marginBottom: 20 }}>Project: {bidName}</Text>
-        <TextInput 
-          placeholder="Amount ($)" 
-          keyboardType="numeric" 
-          style={styles.modalInput} 
+        <TextInput
+          placeholder="Amount ($)"
+          keyboardType="numeric"
+          style={styles.modalInput}
           value={amount}
           onChangeText={setAmount}
         />
-        <TextInput 
-          placeholder="Proposal / Notes" 
-          multiline 
-          numberOfLines={6} 
-          style={[styles.modalInput, { height: 120 }]} 
+        <TextInput
+          placeholder="Proposal / Notes"
+          multiline
+          numberOfLines={6}
+          style={[styles.modalInput, { height: 120 }]}
           value={notes}
           onChangeText={setNotes}
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.submitButton, { backgroundColor: colors.primary }]}
           onPress={handleSubmit}
           disabled={loading}
@@ -424,7 +424,7 @@ function InviteModal({ visible, onClose, bidId, bidName, colors }: any) {
     try {
       const response = await axios.get(`${API_CONFIG.BASE_URL}/users?role=CONTRACTOR`);
       if (response.data?.success) setUsers(response.data.data || []);
-    } catch (e) {} finally { setLoading(false); }
+    } catch (e) { } finally { setLoading(false); }
   };
 
   const handleInvite = async (userId: string, name: string) => {
@@ -469,17 +469,17 @@ function MessageModal({ visible, onClose, recipientName, onSend, colors }: any) 
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
         <View style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 20 }}>
           <Text style={styles.modalTitle}>Message to {recipientName}</Text>
-          <TextInput 
-            multiline 
-            style={[styles.modalInput, { height: 100, marginTop: 10 }]} 
-            placeholder="Type your message..." 
+          <TextInput
+            multiline
+            style={[styles.modalInput, { height: 100, marginTop: 10 }]}
+            placeholder="Type your message..."
             value={msg}
             onChangeText={setMsg}
           />
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
             <TouchableOpacity style={{ flex: 1, padding: 12 }} onPress={onClose}><Text style={{ textAlign: 'center' }}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity 
-              style={{ flex: 1, padding: 12, backgroundColor: colors.primary, borderRadius: 10 }} 
+            <TouchableOpacity
+              style={{ flex: 1, padding: 12, backgroundColor: colors.primary, borderRadius: 10 }}
               onPress={() => onSend(msg)}
             >
               <Text style={{ textAlign: 'center', color: colors.white }}>Send</Text>
@@ -535,5 +535,8 @@ const styles = StyleSheet.create({
   modalInput: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 10, marginBottom: 15 },
   inviteRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyStateText: { textAlign: 'center', fontSize: 16 },
+  detailsContent: { flex: 1 },
+  submissionsList: { padding: 16 },
   emptyText: { textAlign: 'center', color: '#666', marginTop: 20 },
 });

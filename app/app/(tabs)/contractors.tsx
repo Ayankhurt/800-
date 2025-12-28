@@ -425,8 +425,8 @@ export default function ContractorsScreen() {
         Alert.alert(
           "Error",
           error?.response?.data?.message ||
-            error?.message ||
-            "Failed to load contractors."
+          error?.message ||
+          "Failed to load contractors."
         );
       }
       setApiContractors([]);
@@ -548,10 +548,10 @@ export default function ContractorsScreen() {
                   size={22}
                   color={
                     filters.minRating > 0 ||
-                    filters.location ||
-                    filters.verified ||
-                    filters.featured ||
-                    filters.topRated
+                      filters.location ||
+                      filters.verified ||
+                      filters.featured ||
+                      filters.topRated
                       ? colors.primary
                       : colors.text
                   }
@@ -836,7 +836,7 @@ export default function ContractorsScreen() {
             Interactive map with contractor locations
           </Text>
           <Text style={[styles.mapNote, { color: colors.textTertiary }]}>
-            Web: Use browser's geolocation API{"\n"}Mobile: Use react-native-maps
+            {"Web: Use browser's geolocation API\nMobile: Use react-native-maps"}
           </Text>
           <View style={styles.mapContractorsList}>
             <ScrollView contentContainerStyle={styles.mapContractorsContent}>
@@ -912,8 +912,8 @@ export default function ContractorsScreen() {
             await createAppointment({
               title: `Estimate Request - ${data.projectName}`,
               contractorId: selectedContractor.id,
-              contractorName: selectedContractor.name,
-              contractorCompany: selectedContractor.company,
+              contractorName: selectedContractor.name || selectedContractor.fullName || selectedContractor.full_name || "Contractor",
+              contractorCompany: selectedContractor.company || selectedContractor.companyName || selectedContractor.company_name || "",
               date: data.preferredDate,
               time: data.preferredTime,
               type: "estimate",

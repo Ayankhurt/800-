@@ -74,12 +74,14 @@ export default function AppointmentDetailsScreen() {
     estimate: colors.info || "#3B82F6",
     site_visit: colors.secondary,
     meeting: colors.success,
+    consultation: colors.primary,
   };
 
   const typeLabels = {
     estimate: "Estimate",
     site_visit: "Site Visit",
     meeting: "Meeting",
+    consultation: "Consultation",
   };
 
   const statusColors = {
@@ -87,6 +89,7 @@ export default function AppointmentDetailsScreen() {
     completed: colors.success,
     cancelled: colors.error,
     no_show: colors.warning,
+    pending: colors.warning,
   };
 
   const statusLabels = {
@@ -94,6 +97,7 @@ export default function AppointmentDetailsScreen() {
     completed: "Completed",
     cancelled: "Cancelled",
     no_show: "No Show",
+    pending: "Pending",
   };
 
   const handleStatusUpdate = async (

@@ -2,6 +2,16 @@ import { Appointment } from "@/types";
 import { Stack, useRouter } from "expo-router";
 import { Calendar, Clock, MapPin, Check, X, AlertCircle } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+} from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppointments } from "@/contexts/AppointmentsContext";
 
 const staticColors = {
   primary: "#2563EB",
@@ -19,16 +29,6 @@ const staticColors = {
   border: "#E2E8F0",
   info: "#3B82F6",
 };
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  RefreshControl,
-} from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { useAppointments } from "@/contexts/AppointmentsContext";
 
 type AppointmentFilter = "all" | "scheduled" | "completed";
 
@@ -43,26 +43,26 @@ function AppointmentCard({ appointment, onPress, onStatusUpdate, colors }: Appoi
   const appointmentDate = new Date(appointment.date);
   const isValidDate = !isNaN(appointmentDate.getTime());
 
-  const typeColors = {
+  const typeColors: Record<string, string> = {
     estimate: colors.info || "#3B82F6",
     site_visit: colors.secondary,
     meeting: colors.success,
   };
 
-  const typeLabels = {
+  const typeLabels: Record<string, string> = {
     estimate: "Estimate",
     site_visit: "Site Visit",
     meeting: "Meeting",
   };
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     scheduled: colors.info || "#3B82F6",
     completed: colors.success,
     cancelled: colors.error,
     no_show: colors.warning,
   };
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     scheduled: "Scheduled",
     completed: "Completed",
     cancelled: "Cancelled",

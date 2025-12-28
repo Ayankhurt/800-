@@ -930,7 +930,7 @@ export default function RegisterScreen() {
       return (
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>Verification Documents</Text>
-          <Text style={styles.stepSubtitle}>Viewer accounts don't require verification documents</Text>
+          <Text style={styles.stepSubtitle}>Viewer accounts don&apos;t require verification documents</Text>
         </View>
       );
     }

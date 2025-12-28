@@ -46,6 +46,8 @@ interface User {
   email_verified?: boolean;
   created_at?: string;
   createdAt?: string;
+  is_active?: boolean;
+  verification_status?: string;
 }
 
 type FilterType = "all" | "verified" | "suspended" | "admins" | "gc" | "pm" | "sub" | "viewer";
@@ -251,7 +253,7 @@ export default function UserManagementScreen() {
 
   // Debounced search (client-side)
   const debouncedSearch = useMemo(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: any;
     return (query: string) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
@@ -904,7 +906,7 @@ export default function UserManagementScreen() {
             {availableRolesForCreate.length === 0 && (
               <View style={styles.noRolesContainer}>
                 <AlertCircle size={24} color={Colors.textSecondary} />
-                <Text style={styles.noRolesText}>You don't have permission to create users</Text>
+                <Text style={styles.noRolesText}>{"You don't have permission to create users"}</Text>
               </View>
             )}
 

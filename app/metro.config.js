@@ -1,12 +1,13 @@
-
-// Learn more https://docs.expo.dev/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+let config = getDefaultConfig(__dirname);
 
 // @rork/toolkit-sdk is now resolved via node_modules structure
-// No custom resolver needed - Metro will find it in node_modules/@rork/toolkit-sdk
+// No custom resolver needed
+
+config = withNativeWind(config, { input: "./global.css" });
 
 module.exports = config;
 

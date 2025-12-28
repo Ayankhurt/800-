@@ -12,6 +12,7 @@ import { Stack, router } from "expo-router";
 import { X, Star, MapPin, Briefcase, DollarSign } from "lucide-react-native";
 import { Contractor } from "@/types";
 import { PromotionalBadges, getBadgesForContractor } from "@/components/PromotionalBadges";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 const staticColors = {

@@ -112,7 +112,7 @@ export default function TermsScreen() {
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>10. Disclaimer</Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            Your use of the service is at your sole risk. The service is provided on an "AS IS" and "AS AVAILABLE" basis. The service is provided without warranties of any kind, whether express or implied.
+            Your use of the service is at your sole risk. The service is provided on an &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; basis. The service is provided without warranties of any kind, whether express or implied.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>11. Governing Law</Text>
@@ -122,7 +122,7 @@ export default function TermsScreen() {
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>12. Changes to Terms</Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days' notice prior to any new terms taking effect.
+            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days&apos; notice prior to any new terms taking effect.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>13. Contact Us</Text>

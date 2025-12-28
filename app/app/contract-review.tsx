@@ -147,10 +147,10 @@ export default function ContractReviewScreen() {
                     <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
                         The Contractor shall perform the following work phases as detailed in the technical specifications:
                     </Text>
-                    {scope.workBreakdown.phases.map((phase: any, i: number) => (
+                    {scope.workBreakdown?.phases?.map((phase: any, i: number) => (
                         <View key={i} style={styles.phaseItem}>
                             <Text style={[styles.phaseName, { color: colors.text }]}>{i + 1}. {phase.name}</Text>
-                            <Text style={[styles.phaseText, { color: colors.textSecondary }]}>• {phase.tasks.join(', ')}</Text>
+                            <Text style={[styles.phaseText, { color: colors.textSecondary }]}>• {phase.tasks?.join(', ')}</Text>
                         </View>
                     ))}
                 </View>
@@ -164,10 +164,10 @@ export default function ContractReviewScreen() {
                     <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
                         Payments will be released from escrow upon milestone completion and owner approval.
                     </Text>
-                    {contract.paymentSchedule.map((milestone: any, i: number) => (
+                    {contract.paymentSchedule?.map((milestone: any, i: number) => (
                         <View key={i} style={[styles.milestoneRow, { borderBottomColor: colors.border + '40' }]}>
-                            <Text style={[styles.milestoneName, { color: colors.text }]}>{milestone.milestone}</Text>
-                            <Text style={[styles.milestonePrice, { color: colors.primary }]}>${milestone.amount.toLocaleString()}</Text>
+                            <Text style={[styles.milestoneName, { color: colors.text }]}>{milestone.milestone || milestone.title}</Text>
+                            <Text style={[styles.milestonePrice, { color: colors.primary }]}>${(milestone.amount || 0).toLocaleString()}</Text>
                         </View>
                     ))}
                 </View>
@@ -184,13 +184,13 @@ export default function ContractReviewScreen() {
                             This contract is governed by the laws of the State of California, including Section 7159 of the Business and Professions Code.
                             {"\n\n"}
                             <Text style={{ fontWeight: 'bold' }}>Insurance: </Text>
-                            {contract.insuranceRequirements.description}
+                            {contract.insuranceRequirements?.description || 'Standard insurance coverage required.'}
                             {"\n\n"}
                             <Text style={{ fontWeight: 'bold' }}>Warranty: </Text>
-                            {contract.warrantyTerms.description}
+                            {contract.warrantyTerms?.description || 'Standard 1-year warranty on workmanship.'}
                             {"\n\n"}
                             <Text style={{ fontWeight: 'bold' }}>Dispute Resolution: </Text>
-                            {contract.disputeResolution.method}
+                            {contract.disputeResolution?.method || 'Internal resolution followed by mediation.'}
                         </Text>
                     </View>
                 </View>

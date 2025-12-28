@@ -1,4 +1,21 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { router } from "expo-router";
+import { LogIn } from "lucide-react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import { authAPI } from "@/services/api";
+
 const staticColors = {
   primary: "#2563EB",
   secondary: "#F97316",
@@ -16,21 +33,6 @@ const staticColors = {
   info: "#3B82F6",
   primaryLight: "#EFF6FF",
 };
-import { router } from "expo-router";
-import { LogIn } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from "react-native";
 
 // Simple SVG-like icon components for Google and GitHub
 const GoogleIcon = () => (
@@ -44,8 +46,6 @@ const GitHubIcon = () => (
     <Text style={{ fontSize: 14, color: '#FFF' }}>⚫</Text>
   </View>
 );
-
-import { authAPI } from "@/services/api";
 export default function LoginScreen() {
   const { login, loginWithOAuth, loading, isAuthenticated, colors } = useAuth();
 
@@ -338,7 +338,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.registerButtonText, { color: colors.textSecondary }]}>
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Text style={[styles.registerButtonTextBold, { color: colors.primary }]}>Sign Up</Text>
                 </Text>
               </TouchableOpacity>

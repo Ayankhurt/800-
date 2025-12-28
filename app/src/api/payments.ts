@@ -67,7 +67,6 @@ const paymentsAPI = {
         // Fallback to generic payments endpoint
         const response = await apiClient.post("/payments", {
           project_id: projectId,
-          amount: data.amount,
           type: "deposit",
           ...data,
         });
@@ -103,7 +102,7 @@ const paymentsAPI = {
    * Refund payment
    * POST /payments/refund
    */
-  refund: async (data: RefundData): Promise<ApiResponse<Payment>> => {
+  refund: async (data: RefundData): Promise<ApiResponse<Payment | null>> => {
     try {
       const response = await apiClient.post("/payments/refund", data);
       return response.data;

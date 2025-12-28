@@ -67,7 +67,7 @@ export default function EditProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {

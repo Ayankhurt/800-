@@ -34,24 +34,6 @@ import {
 } from "lucide-react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-
-const staticColors = {
-  primary: "#2563EB",
-  secondary: "#F97316",
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  white: "#FFFFFF",
-  black: "#000000",
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#0F172A",
-  textSecondary: "#64748B",
-  textTertiary: "#94A3B8",
-  border: "#E2E8F0",
-  info: "#3B82F6",
-  primaryLight: "#EFF6FF",
-};
 import { useAppointments } from "@/contexts/AppointmentsContext";
 import { useSavedContractors } from "@/contexts/SavedContractorsContext";
 import { useVideoConsultations } from "@/contexts/VideoConsultationsContext";
@@ -70,6 +52,24 @@ import {
 } from "@/utils/trust";
 import { Contractor } from "@/types";
 import { contractorsAPI } from "@/services/api";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+  primaryLight: "#EFF6FF",
+};
 
 function TrustScoreCard({ contractor, colors }: { contractor: Contractor; colors: any }) {
   const trustScore = calculateTrustScore(contractor);
@@ -102,6 +102,7 @@ export default function ContractorProfileScreen() {
   const { createAppointment } = useAppointments();
   const { isSaved, saveContractor, unsaveContractor } = useSavedContractors();
   const { requestConsultation } = useVideoConsultations();
+  const router = useRouter();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showVideoConsultModal, setShowVideoConsultModal] = useState(false);
@@ -274,7 +275,7 @@ export default function ContractorProfileScreen() {
   const verified = contractor?.verified || false;
   const isOwnProfile = user?.id === contractor?.id;
 
-  const router = useRouter();
+
 
   // Generate avatar initials safely
   const getInitials = (nameStr: string) => {

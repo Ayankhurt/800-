@@ -83,7 +83,7 @@ export default function ProjectSetupScreen() {
     id: jobApplication.id,
     contractorId: jobApplication.applicantId,
     contractorName: jobApplication.applicantName,
-    amount: parseFloat(jobApplication.proposedRate || "0"),
+    amount: parseFloat(String(jobApplication.proposedRate || "0")),
     notes: jobApplication.coverLetter
   } : null);
 

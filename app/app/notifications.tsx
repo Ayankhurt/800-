@@ -409,7 +409,7 @@ export default function NotificationsScreen() {
           <BellOff size={64} color={colors.textTertiary} />
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>No Notifications</Text>
           <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-            You're all caught up! Notifications will appear here.
+            You&apos;re all caught up! Notifications will appear here.
           </Text>
         </View>
       ) : (

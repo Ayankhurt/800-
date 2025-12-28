@@ -24,6 +24,9 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useJobs } from "@/contexts/JobsContext";
+import { Job, JobUrgency } from "@/types";
+import { TRADES } from "@/constants/trades";
+import { jobsAPI } from "@/services/api";
 
 const staticColors = {
   primary: "#2563EB",
@@ -40,9 +43,6 @@ const staticColors = {
   textTertiary: "#94A3B8",
   border: "#E2E8F0",
 };
-import { Job, JobUrgency } from "@/types";
-import { TRADES } from "@/constants/trades";
-import { jobsAPI } from "@/services/api";
 
 export default function JobsScreen() {
   const router = useRouter();
@@ -243,7 +243,7 @@ export default function JobsScreen() {
           <View style={styles.detailItem}>
             <Clock size={16} color={colors.textSecondary} />
             <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-              Starts {new Date(item.startDate).toLocaleDateString()}
+              Starts {item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A'}
             </Text>
           </View>
         </View>

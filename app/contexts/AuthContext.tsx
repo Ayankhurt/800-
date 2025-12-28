@@ -14,13 +14,18 @@ export type AppRole = "PM" | "GC" | "SUB" | "TS" | "VIEWER" | "ADMIN";
 export interface User {
   id: string;
   fullName: string;
+  name?: string; // Added for compatibility with components using .name
   email: string;
   role: AppRole;
   company?: string;
   phone?: string;
   avatar?: string | null;
   two_factor_enabled?: boolean;
+  is_active?: boolean;
+  verification_status?: string;
   settings?: any;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {
@@ -48,6 +53,7 @@ interface AuthContextType {
   safeNavigate: (path: string) => void;
   updateUser: (updates: Partial<User>) => Promise<void>;
   loginWithOAuth: (provider: 'google' | 'github') => Promise<{ success: boolean; error?: string }>;
+  socialLogin: (provider: string, userData: any) => Promise<void>;
 }
 
 export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => {
@@ -818,6 +824,26 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
     }
   }, [user]);
 
+  const socialLogin = useCallback(async (provider: string, userData: any) => {
+    // For demo/mock purposes, we just set the user
+    const newUser: User = {
+      id: userData.id || `social-${Date.now()}`,
+      email: userData.email,
+      fullName: userData.name || userData.fullName || "Social User",
+      role: "VIEWER", // Default role
+      avatar: userData.avatar,
+      is_active: true,
+      verification_status: "verified",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setUser(newUser);
+    setIsAuthenticated(true);
+    await setAuthToken(`mock-token-${Date.now()}`);
+    await AsyncStorage.setItem("user", JSON.stringify(newUser));
+  }, []);
+
   return useMemo(
     () => ({
       user,
@@ -837,6 +863,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       safeNavigate,
       updateUser,
       loginWithOAuth,
+      socialLogin,
     }),
     [
       user,
@@ -847,6 +874,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       hydrationComplete,
       isDarkMode,
       colors,
+      setNavigationReady,
       login,
       signup,
       logout,
@@ -855,6 +883,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       safeNavigate,
       updateUser,
       loginWithOAuth,
+      socialLogin,
     ]
   );
 });

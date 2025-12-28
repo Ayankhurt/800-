@@ -45,7 +45,7 @@ export const [VideoConsultationsProvider, useVideoConsultations] = createContext
     const newConsultation: VideoConsultation = {
       id: `vc_${Date.now()}`,
       requestedBy: user.id,
-      requestedByName: user.name,
+      requestedByName: user.fullName || user.name || "Unknown",
       contractorId: data.contractorId,
       contractorName: data.contractorName,
       scheduledDate: data.scheduledDate,
@@ -95,7 +95,7 @@ export const [VideoConsultationsProvider, useVideoConsultations] = createContext
 
   const getMyConsultations = useCallback(() => {
     if (!user) return [];
-    return consultations.filter(c => 
+    return consultations.filter(c =>
       c.requestedBy === user.id || c.contractorId === user.id
     );
   }, [consultations, user]);

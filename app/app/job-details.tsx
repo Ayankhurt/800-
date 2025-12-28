@@ -483,7 +483,7 @@ export default function JobDetailsScreen() {
                         console.log("[API ERROR]", error);
                         Alert.alert("Error", error?.response?.data?.message || error?.message || "Something went wrong");
                         // Fallback to context
-                        contextUpdateApplicationStatus(application.id, "accepted", "Application accepted");
+                        contextUpdateApplicationStatus(application.id, "accepted");
                         await fetchApplications();
                       } finally {
                         setIsUpdatingStatus(false);
@@ -506,7 +506,7 @@ export default function JobDetailsScreen() {
                         console.log("[API ERROR]", error);
                         Alert.alert("Error", error?.response?.data?.message || error?.message || "Something went wrong");
                         // Fallback to context
-                        contextUpdateApplicationStatus(application.id, "rejected", "Application declined");
+                        contextUpdateApplicationStatus(application.id, "rejected");
                         await fetchApplications();
                       } finally {
                         setIsUpdatingStatus(false);
@@ -517,6 +517,8 @@ export default function JobDetailsScreen() {
                       setShowMessageModal(true);
                     }}
                     colors={colors}
+                    router={router}
+                    jobId={jobId}
                   />
                 ))}
               </View>
@@ -652,12 +654,16 @@ function ApplicationCard({
   onReject,
   onMessage,
   colors,
+  router,
+  jobId,
 }: {
   application: JobApplication;
   onAccept: () => void;
   onReject: () => void;
   onMessage: () => void;
   colors: any;
+  router: any;
+  jobId: string;
 }) {
   const statusColors = {
     pending: colors.warning,

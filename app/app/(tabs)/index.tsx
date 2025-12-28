@@ -1,21 +1,4 @@
 import { useAuth } from "@/contexts/AuthContext";
-
-const staticColors = {
-  primary: "#2563EB",
-  secondary: "#F97316",
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  white: "#FFFFFF",
-  black: "#000000",
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#0F172A",
-  textSecondary: "#64748B",
-  textTertiary: "#94A3B8",
-  border: "#E2E8F0",
-  info: "#3B82F6",
-};
 import { useJobs } from "@/contexts/JobsContext";
 import { useAppointments } from "@/contexts/AppointmentsContext";
 import { Job } from "@/types";
@@ -33,6 +16,23 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+
+const staticColors = {
+  primary: "#2563EB",
+  secondary: "#F97316",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  white: "#FFFFFF",
+  black: "#000000",
+  background: "#F8FAFC",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textSecondary: "#64748B",
+  textTertiary: "#94A3B8",
+  border: "#E2E8F0",
+  info: "#3B82F6",
+};
 
 
 interface StatCardProps {
@@ -62,7 +62,7 @@ interface JobCardProps {
 }
 
 function JobCard({ job, onPress, colors }: JobCardProps & { colors: any }) {
-  const urgencyColors = {
+  const urgencyColors: Record<string, string> = {
     low: colors.success,
     medium: colors.warning,
     high: colors.secondary,

@@ -194,7 +194,7 @@ export default function AddProgressUpdateScreen() {
                         multiline
                     />
 
-                    <Text style={[styles.label, { color: colors.text }]}>What's planned for tomorrow?</Text>
+                    <Text style={[styles.label, { color: colors.text }]}>{"What's planned for tomorrow?"}</Text>
                     <TextInput
                         style={[styles.input, { borderColor: colors.border, color: colors.text }]}
                         placeholder="Next steps..."

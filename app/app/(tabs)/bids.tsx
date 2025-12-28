@@ -2,6 +2,22 @@ import { Bid, BidStatus } from "@/types";
 import { useBids } from "@/contexts/BidsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Stack, useRouter } from "expo-router";
+import { Calendar, FileText, Plus, Users, X } from "lucide-react-native";
+import React, { useState, useEffect } from "react";
+import {
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Modal,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from "react-native";
+import { bidsAPI, projectsAPI } from "@/services/api";
 
 const staticColors = {
   primary: "#2563EB",
@@ -19,22 +35,6 @@ const staticColors = {
   border: "#E2E8F0",
   info: "#3B82F6",
 };
-import { Calendar, FileText, Plus, Users, X } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Modal,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-} from "react-native";
-import { bidsAPI, projectsAPI } from "@/services/api";
 
 const STATUS_FILTERS: (BidStatus | "all")[] = ["all", "pending", "submitted", "awarded", "declined"];
 

@@ -30,6 +30,7 @@ import {
   getProjectPhase,
   getProjectHealthStatus,
 } from "@/utils/dashboard";
+import { UserRole } from "@/types";
 
 const staticColors = {
   primary: "#2563EB",
@@ -166,17 +167,24 @@ export default function OwnerDashboard() {
     [userProjects, milestones, applications, appointments]
   );
 
-  const nextActions = useMemo(
-    () =>
-      getNextActions(
-        user?.role || "Project Manager",
-        userProjects,
-        milestones,
-        applications,
-        bids
-      ),
-    [user?.role, userProjects, milestones, applications, bids]
-  );
+  const nextActions = useMemo(() => {
+    const roleMap: Record<string, UserRole> = {
+      ADMIN: "Admin",
+      GC: "GC",
+      PM: "Project Manager",
+      SUB: "Subcontractor",
+      TS: "Trade Specialist",
+      VIEWER: "Viewer",
+    };
+    const role = roleMap[user?.role || ""] || "Project Manager";
+    return getNextActions(
+      role,
+      userProjects,
+      milestones,
+      applications,
+      bids
+    );
+  }, [user?.role, userProjects, milestones, applications, bids]);
 
   const upcomingAppointments = useMemo(
     () => appointments.filter((a) => a.status === "scheduled").slice(0, 3),

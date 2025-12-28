@@ -1,0 +1,328 @@
+﻿env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_API_IP EXPO_PUBLIC_API_PORT EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\bids.tsx
+   22:1   warning  Import in body of module; reorder to top               import/first
+   23:1   warning  Import in body of module; reorder to top               import/first
+   24:1   warning  Import in body of module; reorder to top               import/first
+   37:1   warning  Import in body of module; reorder to top               import/first
+  269:22  warning  'contextCreateBid' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\contractors.tsx
+   40:7   warning  'staticColors' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+  441:6   warning  React Hook useEffect has a missing dependency: 'fetchContractors'. Either include it or remove the dependency array                                              react-hooks/exhaustive-deps
+  457:6   warning  React Hook useEffect has missing dependencies: 'apiContractors.length', 'fetchContractors', and 'isLoading'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  839:29  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                  react/no-unescaped-entities
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\index.tsx
+   19:1   warning  Import in body of module; reorder to top                                                                                import/first
+   20:1   warning  Import in body of module; reorder to top                                                                                import/first
+   21:1   warning  Import in body of module; reorder to top                                                                                import/first
+   22:1   warning  Import in body of module; reorder to top                                                                                import/first
+   23:1   warning  Import in body of module; reorder to top                                                                                import/first
+   24:1   warning  Import in body of module; reorder to top                                                                                import/first
+   25:1   warning  Import in body of module; reorder to top                                                                                import/first
+   26:1   warning  Import in body of module; reorder to top                                                                                import/first
+   27:1   warning  Import in body of module; reorder to top                                                                                import/first
+  120:10  warning  'isLoadingJobs' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  230:6   warning  React Hook useEffect has a missing dependency: 'loadAllData'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
+  236:6   warning  React Hook React.useCallback has a missing dependency: 'loadAllData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  261:5   warning  React Hook useMemo has an unnecessary dependency: 'appointments'. Either exclude it or remove the dependency array      react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\jobs.tsx
+   43:1   warning  Import in body of module; reorder to top                                                                      import/first
+   44:1   warning  Import in body of module; reorder to top                                                                      import/first
+   45:1   warning  Import in body of module; reorder to top                                                                      import/first
+   50:17  warning  'contextJobs' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+   50:41  warning  'contextCreateJob' is assigned a value but never used                                                         @typescript-eslint/no-unused-vars
+   50:70  warning  'contextLoading' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+   53:10  warning  'error' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  116:6   warning  React Hook useEffect has a missing dependency: 'fetchJobs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  173:6   warning  React Hook useEffect has a missing dependency: 'fetchJobs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\profile.tsx
+   20:3   warning  'History' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   29:3   warning  'Users' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   31:3   warning  'Smartphone' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   36:10  warning  'useJobs' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  117:6   warning  React Hook useEffect has a missing dependency: 'fetchProfile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  268:9   warning  'handleMFASetup' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\(tabs)\schedule.tsx
+  22:1  warning  Import in body of module; reorder to top  import/first
+  30:1  warning  Import in body of module; reorder to top  import/first
+  31:1  warning  Import in body of module; reorder to top  import/first
+
+C:\Users\HP\Desktop\800$\800-\app\app\+not-found.tsx
+  6:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\_layout.tsx
+  16:17  warning  'useSegments' is defined but never used               @typescript-eslint/no-unused-vars
+  46:11  warning  'isAuthenticated' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  47:9   warning  'router' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\add-progress-update.tsx
+   15:5   warning  'Camera' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   16:14  warning  'ImageIcon' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   17:5   warning  'Send' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   55:12  warning  'milestonesLoading' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+   61:8   warning  React Hook useEffect has a missing dependency: 'fetchMilestones'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  111:18  warning  'error' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  197:78  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                     react/no-unescaped-entities
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\_layout.tsx
+  7:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\disputes\dispute-details.tsx
+   20:3   warning  'XCircle' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   77:6   warning  React Hook useEffect has a missing dependency: 'fetchDisputeDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  105:18  warning  'e' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  227:9   warning  'isOpen' is assigned a value but never used                                                                             @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\finance\index.tsx
+  47:10  warning  'payments' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\finance\payout-details.tsx
+  160:9  warning  'isRejected' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\notifications\index.tsx
+  22:3  warning  'Filter' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\projects\index.tsx
+  18:3  warning  'XCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\projects\project-details.tsx
+   26:33  warning  'milestonesAPI' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   86:6   warning  React Hook useEffect has a missing dependency: 'fetchProjectDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  112:20  warning  'e' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  128:18  warning  'e' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  167:15  warning  'response' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\user-management\index.tsx
+  235:6   warning  React Hook useEffect has a missing dependency: 'fetchUsers'. Either include it or remove the dependency array                                  react-hooks/exhaustive-deps
+  261:6   warning  React Hook useMemo has a missing dependency: 'filterUsers'. Either include it or remove the dependency array                                   react-hooks/exhaustive-deps
+  327:6   warning  React Hook useEffect has a missing dependency: 'searchQuery'. Either include it or remove the dependency array                                 react-hooks/exhaustive-deps
+  545:5   warning  React Hook useCallback has missing dependencies: 'handleUserPress' and 'handleVerifyUser'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  907:57  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                react/no-unescaped-entities
+
+C:\Users\HP\Desktop\800$\800-\app\app\admin\user-management\user-details.tsx
+   120:17  warning  'login' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+   163:6   warning  React Hook useEffect has a missing dependency: 'fetchUserDetails'. Either include it or remove the dependency array                                               react-hooks/exhaustive-deps
+   170:6   warning  React Hook useEffect has missing dependencies: 'activityLogs.length', 'fetchActivityLogs', and 'logsLoading'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   190:18  warning  'e' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+   204:18  warning  'e' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+  1062:57  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                   react/no-unescaped-entities
+
+C:\Users\HP\Desktop\800$\800-\app\app\appointment-details.tsx
+  50:11  warning  'user' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  52:10  warning  'showEditModal' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  52:25  warning  'setShowEditModal' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\bid-details.tsx
+   13:3   warning  'Platform' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   21:3   warning  'Building' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   28:3   warning  'Search' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   30:11  warning  'UserIcon' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   31:3   warning  'AlertCircle' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   38:25  warning  'BidStatus' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   64:9   warning  'router' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+   67:11  warning  'getUserProjects' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+   90:6   warning  React Hook useEffect has a missing dependency: 'fetchSubmissions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  370:14  warning  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+  415:10  warning  'loading' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  427:14  warning  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+  434:14  warning  'e' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\contract-review.tsx
+   16:5   warning  'XCircle' is defined but never used    @typescript-eslint/no-unused-vars
+   19:5   warning  'Calendar' is defined but never used   @typescript-eslint/no-unused-vars
+   22:5   warning  'ArrowLeft' is defined but never used  @typescript-eslint/no-unused-vars
+  111:18  warning  'error' is defined but never used      @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\contractor-profile.tsx
+   55:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   56:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   57:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   58:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   59:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   60:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   61:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   62:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   63:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   64:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   65:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   66:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   71:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+   72:1   warning  Import in body of module; reorder to top                                                                                                                                                     import/first
+  117:6   warning  React Hook useEffect has a missing dependency: 'fetchContractor'. Either include it or remove the dependency array                                                                           react-hooks/exhaustive-deps
+  277:18  error    React Hook "useRouter" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+C:\Users\HP\Desktop\800$\800-\app\app\create-job.tsx
+  20:1   warning  Import in body of module; reorder to top   import/first
+  21:1   warning  Import in body of module; reorder to top   import/first
+  22:1   warning  Import in body of module; reorder to top   import/first
+  33:1   warning  Import in body of module; reorder to top   import/first
+  34:1   warning  Import in body of module; reorder to top   import/first
+  35:1   warning  Import in body of module; reorder to top   import/first
+  36:1   warning  Import in body of module; reorder to top   import/first
+  40:13  warning  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\disputes.tsx
+  109:82  warning  'contextLoading' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  124:6   warning  React Hook useEffect has a missing dependency: 'fetchDisputes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\edit-profile.tsx
+  20:1   warning  Import in body of module; reorder to top          import/first
+  21:1   warning  Import in body of module; reorder to top          import/first
+  35:1   warning  Import in body of module; reorder to top          import/first
+  36:1   warning  Import in body of module; reorder to top          import/first
+  47:1   warning  Import in body of module; reorder to top          import/first
+  49:1   warning  Import in body of module; reorder to top          import/first
+  50:1   warning  Import in body of module; reorder to top          import/first
+  50:10  warning  'Image' is defined but never used                 @typescript-eslint/no-unused-vars
+  70:10  warning  'avatarUrl' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  71:10  warning  'isUploading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\help.tsx
+   92:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  108:22  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\job-details.tsx
+    69:17  warning  'contextApplyToJob' is assigned a value but never used                                                                                        @typescript-eslint/no-unused-vars
+    83:10  warning  'isApplying' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+    83:22  warning  'setIsApplying' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+    84:10  warning  'isUpdatingStatus' is assigned a value but never used                                                                                         @typescript-eslint/no-unused-vars
+    85:10  warning  'showApplyModal' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+    99:6   warning  React Hook useEffect has missing dependencies: 'fetchApplications' and 'fetchJobDetails'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   785:10  warning  'ApplyModal' is defined but never used                                                                                                        @typescript-eslint/no-unused-vars
+  1255:29  warning  'addNotification' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+  1266:6   warning  React Hook useEffect has a missing dependency: 'fetchAvailableContractors'. Either include it or remove the dependency array                  react-hooks/exhaustive-deps
+  1312:6   warning  React Hook useEffect has missing dependencies: 'fetchAvailableContractors' and 'visible'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\login.tsx
+   19:1   warning  Import in body of module; reorder to top                         import/first
+   20:1   warning  Import in body of module; reorder to top                         import/first
+   21:1   warning  Import in body of module; reorder to top                         import/first
+   22:1   warning  Import in body of module; reorder to top                         import/first
+   36:7   warning  'GoogleIcon' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   42:7   warning  'GitHubIcon' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   48:1   warning  Import in body of module; reorder to top                         import/first
+  341:22  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\HP\Desktop\800$\800-\app\app\messages.tsx
+   43:1   warning  Import in body of module; reorder to top                                                                               import/first
+   44:1   warning  Import in body of module; reorder to top                                                                               import/first
+   45:1   warning  Import in body of module; reorder to top                                                                               import/first
+   72:10  warning  'isSilentRefreshing' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+   77:6   warning  React Hook useEffect has a missing dependency: 'fetchConversations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   98:6   warning  React Hook useEffect has a missing dependency: 'fetchConversations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  554:27  warning  'otherUserId' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\mfa-setup.tsx
+  21:1   warning  Import in body of module; reorder to top  import/first
+  22:1   warning  Import in body of module; reorder to top  import/first
+  22:18  warning  'QrCode' is defined but never used        @typescript-eslint/no-unused-vars
+  23:1   warning  Import in body of module; reorder to top  import/first
+  24:1   warning  Import in body of module; reorder to top  import/first
+
+C:\Users\HP\Desktop\800$\800-\app\app\milestone-details.tsx
+   19:5   warning  'FileText' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   21:5   warning  'Send' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   22:5   warning  'ArrowLeft' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   49:11  warning  'router' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+   65:8   warning  React Hook useEffect has a missing dependency: 'fetchMilestone'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  131:18  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  154:34  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  178:18  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\notifications.tsx
+   51:1  warning  Import in body of module; reorder to top                                                                             import/first
+  180:6  warning  React Hook useEffect has a missing dependency: 'fetchUnreadCount'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\onboarding.tsx
+  33:1  warning  Import in body of module; reorder to top                                                                                     import/first
+  44:1  warning  Import in body of module; reorder to top                                                                                     import/first
+  85:6  warning  React Hook useEffect has a missing dependency: 'generateSmartSuggestions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\project-closeout.tsx
+    1:27  warning  'useEffect' is defined but never used   @typescript-eslint/no-unused-vars
+   15:5   warning  'XCircle' is defined but never used     @typescript-eslint/no-unused-vars
+   19:5   warning  'ArrowRight' is defined but never used  @typescript-eslint/no-unused-vars
+   20:5   warning  'ArrowLeft' is defined but never used   @typescript-eslint/no-unused-vars
+  117:18  warning  'error' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\project-dashboard.tsx
+  54:5  warning  'getContractByProjectId' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+  75:6  warning  React Hook useEffect has missing dependencies: 'fetchMilestones', 'fetchProject', and 'fetchUpdates'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\app\project-setup.tsx
+  43:1  warning  Import in body of module; reorder to top  import/first
+
+C:\Users\HP\Desktop\800$\800-\app\app\register.tsx
+  21:1   warning  Import in body of module; reorder to top  import/first
+  22:1   warning  Import in body of module; reorder to top  import/first
+  22:20  warning  'ChevronDown' is defined but never used   @typescript-eslint/no-unused-vars
+  23:1   warning  Import in body of module; reorder to top  import/first
+  24:1   warning  Import in body of module; reorder to top  import/first
+  34:3   warning  'Alert' is defined but never used         @typescript-eslint/no-unused-vars
+  36:3   warning  'Image' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\app\settings.tsx
+   2:25  warning  'Globe' is defined but never used                  @typescript-eslint/no-unused-vars
+   2:38  warning  'ShieldCheck' is defined but never used            @typescript-eslint/no-unused-vars
+   2:51  warning  'ShieldAlert' is defined but never used            @typescript-eslint/no-unused-vars
+  16:7   warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\AnalyticsDashboard.tsx
+  6:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\BeforeAfterComparison.tsx
+  16:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\CertificationsAndAwards.tsx
+  12:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\Endorsements.tsx
+  7:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\ExperienceTimeline.tsx
+  13:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\PortfolioGallery.tsx
+  25:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\ReviewsList.tsx
+  20:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\Toast.tsx
+  66:6  warning  React Hook useEffect has missing dependencies: 'duration', 'handleDismiss', 'opacity', and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\HP\Desktop\800$\800-\app\components\TrustSuggestions.tsx
+  13:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\components\dashboards\OwnerDashboard.tsx
+  34:7  warning  'staticColors' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\src\api\client.ts
+  111:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  123:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\src\api\react-query-examples.ts
+  18:20  warning  'Bid' is defined but never used         @typescript-eslint/no-unused-vars
+  18:25  warning  'Contractor' is defined but never used  @typescript-eslint/no-unused-vars
+  18:37  warning  'Project' is defined but never used     @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\src\api\reviews.ts
+  2:31  warning  'PaginatedResponse' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\HP\Desktop\800$\800-\app\src\api\verification.ts
+  14:3   warning  'milestonesAPI' is defined but never used  @typescript-eslint/no-unused-vars
+  15:3   warning  'paymentsAPI' is defined but never used    @typescript-eslint/no-unused-vars
+  16:3   warning  'disputesAPI' is defined but never used    @typescript-eslint/no-unused-vars
+  17:3   warning  'reviewsAPI' is defined but never used     @typescript-eslint/no-unused-vars
+  20:3   warning  'uploadsAPI' is defined but never used     @typescript-eslint/no-unused-vars
+  22:15  warning  'ApiResponse' is defined but never used    @typescript-eslint/no-unused-vars
+
+Γ£û 218 problems (6 errors, 212 warnings)
+  0 errors and 42 warnings potentially fixable with the `--fix` option.
+

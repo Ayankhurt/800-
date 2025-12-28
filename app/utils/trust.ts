@@ -163,7 +163,7 @@ export function generateTrustSuggestions(contractor: Contractor): string[] {
     suggestions.push("Confirm insurance coverage before hiring");
   }
 
-  if (contractor.rating >= 4.8 && contractor.reviewCount >= 50) {
+  if ((contractor.rating || 0) >= 4.8 && (contractor.reviewCount || 0) >= 50) {
     suggestions.push("Highly rated by clients with consistent feedback");
   }
 
@@ -183,7 +183,7 @@ export function generateTrustSuggestions(contractor: Contractor): string[] {
     }
   }
 
-  if (contractor.completedProjects >= 100) {
+  if ((contractor.completedProjects || 0) >= 100) {
     suggestions.push("Experienced professional with extensive project history");
   }
 

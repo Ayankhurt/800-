@@ -114,7 +114,7 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
         type: "deposit",
         amount,
         fromUserId: user.id,
-        fromUserName: user.name,
+        fromUserName: user.fullName || user.name || "Unknown",
         paymentId,
         reason,
         status: "completed",
@@ -125,11 +125,11 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
       const updatedAccounts = escrowAccounts.map((a) =>
         a.id === account.id
           ? {
-              ...a,
-              balance: a.balance + amount,
-              totalDeposited: a.totalDeposited + amount,
-              updatedAt: new Date().toISOString(),
-            }
+            ...a,
+            balance: a.balance + amount,
+            totalDeposited: a.totalDeposited + amount,
+            updatedAt: new Date().toISOString(),
+          }
           : a
       );
 
@@ -160,7 +160,7 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
         type: "release",
         amount,
         fromUserId: user.id,
-        fromUserName: user.name,
+        fromUserName: user.fullName || user.name || "Unknown",
         toUserId,
         toUserName,
         milestoneId,
@@ -173,11 +173,11 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
       const updatedAccounts = escrowAccounts.map((a) =>
         a.id === account.id
           ? {
-              ...a,
-              balance: a.balance - amount,
-              totalReleased: a.totalReleased + amount,
-              updatedAt: new Date().toISOString(),
-            }
+            ...a,
+            balance: a.balance - amount,
+            totalReleased: a.totalReleased + amount,
+            updatedAt: new Date().toISOString(),
+          }
           : a
       );
 
@@ -201,7 +201,7 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
         type: "refund",
         amount,
         fromUserId: user.id,
-        fromUserName: user.name,
+        fromUserName: user.fullName || user.name || "Unknown",
         toUserId,
         toUserName,
         reason,
@@ -213,11 +213,11 @@ export const [EscrowContext, useEscrow] = createContextHook(() => {
       const updatedAccounts = escrowAccounts.map((a) =>
         a.id === account.id
           ? {
-              ...a,
-              balance: a.balance - amount,
-              totalRefunded: a.totalRefunded + amount,
-              updatedAt: new Date().toISOString(),
-            }
+            ...a,
+            balance: a.balance - amount,
+            totalRefunded: a.totalRefunded + amount,
+            updatedAt: new Date().toISOString(),
+          }
           : a
       );
 

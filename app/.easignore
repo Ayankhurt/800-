@@ -1,10 +1,9 @@
-node_modules
-.expo
-.git
-web-build
-dist
-ios
-android
+node_modules/
+**/node_modules/
+.expo/
+.git/
+web-build/
+dist/
 *.jks
 *.p8
 *.p12
@@ -13,7 +12,9 @@ android
 *.orig.*
 .DS_Store
 *.tsbuildinfo
-.vercel
-# Keep lockfiles for consistent builds
-#!bun.lock
-#!package-lock.json
+.vercel/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+# Removing lockfiles from ignore to ensure consistent remote install
+# but sometimes conflicting lockfiles (bun vs npm) cause issues.

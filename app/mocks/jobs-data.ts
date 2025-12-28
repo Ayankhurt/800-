@@ -115,6 +115,7 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     availableFrom: "2025-11-01",
     status: "pending",
     appliedAt: "2025-10-16T10:30:00Z",
+    jobTitle: "Senior Electrician Needed for Commercial Build",
   },
   {
     id: "app-002",
@@ -132,6 +133,7 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     appliedAt: "2025-10-16T14:00:00Z",
     respondedAt: "2025-10-17T09:00:00Z",
     responseNote: "Great portfolio and references. Let's schedule a meeting to discuss details.",
+    jobTitle: "Senior Electrician Needed for Commercial Build",
   },
   {
     id: "app-003",
@@ -147,6 +149,7 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     availableFrom: "2025-10-25",
     status: "pending",
     appliedAt: "2025-10-20T15:00:00Z",
+    jobTitle: "Framing Crew for Residential Development",
   },
 ];
 

@@ -1393,6 +1393,17 @@ export const bidsAPI = {
       throw error;
     }
   },
+
+  awardSubmission: async (bidId: string, submissionId: string) => {
+    try {
+      console.log(`[API] POST /bids/${bidId}/submissions/${submissionId}/award`);
+      const response = await apiClient.post(`/bids/${bidId}/submissions/${submissionId}/award`);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Award submission error:", error);
+      throw error;
+    }
+  },
 };
 
 // Jobs API
@@ -1946,23 +1957,45 @@ export const disputesAPI = {
     }
   },
 
+  updateStatus: async (disputeId: string, statusOrData: string | any) => {
+    try {
+      const data = typeof statusOrData === 'string' ? { status: statusOrData } : statusOrData;
+      console.log(`[API] PUT /disputes/${disputeId}/status`, data);
+      const response = await apiClient.put(`/disputes/${disputeId}/status`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Update dispute status error:", error);
+      throw error;
+    }
+  },
+
+  assign: async (disputeId: string, data: { assignedTo: string }) => {
+    try {
+      console.log(`[API] PUT /disputes/${disputeId}/assign`, data);
+      const response = await apiClient.put(`/disputes/${disputeId}/assign`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Assign dispute error:", error);
+      throw error;
+    }
+  },
+
+  update: async (disputeId: string, data: any) => {
+    try {
+      console.log(`[API] PUT /disputes/${disputeId}`, data);
+      const response = await apiClient.put(`/disputes/${disputeId}`, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Update dispute error:", error);
+      throw error;
+    }
+  },
+
   close: async (disputeId: string) => {
     try {
       const response = await apiClient.put(`/disputes/${disputeId}/close`);
       return response.data;
     } catch (error: any) {
-      throw error;
-    }
-  },
-
-  assign: async (disputeId: string, data: any) => {
-    try {
-      console.log("[API] PUT /disputes/:id/assign", disputeId, data);
-      const response = await apiClient.put(`/disputes/${disputeId}/assign`, data);
-      console.log("[API] PUT /disputes/:id/assign success:", response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error("[API] Assign dispute error:", error);
       throw error;
     }
   },

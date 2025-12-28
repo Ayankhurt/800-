@@ -98,6 +98,8 @@ interface UserDetails {
   createdAt?: string;
   last_login?: string;
   lastLogin?: string;
+  is_active?: boolean;
+  verification_status?: string;
   company?: string;
   companyName?: string;
   company_name?: string;
@@ -1059,7 +1061,7 @@ export default function UserDetailsScreen() {
             {getAvailableRoles(user?.role).length === 0 && (
               <View style={styles.noRolesContainer}>
                 <AlertCircle size={24} color={Colors.textSecondary} />
-                <Text style={styles.noRolesText}>You don't have permission to change roles</Text>
+                <Text style={styles.noRolesText}>{"You don't have permission to change roles"}</Text>
               </View>
             )}
 

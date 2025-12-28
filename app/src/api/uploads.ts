@@ -31,11 +31,11 @@ const uploadsAPI = {
    * @param data - File data and metadata
    * @returns Upload response with URL
    */
-  upload: async (data: UploadFileData): Promise<ApiResponse<UploadResponse>> => {
+  upload: async (data: UploadFileData): Promise<ApiResponse<UploadResponse | null>> => {
     try {
       // Create FormData
       const formData = new FormData();
-      
+
       // Handle file - could be URI (React Native) or File (web)
       if (data.file) {
         // For React Native, file is typically { uri, type, name }
@@ -66,10 +66,10 @@ const uploadsAPI = {
     } catch (error: any) {
       console.error("Upload file API error:", error);
       if (error.response?.status === 404) {
-        return { 
-          success: false, 
-          message: "Upload endpoint not available. Please ensure backend has /uploads endpoint configured.", 
-          data: null 
+        return {
+          success: false,
+          message: "Upload endpoint not available. Please ensure backend has /uploads endpoint configured.",
+          data: null
         };
       }
       throw error;
@@ -84,7 +84,7 @@ const uploadsAPI = {
     try {
       // Upload files sequentially to avoid overwhelming the server
       const results: UploadResponse[] = [];
-      
+
       for (const fileData of files) {
         try {
           const result = await uploadsAPI.upload(fileData);

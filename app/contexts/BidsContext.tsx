@@ -140,7 +140,7 @@ export const [BidsProvider, useBids] = createContextHook(() => {
 
   const awardBid = useCallback(async (bidId: string, submissionId: string) => {
     try {
-      const response = await bidsAPI.updateStatus(submissionId, { status: 'awarded' });
+      const response = await bidsAPI.awardSubmission(bidId, submissionId);
       if (response.success) {
         await loadData();
       }

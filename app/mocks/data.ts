@@ -574,6 +574,7 @@ export const mockBidSubmissions: BidSubmission[] = [
     notes: "Includes premium materials and 2-year warranty. Can start within 2 weeks.",
     submittedAt: "2025-10-19T10:30:00Z",
     documents: ["proposal.pdf", "materials-list.pdf"],
+    createdBy: "1",
   },
   {
     id: "2",
@@ -585,6 +586,7 @@ export const mockBidSubmissions: BidSubmission[] = [
     notes: "Energy-efficient systems with smart controls. Includes 3-year maintenance.",
     submittedAt: "2025-10-20T14:15:00Z",
     documents: ["hvac-proposal.pdf"],
+    createdBy: "3",
   },
 ];
 
@@ -592,6 +594,7 @@ export const mockAppointments: Appointment[] = [
   {
     id: "1",
     title: "Site Estimate - Office Renovation",
+    contractorId: "1",
     contractorName: "Carlos Rodriguez",
     contractorCompany: "Rodriguez Electrical",
     date: "2025-10-23",
@@ -608,6 +611,7 @@ export const mockAppointments: Appointment[] = [
   {
     id: "2",
     title: "Site Visit - Residential Addition",
+    contractorId: "4",
     contractorName: "Lisa Thompson",
     contractorCompany: "Thompson Framing",
     date: "2025-10-24",
@@ -623,6 +627,7 @@ export const mockAppointments: Appointment[] = [
   {
     id: "3",
     title: "Kickoff Meeting - Warehouse Project",
+    contractorId: "5",
     contractorName: "David Kim",
     contractorCompany: "Kim Concrete Works",
     date: "2025-10-22",
@@ -640,6 +645,7 @@ export const mockAppointments: Appointment[] = [
   {
     id: "4",
     title: "Final Walkthrough - Restaurant Kitchen",
+    contractorId: "2",
     contractorName: "Sarah Chen",
     contractorCompany: "Chen Plumbing Solutions",
     date: "2025-10-25",

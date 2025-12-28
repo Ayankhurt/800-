@@ -105,7 +105,7 @@ export const [ReferralsContext, useReferrals] = createContextHook(() => {
       const newReferral: Referral = {
         id: Date.now().toString(),
         referrerId: user.id,
-        referrerName: user.name,
+        referrerName: user.fullName || user.name || "Unknown",
         referredEmail: contactEmail,
         referredPhone: contactPhone,
         status: "pending",
@@ -126,12 +126,12 @@ export const [ReferralsContext, useReferrals] = createContextHook(() => {
       const updated = referrals.map((ref) =>
         ref.referralCode === referralCode
           ? {
-              ...ref,
-              referredId: newUserId,
-              referredName: newUserName,
-              status: "signed_up" as const,
-              signedUpAt: new Date().toISOString(),
-            }
+            ...ref,
+            referredId: newUserId,
+            referredName: newUserName,
+            status: "signed_up" as const,
+            signedUpAt: new Date().toISOString(),
+          }
           : ref
       );
       saveReferrals(updated);
@@ -158,11 +158,11 @@ export const [ReferralsContext, useReferrals] = createContextHook(() => {
       const updated = referrals.map((ref) =>
         ref.id === referralId
           ? {
-              ...ref,
-              status: "converted" as const,
-              convertedAt: new Date().toISOString(),
-              rewardAmount: (ref.rewardAmount || 0) + projectValue * 0.05,
-            }
+            ...ref,
+            status: "converted" as const,
+            convertedAt: new Date().toISOString(),
+            rewardAmount: (ref.rewardAmount || 0) + projectValue * 0.05,
+          }
           : ref
       );
       saveReferrals(updated);
@@ -189,10 +189,10 @@ export const [ReferralsContext, useReferrals] = createContextHook(() => {
       const updated = rewards.map((reward) =>
         reward.id === rewardId
           ? {
-              ...reward,
-              status: "paid" as const,
-              paidAt: new Date().toISOString(),
-            }
+            ...reward,
+            status: "paid" as const,
+            paidAt: new Date().toISOString(),
+          }
           : reward
       );
       saveRewards(updated);

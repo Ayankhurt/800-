@@ -448,7 +448,7 @@ export default function ProjectDashboardScreen() {
               <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Scope of Work</Text>
                 <Text style={[styles.scopeText, { color: colors.textSecondary }]}>
-                  {scope.workBreakdown.phases.length} phases • {scope.materials.items.length} materials
+                  {scope.workBreakdown?.phases?.length || 0} phases • {scope.materials?.items?.length || 0} materials
                 </Text>
               </View>
             )}
@@ -1024,11 +1024,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
   },
-  adminButtonText: {
-    color: '#fff',
-    fontWeight: "700",
-    fontSize: 14,
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
+
   disputesSection: {
     gap: 12,
   },

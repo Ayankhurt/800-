@@ -39,8 +39,9 @@ export const [SavedContractorsProvider, useSavedContractors] = createContextHook
       id: `${user.id}_${contractorId}_${Date.now()}`,
       userId: user.id,
       contractorId,
-      savedAt: new Date().toISOString(),
       notes,
+      savedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
     const updated = [...savedContractors, newSaved];

@@ -36,7 +36,7 @@ const staticColors = {
 };
 
 const DisputeStatusBadge: React.FC<{ status: Dispute["status"], colors: any }> = ({ status, colors }) => {
-  const config = {
+  const config: Record<string, { bg: string, color: any, label: string }> = {
     filed: { bg: colors.warning + '20', color: colors.warning, label: "Filed" },
     under_review: { bg: colors.info + '20', color: colors.info, label: "Under Review" },
     in_mediation: { bg: colors.secondary + '20', color: colors.secondary, label: "In Mediation" },
@@ -44,7 +44,7 @@ const DisputeStatusBadge: React.FC<{ status: Dispute["status"], colors: any }> =
     closed: { bg: colors.border, color: colors.textSecondary, label: "Closed" },
   };
 
-  const style = config[status];
+  const style = config[status] || config.filed;
 
   return (
     <View style={[styles.badge, { backgroundColor: style.bg }]}>

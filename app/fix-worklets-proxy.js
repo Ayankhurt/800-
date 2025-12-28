@@ -12,11 +12,10 @@ try {
 
     const workletsDir = path.join(nodeModulesDir, 'react-native-worklets');
     if (fs.existsSync(workletsDir)) {
-        // Optional: Wipe it to ensure clean state? 
-        // fs.rmSync(workletsDir, { recursive: true, force: true });
-    } else {
-        fs.mkdirSync(workletsDir, { recursive: true });
+        // Wipe it to ensure clean state and remove any native files
+        fs.rmSync(workletsDir, { recursive: true, force: true });
     }
+    fs.mkdirSync(workletsDir, { recursive: true });
 
     // 1. package.json
     const pkgJson = JSON.stringify({

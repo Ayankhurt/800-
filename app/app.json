@@ -35,7 +35,18 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.23",
+            "gradleOptions": {
+              "jvmArgs": "-Xmx4096m -XX:MaxMetaspaceSize=512m"
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

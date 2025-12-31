@@ -168,8 +168,7 @@ export const listUsers = async (req, res) => {
 
     // Admin roles to exclude from DEFAULT regular users list
     const adminRoles = [
-      'super_admin', 'admin', 'finance_manager', 'moderator', 'support_agent',
-      'SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER', 'MODERATOR', 'SUPPORT_AGENT'
+      'super_admin', 'admin', 'finance_manager', 'moderator', 'support_agent'
     ];
 
     let query = supabase
@@ -184,7 +183,8 @@ export const listUsers = async (req, res) => {
     const isRequestingAdmin = role && adminRoles.some(r => r.toLowerCase() === role.toLowerCase());
 
     if (!isRequestingAdmin) {
-      query = query.not('role', 'in', adminRoles);
+      // Explicitly wrap in parentheses as required by PostgREST for 'in'/'not.in'
+      query = query.not('role', 'in', `(${adminRoles.join(',')})`);
     }
 
     if (search) {

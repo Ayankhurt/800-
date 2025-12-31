@@ -6,18 +6,19 @@ const getAdminApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
   }
 
-  // Priority 2: In Browser environment, detect if we are on local network
+  // Priority 2: In Browser environment, detect if we are on localhost
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // If regular IP address
-      if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-        return `http://${hostname}:5000`;
-      }
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    // Priority 3: Support local network debugging
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return `http://${hostname}:5000`;
     }
   }
 
-  // Priority 3: Fallback to Production Vercel
+  // Priority 4: Fallback to Production Vercel
   return 'https://800-phi.vercel.app';
 };
 

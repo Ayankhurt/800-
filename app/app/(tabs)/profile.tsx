@@ -37,24 +37,7 @@ import { useJobs } from "@/contexts/JobsContext";
 import { userAPI } from "@/services/api";
 import { useToast } from "@/hooks/useToast";
 import Toast from "@/components/Toast";
-
-const staticColors = {
-  primary: "#2563EB",
-  secondary: "#F97316",
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  white: "#FFFFFF",
-  black: "#000000",
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#0F172A",
-  textSecondary: "#64748B",
-  textTertiary: "#94A3B8",
-  border: "#E2E8F0",
-  info: "#3B82F6",
-};
-
+import { Image } from 'expo-image';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -63,15 +46,16 @@ interface MenuItemProps {
   onPress: () => void;
   destructive?: boolean;
   colors: any;
+  styles: any;
 }
 
-function MenuItem({ icon, label, value, onPress, destructive, colors }: MenuItemProps) {
+function MenuItem({ icon, label, value, onPress, destructive, colors, styles }: MenuItemProps) {
   return (
     <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={onPress}>
       <View style={styles.menuItemLeft}>
         <View style={styles.menuIcon}>{icon}</View>
         <Text
-          style={[styles.menuLabel, { color: colors.text }, destructive && [styles.menuLabelDestructive, { color: colors.error }]]}
+          style={[styles.menuLabel, { color: colors.text }, destructive && { color: colors.error }]}
         >
           {label}
         </Text>
@@ -91,9 +75,10 @@ interface MenuSectionProps {
   title: string;
   children: React.ReactNode;
   colors: any;
+  styles: any;
 }
 
-function MenuSection({ title, children, colors }: MenuSectionProps) {
+function MenuSection({ title, children, colors, styles }: MenuSectionProps) {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{title}</Text>
@@ -110,6 +95,8 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const toast = useToast();
+
+  const styles = createStyles(colors);
 
   // Fetch profile on mount
   useEffect(() => {
@@ -157,15 +144,14 @@ export default function ProfileScreen() {
     email: profileData.email || contextUser?.email,
     phone: profileData.phone || profileData.phone_number || contextUser?.phone,
     company: profileData.company || profileData.company_name || profileData.companyName || contextUser?.company,
-    avatar: profileData.avatar || profileData.avatar_url || contextUser?.avatar,
+    avatar: profileData.avatar_url || profileData.avatar || contextUser?.avatar,
     two_factor_enabled: profileData.two_factor_enabled ?? profileData.twoFactorEnabled ?? contextUser?.two_factor_enabled,
   } : contextUser;
 
   // Visible for Admin only
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = (user?.role as any) === "ADMIN" || (user?.role as any) === "super_admin" || (user?.role as any) === "admin";
 
   const handleUserManagement = () => {
-    // Navigate to user management screen (admin only)
     router.push("/admin/user-management" as any);
   };
 
@@ -185,34 +171,24 @@ export default function ProfileScreen() {
     router.push("/admin/notifications" as any);
   };
 
-
-
   const handleLogout = async () => {
-    // Check if running on web
     const isWeb = typeof window !== 'undefined' && window.confirm;
 
     if (isWeb) {
-      // Web: use confirm dialog
       const confirmed = window.confirm("Are you sure you want to log out?");
       if (confirmed) {
         try {
-          console.log("[Logout] Starting logout...");
           await logout();
-          console.log("[Logout] Logout successful");
         } catch (error: any) {
           console.error("Logout error:", error);
         }
       }
     } else {
-      // Native: use Alert
       Alert.alert(
         "Log Out",
         "Are you sure you want to log out?",
         [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
+          { text: "Cancel", style: "cancel" },
           {
             text: "Log Out",
             style: "destructive",
@@ -227,8 +203,7 @@ export default function ProfileScreen() {
               }
             },
           },
-        ],
-        { cancelable: true }
+        ]
       );
     }
   };
@@ -265,24 +240,15 @@ export default function ProfileScreen() {
     router.push("/terms");
   };
 
-  const handleMFASetup = () => {
-    router.push("/mfa-setup");
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Profile",
           headerLargeTitle: true,
-          headerStyle: {
-            backgroundColor: colors.surface,
-          },
-          headerTitleStyle: {
-            color: colors.text,
-            fontWeight: "700" as const,
-          },
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text, fontWeight: "700" },
         }}
       />
 
@@ -290,7 +256,7 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {isLoading && !profileData ? (
@@ -299,35 +265,47 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <>
-            <View style={[styles.profileHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-              <View style={[styles.avatarLarge, { backgroundColor: colors.primary + "20" }]}>
-                <Text style={[styles.avatarLargeText, { color: colors.primary }]}>
-                  {user?.fullName
-                    ?.split(" ")
-                    .map((n: string) => n[0])
-                    .join("") || "?"}
-                </Text>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatarContainer}>
+                {user?.avatar ? (
+                  <Image
+                    source={{ uri: user.avatar }}
+                    style={styles.avatarImage}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                ) : (
+                  <View style={styles.avatarLarge}>
+                    <Text style={styles.avatarLargeText}>
+                      {user?.fullName
+                        ?.split(" ")
+                        .map((n: string) => n[0])
+                        .join("") || "?"}
+                    </Text>
+                  </View>
+                )}
               </View>
-              <Text style={[styles.profileName, { color: colors.text }]}>{user?.fullName || "User"}</Text>
-              <View style={[styles.roleBadge, { backgroundColor: colors.primary + "15" }]}>
-                <Text style={[styles.roleText, { color: colors.primary }]}>{user?.role}</Text>
+
+              <Text style={styles.profileName}>{user?.fullName || "User"}</Text>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{user?.role}</Text>
               </View>
-              {/* Admin badge - only visible for ADMIN role */}
               {isAdmin && (
-                <View style={[styles.adminBadge, { backgroundColor: colors.error + "15", borderColor: colors.error }]}>
-                  <Text style={[styles.adminBadgeText, { color: colors.error }]}>ADMIN</Text>
+                <View style={styles.adminBadge}>
+                  <Text style={styles.adminBadgeText}>ADMIN</Text>
                 </View>
               )}
-              <Text style={[styles.companyName, { color: colors.textSecondary }]}>{user?.company}</Text>
+              <Text style={styles.companyName}>{user?.company}</Text>
             </View>
 
-            <MenuSection title="Account Information" colors={colors}>
+            <MenuSection title="Account Information" colors={colors} styles={styles}>
               <MenuItem
                 icon={<Mail size={20} color={colors.primary} />}
                 label="Email"
                 value={user?.email}
                 onPress={handleEditProfile}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<Phone size={20} color={colors.primary} />}
@@ -335,6 +313,7 @@ export default function ProfileScreen() {
                 value={user?.phone}
                 onPress={handleEditProfile}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<Building2 size={20} color={colors.primary} />}
@@ -342,112 +321,126 @@ export default function ProfileScreen() {
                 value={user?.company}
                 onPress={handleEditProfile}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<User size={20} color={colors.primary} />}
                 label="Edit Profile"
                 onPress={handleEditProfile}
                 colors={colors}
+                styles={styles}
               />
-              {(user?.role === "SUB" || user?.role === "TS") && (
+              {(user?.role === "SUB" || user?.role === "TS" || user?.role === "GC") && (
                 <MenuItem
                   icon={<Eye size={20} color={colors.info} />}
                   label="View My Public Profile"
                   onPress={handleViewPublicProfile}
                   colors={colors}
+                  styles={styles}
                 />
               )}
             </MenuSection>
 
-            <MenuSection title="Communication" colors={colors}>
+            <MenuSection title="Communication" colors={colors} styles={styles}>
               <MenuItem
                 icon={<Bell size={20} color={colors.textSecondary} />}
                 label="Notifications"
                 value={contextUnreadCount > 0 ? `${contextUnreadCount} new` : undefined}
                 onPress={handleNotifications}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<MessageCircle size={20} color={colors.textSecondary} />}
                 label="Messages"
                 onPress={handleMessages}
                 colors={colors}
+                styles={styles}
               />
             </MenuSection>
 
-            <MenuSection title="Security & Privacy" colors={colors}>
+            <MenuSection title="Security & Privacy" colors={colors} styles={styles}>
               <MenuItem
                 icon={<Settings size={20} color={colors.textSecondary} />}
                 label="Account Settings"
                 onPress={handleSettings}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<Shield size={20} color={colors.textSecondary} />}
                 label="Privacy Policy"
                 onPress={handlePrivacy}
                 colors={colors}
+                styles={styles}
               />
             </MenuSection>
 
-            <MenuSection title="Support" colors={colors}>
+            <MenuSection title="Support" colors={colors} styles={styles}>
               <MenuItem
                 icon={<HelpCircle size={20} color={colors.textSecondary} />}
                 label="Help & Support"
                 onPress={handleHelp}
                 colors={colors}
+                styles={styles}
               />
               <MenuItem
                 icon={<FileText size={20} color={colors.textSecondary} />}
                 label="Terms of Service"
                 onPress={handleTerms}
                 colors={colors}
+                styles={styles}
               />
             </MenuSection>
 
-            {/* Admin-only section */}
             {isAdmin && (
-              <MenuSection title="Admin" colors={colors}>
+              <MenuSection title="Admin Tools" colors={colors} styles={styles}>
                 <MenuItem
                   icon={<Shield size={20} color={colors.primary} />}
                   label="User Management"
                   onPress={handleUserManagement}
                   colors={colors}
+                  styles={styles}
                 />
                 <MenuItem
                   icon={<FolderKanban size={20} color={colors.primary} />}
                   label="Project Approvals"
                   onPress={handleProjectApprovals}
                   colors={colors}
+                  styles={styles}
                 />
                 <MenuItem
                   icon={<AlertTriangle size={20} color={colors.primary} />}
                   label="Disputes Panel"
                   onPress={handleDisputesPanel}
                   colors={colors}
+                  styles={styles}
                 />
                 <MenuItem
                   icon={<DollarSign size={20} color={colors.primary} />}
                   label="Finance"
                   onPress={handleFinance}
                   colors={colors}
+                  styles={styles}
                 />
                 <MenuItem
                   icon={<Bell size={20} color={colors.primary} />}
                   label="Notifications Center"
                   onPress={handleNotificationsCenter}
                   colors={colors}
+                  styles={styles}
                 />
               </MenuSection>
             )}
 
-            <MenuSection title="Account" colors={colors}>
+            <MenuSection title="Account" colors={colors} styles={styles}>
               <MenuItem
                 icon={<LogOut size={20} color={colors.error} />}
                 label="Log Out"
                 onPress={handleLogout}
                 destructive
                 colors={colors}
+                styles={styles}
               />
             </MenuSection>
 
@@ -459,7 +452,6 @@ export default function ProfileScreen() {
         )}
       </ScrollView>
 
-      {/* Toast notifications */}
       {toast.toasts.map((t) => (
         <Toast
           key={t.id}
@@ -473,44 +465,52 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   profileHeader: {
-    alignItems: "center" as const,
+    alignItems: "center",
     paddingVertical: 32,
     paddingHorizontal: 16,
-    backgroundColor: staticColors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: staticColors.border,
+    borderBottomColor: colors.border,
+  },
+  avatarContainer: {
+    marginBottom: 16,
   },
   avatarLarge: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: staticColors.primary + "20",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginBottom: 16,
+    backgroundColor: colors.primary + "20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.border,
   },
   avatarLargeText: {
     fontSize: 36,
-    fontWeight: "700" as const,
-    color: staticColors.primary,
+    fontWeight: "700",
+    color: colors.primary,
   },
   profileName: {
     fontSize: 24,
-    fontWeight: "700" as const,
-    color: staticColors.text,
+    fontWeight: "700",
+    color: colors.text,
     marginBottom: 8,
   },
   roleBadge: {
-    backgroundColor: staticColors.primary + "15",
+    backgroundColor: colors.primary + "15",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
@@ -518,13 +518,13 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: staticColors.primary,
+    fontWeight: "600",
+    color: colors.primary,
   },
   adminBadge: {
-    backgroundColor: staticColors.error + "15",
+    backgroundColor: colors.error + "15",
     borderWidth: 1,
-    borderColor: staticColors.error,
+    borderColor: colors.error,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -532,85 +532,75 @@ const styles = StyleSheet.create({
   },
   adminBadgeText: {
     fontSize: 11,
-    fontWeight: "700" as const,
-    color: staticColors.error,
+    fontWeight: "700",
+    color: colors.error,
     letterSpacing: 0.5,
   },
   companyName: {
     fontSize: 16,
-    color: staticColors.textSecondary,
+    color: colors.textSecondary,
   },
   section: {
     marginTop: 24,
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: "700" as const,
-    color: staticColors.textTertiary,
-    textTransform: "uppercase" as const,
+    fontWeight: "700",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   sectionContent: {
-    backgroundColor: staticColors.surface,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: staticColors.border,
   },
   menuItem: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: staticColors.border,
   },
   menuItemLeft: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   menuIcon: {
     width: 32,
     height: 32,
     marginRight: 12,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    alignItems: "center",
+    justifyContent: "center",
   },
   menuLabel: {
     fontSize: 16,
-    color: staticColors.text,
-    fontWeight: "500" as const,
-  },
-  menuLabelDestructive: {
-    color: staticColors.error,
+    fontWeight: "500",
   },
   menuItemRight: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   menuValue: {
     fontSize: 14,
-    color: staticColors.textSecondary,
     maxWidth: 150,
   },
   footer: {
-    alignItems: "center" as const,
+    alignItems: "center",
     paddingVertical: 32,
     paddingHorizontal: 16,
   },
   footerText: {
     fontSize: 12,
-    color: staticColors.textTertiary,
     marginBottom: 4,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 64,
   },
 });

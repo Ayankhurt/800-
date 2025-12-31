@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authAPI, setAuthToken, getStoredToken } from "@/services/api";
+import { DEV_MACHINE_IP } from "@/config/api";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabaseClient";
 import { Platform, useColorScheme, Linking } from "react-native";
@@ -771,7 +772,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       // Redirect to app root - Supabase stores session automatically
       const redirectTo = Platform.OS === 'web'
         ? `${window.location.origin}/`
-        : 'exp://192.168.1.113:8081/'; // Updated IP for mobile redirect
+        : `exp://${DEV_MACHINE_IP}:8081/`;
 
       console.log(`[OAuth] Redirect URL: ${redirectTo}`);
 

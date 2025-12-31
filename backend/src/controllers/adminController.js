@@ -166,8 +166,11 @@ export const listUsers = async (req, res) => {
     const { search, role, status } = req.query;
     const offset = (page - 1) * limit;
 
-    // Admin roles to exclude from regular users list
-    const adminRoles = ['super_admin', 'admin', 'finance_manager', 'moderator', 'support_agent'];
+    // Admin roles to exclude from DEFAULT regular users list
+    const adminRoles = [
+      'super_admin', 'admin', 'finance_manager', 'moderator', 'support_agent',
+      'SUPER_ADMIN', 'ADMIN', 'FINANCE_MANAGER', 'MODERATOR', 'SUPPORT_AGENT'
+    ];
 
     let query = supabase
       .from("users")
@@ -175,10 +178,14 @@ export const listUsers = async (req, res) => {
       .range(offset, offset + limit - 1)
       .order("created_at", { ascending: false });
 
-    // Exclude admin roles from regular users list
-    adminRoles.forEach(adminRole => {
-      query = query.neq('role', adminRole);
-    });
+    // Only exclude admin roles if NO specific role is requested, 
+    // OR if the requested role is NOT one of the admin roles.
+    // This allows the "Admins" filter to work while keeping the default list clean.
+    const isRequestingAdmin = role && adminRoles.some(r => r.toLowerCase() === role.toLowerCase());
+
+    if (!isRequestingAdmin) {
+      query = query.not('role', 'in', adminRoles);
+    }
 
     if (search) {
       query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);

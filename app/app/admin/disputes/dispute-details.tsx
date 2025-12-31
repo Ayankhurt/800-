@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import {
   AlertCircle,
   XCircle,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI, disputesAPI } from "@/services/api";
 
@@ -38,7 +37,8 @@ interface Dispute {
 export default function DisputeDetailsScreen() {
   const router = useRouter();
   const { id, disputeData } = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function DisputeDetailsScreen() {
       setLoading(true);
       console.log("[API] GET /disputes/:id", disputeId);
       const response = await disputesAPI.getById(disputeId);
-      
+
       if (response.success && response.data) {
         setDispute(response.data);
       } else {
@@ -126,7 +126,7 @@ export default function DisputeDetailsScreen() {
         status: "resolved",
         resolution: resolutionNote.trim(),
       });
-      
+
       if (response.success) {
         Alert.alert("Success", "Dispute resolved successfully", [
           {
@@ -165,7 +165,7 @@ export default function DisputeDetailsScreen() {
       setShowReassignModal(false);
       console.log("[API] PUT /disputes/:id/assign", disputeId, { assignedTo: staffId.trim() });
       const response = await disputesAPI.assign(disputeId, { assignedTo: staffId.trim() });
-      
+
       if (response.success) {
         Alert.alert("Success", "Dispute reassigned successfully", [
           {
@@ -192,7 +192,7 @@ export default function DisputeDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -204,7 +204,7 @@ export default function DisputeDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Dispute Details" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading dispute details...</Text>
         </View>
       </View>
@@ -216,7 +216,7 @@ export default function DisputeDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Dispute Details" }} />
         <View style={styles.emptyContainer}>
-          <AlertCircle size={48} color={Colors.textTertiary} />
+          <AlertCircle size={48} color={colors.textTertiary} />
           <Text style={styles.emptyText}>Dispute not found</Text>
         </View>
       </View>
@@ -233,27 +233,27 @@ export default function DisputeDetailsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
-            <AlertTriangle size={24} color={Colors.warning} />
+            <AlertTriangle size={24} color={colors.warning} />
             <Text style={styles.disputeTitle}>{dispute.title || "Untitled Dispute"}</Text>
           </View>
           <View
             style={[
               styles.statusBadge,
               {
-                backgroundColor: isResolved ? Colors.success + "15" : Colors.warning + "15",
-                borderColor: isResolved ? Colors.success : Colors.warning,
+                backgroundColor: isResolved ? colors.success + "15" : colors.warning + "15",
+                borderColor: isResolved ? colors.success : colors.warning,
               },
             ]}
           >
             {isResolved ? (
-              <CheckCircle size={16} color={Colors.success} />
+              <CheckCircle size={16} color={colors.success} />
             ) : (
-              <Clock size={16} color={Colors.warning} />
+              <Clock size={16} color={colors.warning} />
             )}
             <Text
               style={[
                 styles.statusText,
-                { color: isResolved ? Colors.success : Colors.warning },
+                { color: isResolved ? colors.success : colors.warning },
               ]}
             >
               {isResolved ? "Resolved" : "Open"}
@@ -279,7 +279,7 @@ export default function DisputeDetailsScreen() {
           <Text style={styles.sectionTitle}>Dispute Information</Text>
           {dispute.created_at && (
             <View style={styles.infoRow}>
-              <Clock size={20} color={Colors.primary} />
+              <Clock size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Created</Text>
                 <Text style={styles.infoValue}>
@@ -290,7 +290,7 @@ export default function DisputeDetailsScreen() {
           )}
           {dispute.assigned_to && (
             <View style={styles.infoRow}>
-              <User size={20} color={Colors.primary} />
+              <User size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Assigned To</Text>
                 <Text style={styles.infoValue}>Staff Member</Text>
@@ -308,24 +308,24 @@ export default function DisputeDetailsScreen() {
               onPress={() => setShowResolutionModal(true)}
               disabled={actionLoading}
             >
-              <CheckCircle size={20} color={Colors.success} />
+              <CheckCircle size={20} color={colors.success} />
               <Text style={styles.actionButtonText}>Resolve Dispute</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: Colors.info + "15", borderColor: Colors.info }]}
+              style={[styles.actionButton, { backgroundColor: colors.info + "15", borderColor: colors.info }]}
               onPress={handleReassign}
               disabled={actionLoading}
             >
-              <User size={20} color={Colors.info} />
-              <Text style={[styles.actionButtonText, { color: Colors.info }]}>Reassign to Staff</Text>
+              <User size={20} color={colors.info} />
+              <Text style={[styles.actionButtonText, { color: colors.info }]}>Reassign to Staff</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {actionLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Processing...</Text>
           </View>
         )}
@@ -348,7 +348,7 @@ export default function DisputeDetailsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter resolution note..."
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={resolutionNote}
               onChangeText={setResolutionNote}
               multiline
@@ -394,7 +394,7 @@ export default function DisputeDetailsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter staff user ID..."
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={staffId}
               onChangeText={setStaffId}
               autoCapitalize="none"
@@ -424,10 +424,10 @@ export default function DisputeDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   emptyContainer: {
@@ -463,14 +463,14 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   headerSection: {
     padding: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   titleRow: {
     flexDirection: "row",
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   disputeTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   statusBadge: {
@@ -501,17 +501,17 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   descriptionText: {
     fontSize: 15,
-    color: Colors.text,
+    color: colors.text,
     lineHeight: 22,
   },
   infoRow: {
@@ -526,14 +526,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: "500" as const,
   },
   actionButton: {
@@ -547,13 +547,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   resolveButton: {
-    backgroundColor: Colors.success + "15",
-    borderColor: Colors.success,
+    backgroundColor: colors.success + "15",
+    borderColor: colors.success,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   loadingOverlay: {
     padding: 32,
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: "100%",
@@ -577,22 +577,22 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     minHeight: 100,
     marginBottom: 20,
   },
@@ -607,22 +607,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalButtonCancel: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   modalButtonConfirm: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
 });
-

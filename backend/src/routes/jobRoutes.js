@@ -2,10 +2,11 @@ import express from "express";
 import { createJob, getJobs, getJobById, updateJob, deleteJob, getJobApplications } from "../controllers/jobController.js";
 import { applyToJob, updateApplicationStatus } from "../controllers/applicationController.js";
 import { authenticateUser } from "../middlewares/auth.js";
+import { validate, jobSchema } from "../utils/validators.js";
 
 const router = express.Router();
 
-router.post("/", authenticateUser, createJob);
+router.post("/", authenticateUser, validate(jobSchema), createJob);
 router.get("/", getJobs);
 router.get("/:id/applications", authenticateUser, getJobApplications);
 router.post("/:id/apply", authenticateUser, (req, res, next) => {

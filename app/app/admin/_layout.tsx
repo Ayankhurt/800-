@@ -45,12 +45,21 @@ export default function AdminLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background }
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="user-management" options={{ headerShown: false }} />
       <Stack.Screen name="projects" options={{ headerShown: false }} />
       <Stack.Screen name="disputes" options={{ headerShown: false }} />
       <Stack.Screen name="finance" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
+      <Stack.Screen name="roles" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="logs" options={{ headerShown: false }} />
     </Stack>
   );
 }

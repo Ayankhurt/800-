@@ -30,7 +30,6 @@ import {
   Eye,
   UserPlus,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -86,7 +85,8 @@ const getAvailableRolesForCreate = (currentUserRole: string | undefined) => {
 
 export default function UserManagementScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [users, setUsers] = useState<User[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]); // Store all users for client-side filtering
   const [loading, setLoading] = useState(true);
@@ -120,75 +120,45 @@ export default function UserManagementScreen() {
     }
   }, [user, router]);
 
-  // Fetch users with cursor-based pagination
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  // Fetch users with page-based pagination
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchUsers = async (cursorParam: string | null = null, append: boolean = false) => {
+  const fetchUsers = async (pageParam: number = 1, append: boolean = false) => {
     try {
       if (!append) {
         setLoading(true);
+        setCurrentPage(1);
       } else {
         setLoadingMore(true);
       }
 
-      console.log(`[UserManagement] Fetching users - cursor: ${cursorParam}, append: ${append}`);
+      console.log(`[UserManagement] Fetching users - page: ${pageParam}, append: ${append}`);
 
-      // Use cursor-based pagination (new format)
-      const response = await adminAPI.getAllUsers(undefined, limit, cursorParam);
+      // Use page-based pagination (consistent with backend)
+      const response = await adminAPI.getAllUsers(pageParam, limit);
 
       console.log(`[UserManagement] API response:`, response);
 
-      // Handle response format: { success: true, data: [...], nextCursor: ..., hasMore: ... }
-      // OR old format: { success: true, data: { users: [...], nextCursor: ... } }
       let usersData: any[] = [];
-      let hasMoreData = false;
-      let nextCursorValue: string | null = null;
+      let totalPages = 1;
+      let totalItems = 0;
 
       if (response?.success && response?.data) {
-        // Check if data is array (new format after extraction in api.ts)
-        if (Array.isArray(response.data)) {
-          usersData = response.data;
-          hasMoreData = response.hasMore || false;
-          nextCursorValue = response.nextCursor || null;
-        }
-        // Check if data.users exists (nested format)
-        else if (response.data.users && Array.isArray(response.data.users)) {
+        // Backend returns: { success: true, data: { users: [...], total: X, page: Y, pages: Z } }
+        if (response.data.users && Array.isArray(response.data.users)) {
           usersData = response.data.users;
-          hasMoreData = response.data.hasMore || false;
-          nextCursorValue = response.data.nextCursor || null;
+          totalPages = response.data.pages || 1;
+          totalItems = response.data.total || 0;
         }
-        // Fallback: try to use data directly
+        // Alternative format check
         else if (Array.isArray(response.data)) {
           usersData = response.data;
         }
       }
 
-      // CRITICAL CHECK: Verify we're getting multiple users
-      const uniqueUserIds = [...new Set(usersData.map(u => u.id))];
-      const currentUserId = user?.id;
-      const includesCurrentUser = usersData.some(u => u.id === currentUserId);
-
-      console.log(`[UserManagement] Received ${usersData.length} users (${uniqueUserIds.length} unique IDs)`);
-      console.log(`[UserManagement] Verification - Includes current user (${currentUserId}): ${includesCurrentUser}`);
-      console.log(`[UserManagement] Sample user IDs: ${uniqueUserIds.slice(0, 5).join(', ')}`);
-
-      // CRITICAL CHECK: If we only got 1 user and it's the current user, something is wrong
-      if (usersData.length === 1 && usersData[0].id === currentUserId) {
-        console.error(`[UserManagement] CRITICAL ERROR: API returned only the current user!`);
-        console.error(`[UserManagement] This should NOT happen - admin should see ALL users, not just themselves.`);
-        Alert.alert(
-          "Warning",
-          "Only current user returned. Please check backend logs. This may indicate a filtering issue."
-        );
-      }
-
-      // If response.data is a single user object (from auth/me), ignore it
-      if (usersData && !Array.isArray(usersData)) {
-        console.warn('[UserManagement] Received non-array data, ignoring:', usersData);
-        usersData = [];
-      }
-
       const usersArray = Array.isArray(usersData) ? usersData : [];
+
+      console.log(`[UserManagement] Received ${usersArray.length} users. Total pages: ${totalPages}`);
 
       if (append) {
         setUsers((prev) => [...prev, ...usersArray]);
@@ -199,14 +169,9 @@ export default function UserManagementScreen() {
       }
 
       // Update pagination state
-      if (response?.data?.page && response?.data?.pages) {
-        setHasMore(response.data.page < response.data.pages);
-      } else {
-        setHasMore(hasMoreData);
-      }
-      setNextCursor(nextCursorValue);
+      setHasMore(pageParam < totalPages);
+      setCurrentPage(pageParam);
 
-      console.log(`[UserManagement] Updated state - Total users: ${usersArray.length}, Has more: ${hasMoreData}, Next cursor: ${nextCursorValue}`);
     } catch (error: any) {
       console.error("[UserManagement] Failed to fetch users:", error);
       if (!append) {
@@ -221,33 +186,29 @@ export default function UserManagementScreen() {
     }
   };
 
-  // Load more users using cursor
+  // Load more users
   const loadMoreUsers = () => {
-    if (nextCursor && !loadingMore) {
-      fetchUsers(nextCursor, true);
+    if (hasMore && !loadingMore) {
+      fetchUsers(currentPage + 1, true);
     }
   };
 
   useEffect(() => {
     if (user?.role === "ADMIN") {
-      // Reset pagination and fetch from beginning
-      setNextCursor(null);
-      fetchUsers(null, false);
+      fetchUsers(1, false);
     }
   }, [user]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setPage(0);
-    setNextCursor(null);
     setSearchQuery("");
     setSelectedFilter("all");
-    fetchUsers(null, false); // Reset to beginning with cursor-based pagination
+    fetchUsers(1, false);
   };
 
   const handleLoadMore = () => {
-    if (!loadingMore && hasMore && selectedFilter === "all" && !searchQuery && nextCursor) {
-      loadMoreUsers(); // Use cursor-based pagination
+    if (!loadingMore && hasMore && selectedFilter === "all" && !searchQuery) {
+      loadMoreUsers();
     }
   };
 
@@ -363,13 +324,13 @@ export default function UserManagementScreen() {
     const role = (user.role || user.role_code || "user").toLowerCase();
     let badgeStyle: any = {};
     let textStyle: any = {};
-    let iconColor = Colors.primary;
+    let iconColor = colors.primary;
     let label = role.toUpperCase();
 
     if (role === "admin" || role === "super_admin") {
-      badgeStyle = { backgroundColor: Colors.error + "15", borderColor: Colors.error };
-      textStyle = { color: Colors.error };
-      iconColor = Colors.error;
+      badgeStyle = { backgroundColor: colors.error + "15", borderColor: colors.error };
+      textStyle = { color: colors.error };
+      iconColor = colors.error;
       label = role === "super_admin" ? "SUPER ADMIN" : "ADMIN";
     } else if (role === "general_contractor") {
       badgeStyle = { backgroundColor: "#FF9500" + "15", borderColor: "#FF9500" };
@@ -392,8 +353,8 @@ export default function UserManagementScreen() {
       iconColor = "#5AC8FA";
       label = "VIEWER";
     } else {
-      badgeStyle = { backgroundColor: Colors.primaryLight };
-      textStyle = { color: Colors.primary };
+      badgeStyle = { backgroundColor: colors.primaryLight };
+      textStyle = { color: colors.primary };
     }
 
     return (
@@ -421,9 +382,9 @@ export default function UserManagementScreen() {
 
     if (isVerified) {
       return (
-        <View style={[styles.statusBadge, { backgroundColor: Colors.success + "15", borderColor: Colors.success }]}>
-          <CheckCircle size={12} color={Colors.success} />
-          <Text style={[styles.statusText, { color: Colors.success }]}>VERIFIED</Text>
+        <View style={[styles.statusBadge, { backgroundColor: colors.success + "15", borderColor: colors.success }]}>
+          <CheckCircle size={12} color={colors.success} />
+          <Text style={[styles.statusText, { color: colors.success }]}>VERIFIED</Text>
         </View>
       );
     }
@@ -512,12 +473,12 @@ export default function UserManagementScreen() {
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{fullName}</Text>
               <View style={styles.userMeta}>
-                <Mail size={14} color={Colors.textSecondary} />
+                <Mail size={14} color={colors.textSecondary} />
                 <Text style={styles.userEmail}>{item.email}</Text>
               </View>
               {item.phone && (
                 <View style={styles.userMeta}>
-                  <Phone size={14} color={Colors.textSecondary} />
+                  <Phone size={14} color={colors.textSecondary} />
                   <Text style={styles.userPhone}>{item.phone}</Text>
                 </View>
               )}
@@ -536,7 +497,7 @@ export default function UserManagementScreen() {
                   handleVerifyUser(item.id, item.email);
                 }}
               >
-                <UserCheck size={14} color={Colors.success} />
+                <UserCheck size={14} color={colors.success} />
                 <Text style={styles.verifyButtonText}>Verify</Text>
               </TouchableOpacity>
             )}
@@ -551,7 +512,7 @@ export default function UserManagementScreen() {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={Colors.primary} />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   };
@@ -656,7 +617,7 @@ export default function UserManagementScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
           <Text style={styles.unauthorizedSubtext}>Only Admin users can access this screen.</Text>
         </View>
@@ -671,10 +632,10 @@ export default function UserManagementScreen() {
           headerShown: true,
           headerTitle: "User Management",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
         }}
@@ -687,16 +648,16 @@ export default function UserManagementScreen() {
             <Text style={styles.statValue}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total Users</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.success + "15" }]}>
-            <Text style={[styles.statValue, { color: Colors.success }]}>{stats.verified}</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.success + "15" }]}>
+            <Text style={[styles.statValue, { color: colors.success }]}>{stats.verified}</Text>
             <Text style={styles.statLabel}>Verified</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: "#8E8E93" + "15" }]}>
             <Text style={[styles.statValue, { color: "#8E8E93" }]}>{stats.suspended}</Text>
             <Text style={styles.statLabel}>Suspended</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.error + "15" }]}>
-            <Text style={[styles.statValue, { color: Colors.error }]}>{stats.admins}</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.error + "15" }]}>
+            <Text style={[styles.statValue, { color: colors.error }]}>{stats.admins}</Text>
             <Text style={styles.statLabel}>Admins</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: "#FF9500" + "15" }]}>
@@ -713,11 +674,11 @@ export default function UserManagementScreen() {
       {/* Search Bar and Create User Button */}
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
-          <Search size={20} color={Colors.textSecondary} style={styles.searchIcon} />
+          <Search size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name, email, phone, role..."
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -733,7 +694,7 @@ export default function UserManagementScreen() {
             onPress={() => setShowCreateModal(true)}
             activeOpacity={0.7}
           >
-            <UserPlus size={18} color={Colors.white} />
+            <UserPlus size={18} color={colors.white} />
             <Text style={styles.createButtonText} numberOfLines={1}>
               Create
             </Text>
@@ -766,7 +727,7 @@ export default function UserManagementScreen() {
               style={[styles.filterChip, isActive && styles.filterChipActive]}
               onPress={() => setSelectedFilter(filter.key as FilterType)}
             >
-              <Icon size={14} color={isActive ? Colors.white : Colors.textSecondary} />
+              <Icon size={14} color={isActive ? colors.white : colors.textSecondary} />
               <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                 {filter.label}
               </Text>
@@ -778,12 +739,12 @@ export default function UserManagementScreen() {
       {/* User List */}
       {loading && page === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading users...</Text>
         </View>
       ) : users.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Users size={48} color={Colors.textTertiary} />
+          <Users size={48} color={colors.textTertiary} />
           <Text style={styles.emptyText}>
             {searchQuery || selectedFilter !== "all" ? "No users match your filters" : "No users found"}
           </Text>
@@ -796,7 +757,7 @@ export default function UserManagementScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
@@ -833,7 +794,7 @@ export default function UserManagementScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter full name"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={createUserData.fullName}
               onChangeText={(text) => setCreateUserData({ ...createUserData, fullName: text })}
             />
@@ -842,7 +803,7 @@ export default function UserManagementScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter email"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={createUserData.email}
               onChangeText={(text) => setCreateUserData({ ...createUserData, email: text })}
               keyboardType="email-address"
@@ -853,7 +814,7 @@ export default function UserManagementScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter phone number"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={createUserData.phone}
               onChangeText={(text) => setCreateUserData({ ...createUserData, phone: text })}
               keyboardType="phone-pad"
@@ -863,7 +824,7 @@ export default function UserManagementScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter company name"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={createUserData.companyName}
               onChangeText={(text) => setCreateUserData({ ...createUserData, companyName: text })}
             />
@@ -872,7 +833,7 @@ export default function UserManagementScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter password"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={createUserData.password}
               onChangeText={(text) => setCreateUserData({ ...createUserData, password: text })}
               secureTextEntry
@@ -889,7 +850,7 @@ export default function UserManagementScreen() {
                     onPress={() => setCreateUserData({ ...createUserData, role: role.code })}
                   >
                     <View style={styles.roleOptionContent}>
-                      <Shield size={18} color={isSelected ? Colors.primary : Colors.textSecondary} />
+                      <Shield size={18} color={isSelected ? colors.primary : colors.textSecondary} />
                       <View style={styles.roleOptionText}>
                         <Text style={[styles.roleOptionLabel, isSelected && styles.roleOptionLabelSelected]}>
                           {role.label}
@@ -897,7 +858,7 @@ export default function UserManagementScreen() {
                         <Text style={styles.roleOptionCode}>{role.code}</Text>
                       </View>
                     </View>
-                    {isSelected && <CheckCircle size={20} color={Colors.primary} />}
+                    {isSelected && <CheckCircle size={20} color={colors.primary} />}
                   </TouchableOpacity>
                 );
               })}
@@ -905,7 +866,7 @@ export default function UserManagementScreen() {
 
             {availableRolesForCreate.length === 0 && (
               <View style={styles.noRolesContainer}>
-                <AlertCircle size={24} color={Colors.textSecondary} />
+                <AlertCircle size={24} color={colors.textSecondary} />
                 <Text style={styles.noRolesText}>{"You don't have permission to create users"}</Text>
               </View>
             )}
@@ -937,7 +898,7 @@ export default function UserManagementScreen() {
                 disabled={createLoading || !createUserData.fullName || !createUserData.email || !createUserData.password || !createUserData.role || availableRolesForCreate.length === 0}
               >
                 {createLoading ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <Text style={styles.modalButtonTextConfirm}>Create User</Text>
                 )}
@@ -950,15 +911,15 @@ export default function UserManagementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   statsContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
     paddingVertical: 12,
   },
   statsScroll: {
@@ -966,7 +927,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 12,
     padding: 12,
     minWidth: 90,
@@ -976,24 +937,24 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: "500" as const,
     textAlign: "center",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     flex: 1,
     minWidth: 200,
   },
@@ -1003,14 +964,14 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   clearButton: {
     padding: 4,
   },
   clearButtonText: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   filtersContainer: {
     maxHeight: 50,
@@ -1026,23 +987,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     gap: 4,
     marginRight: 6,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   loadingContainer: {
     flex: 1,
@@ -1052,18 +1013,18 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   listContent: {
     padding: 16,
     gap: 12,
   },
   userCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginHorizontal: 4,
   },
   userCardHeader: {
@@ -1075,7 +1036,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -1083,7 +1044,7 @@ const styles = StyleSheet.create({
   userAvatarText: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   userInfo: {
     flex: 1,
@@ -1091,7 +1052,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   userMeta: {
@@ -1102,11 +1063,11 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   userPhone: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   userCardFooter: {
     flexDirection: "row",
@@ -1128,15 +1089,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: Colors.success + "15",
+    backgroundColor: colors.success + "15",
     borderWidth: 1,
-    borderColor: Colors.success,
+    borderColor: colors.success,
     gap: 6,
   },
   verifyButtonText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.success,
+    color: colors.success,
   },
   roleBadge: {
     flexDirection: "row",
@@ -1173,13 +1134,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
   unauthorizedContainer: {
@@ -1191,13 +1152,13 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
     marginBottom: 8,
   },
   unauthorizedSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
   footerLoader: {
@@ -1217,7 +1178,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1226,7 +1187,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   createButtonText: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 13,
     fontWeight: "600" as const,
   },
@@ -1238,7 +1199,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     width: "95%",
@@ -1249,24 +1210,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 20,
   },
   modalLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
     marginTop: 12,
   },
   modalInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 4,
   },
   modalActions: {
@@ -1281,12 +1242,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalButtonCancel: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   modalButtonConfirm: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   modalButtonDisabled: {
     opacity: 0.5,
@@ -1294,12 +1255,12 @@ const styles = StyleSheet.create({
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
   roleListContainer: {
     maxHeight: 200,
@@ -1312,13 +1273,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   roleOptionSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
     borderWidth: 2,
   },
   roleOptionContent: {
@@ -1333,15 +1294,15 @@ const styles = StyleSheet.create({
   roleOptionLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   roleOptionLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   roleOptionCode: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: "500" as const,
   },
   noRolesContainer: {
@@ -1354,7 +1315,7 @@ const styles = StyleSheet.create({
   },
   noRolesText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
 });

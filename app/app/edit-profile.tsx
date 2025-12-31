@@ -1,23 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
-
-const staticColors = {
-  primary: "#2563EB",
-  secondary: "#F97316",
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  white: "#FFFFFF",
-  black: "#000000",
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#0F172A",
-  textSecondary: "#64748B",
-  textTertiary: "#94A3B8",
-  border: "#E2E8F0",
-  info: "#3B82F6",
-  primaryLight: "#EFF6FF",
-};
 import { Stack, useRouter } from "expo-router";
+import { Video as VideoPlayer, ResizeMode } from 'expo-av';
 import {
   Building2,
   Camera,
@@ -31,6 +14,7 @@ import {
   Shield,
   FileText,
   Sparkles,
+  ChevronLeft,
 } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import {
@@ -43,15 +27,16 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  useColorScheme,
 } from "react-native";
 import { userAPI } from "@/services/api";
-
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUser, colors } = useAuth();
+  const colorScheme = useColorScheme();
 
   const [name, setName] = useState(user?.fullName || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -68,7 +53,11 @@ export default function EditProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
+  const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const videoRef = React.useRef<any>(null);
 
   useEffect(() => {
     const fetchFullProfile = async () => {
@@ -84,6 +73,8 @@ export default function EditProfileScreen() {
           setBio(data.bio || "");
           setTrade(data.trade_specialization || data.trade || "");
           setLocation(data.location || "");
+          setAvatarUrl(data.avatar_url || data.avatar || user?.avatar || "");
+          setIntroVideoUrl(data.intro_video_url || "");
 
           if (data.contractor_profile) {
             setExperienceYears(data.contractor_profile.experience_years?.toString() || "");
@@ -102,41 +93,32 @@ export default function EditProfileScreen() {
     fetchFullProfile();
   }, [user]);
 
-
   const uploadImage = async (uri: string) => {
     try {
       setIsUploading(true);
-
-      // Create form data
       const formData = new FormData();
-
-      // Determine file type
       const filename = uri.split('/').pop() || 'avatar.jpg';
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
+      const ext = match ? match[1].toLowerCase() : 'jpg';
+      const type = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
 
-      // Append file
-      // @ts-ignore - React Native FormData expects an object with uri, name, type
-      formData.append('file', {
-        uri,
-        name: filename,
-        type,
-      });
+      if (Platform.OS === 'web') {
+        const fetchResponse = await fetch(uri);
+        const blob = await fetchResponse.blob();
+        formData.append('file', blob, filename);
+      } else {
+        // @ts-ignore
+        formData.append('file', { uri, name: filename, type });
+      }
 
-      console.log("[Client] Uploading avatar...", { filename, type });
-
+      console.log("[Client] Uploading avatar...", { uri, filename, type, platform: Platform.OS });
       const response = await userAPI.uploadAvatar(formData);
 
       if (response && response.success) {
         setAvatarUrl(response.data.url);
-
-        // Update local context
         if (updateUser) {
-          await updateUser({
-            avatar: response.data.url
-          });
+          await updateUser({ avatar: response.data.url });
         }
-
         Alert.alert("Success", "Profile photo updated!");
       } else {
         throw new Error(response?.message || "Upload failed");
@@ -147,6 +129,77 @@ export default function EditProfileScreen() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const uploadVideo = async (uri: string) => {
+    try {
+      setIsUploadingVideo(true);
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'intro_video.mp4';
+      const match = /\.(\w+)$/.exec(filename);
+      const ext = match ? match[1].toLowerCase() : 'mp4';
+      let type = `video/${ext}`;
+      if (ext === 'mov') type = 'video/quicktime';
+      if (ext === 'mp4') type = 'video/mp4';
+
+      if (Platform.OS === 'web') {
+        const fetchResponse = await fetch(uri);
+        const blob = await fetchResponse.blob();
+        formData.append('file', blob, filename);
+      } else {
+        // @ts-ignore
+        formData.append('file', { uri, name: filename, type });
+      }
+
+      console.log("[Client] Uploading video...", { uri, filename, type, platform: Platform.OS });
+      const response = await userAPI.uploadVideo(formData);
+
+      if (response && response.success) {
+        setIntroVideoUrl(response.data.url);
+        // Update local context
+        if (updateUser) {
+          updateUser({
+            ...user,
+            intro_video_url: response.data.url
+          } as any);
+        }
+        Alert.alert("Success", "Intro video uploaded successfully!");
+      } else {
+        throw new Error(response?.message || "Upload failed");
+      }
+    } catch (error: any) {
+      console.error("Video upload error:", error);
+      Alert.alert("Upload Error", error.message || "Failed to upload video");
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async () => {
+    Alert.alert(
+      "Delete Video",
+      "Are you sure you want to remove your introduction video?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Update on server (sending null/empty)
+              await userAPI.updateProfile({ intro_video_url: "" } as any);
+              setIntroVideoUrl("");
+              if (updateUser) {
+                updateUser({ ...user, intro_video_url: "" } as any);
+              }
+              Alert.alert("Deleted", "Introduction video removed.");
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete video.");
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleImageUpload = async () => {
@@ -160,7 +213,8 @@ export default function EditProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        // @ts-ignore
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -176,35 +230,30 @@ export default function EditProfileScreen() {
     }
   };
 
-  const handleVideoUpload = () => {
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Upload Introduction Video",
-        "Video upload integration coming soon!\n\nWill support:\n- Video recording\n- Video library selection\n- Video trimming (max 60s)\n- Auto-compression\n\nPerfect for showcasing your work or introducing your team!"
-      );
-    } else {
-      Alert.alert(
-        "Upload Introduction Video",
-        "Choose an option",
-        [
-          {
-            text: "Record Video",
-            onPress: () => {
-              Alert.alert("Camera", "Video recording integration coming soon!");
-            },
-          },
-          {
-            text: "Choose from Library",
-            onPress: () => {
-              Alert.alert("Library", "Video library integration coming soon!");
-            },
-          },
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-        ]
-      );
+  const handleVideoUpload = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to update your introduction video!');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        // @ts-ignore
+        mediaTypes: ['videos'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedVideo = result.assets[0];
+        await uploadVideo(selectedVideo.uri);
+      }
+    } catch (error) {
+      console.error("Video picker error:", error);
+      Alert.alert("Error", "Failed to select video");
     }
   };
 
@@ -214,12 +263,10 @@ export default function EditProfileScreen() {
     try {
       console.log("[API] Updating profile", { name, email, phone, company });
 
-      // Split fullName into first and last name
       const nameParts = name.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
 
-      // Map frontend fields to backend expected format for basic profile
       const basicProfileData = {
         first_name: firstName,
         last_name: lastName,
@@ -230,17 +277,13 @@ export default function EditProfileScreen() {
         location: location || undefined,
       };
 
-      // Remove undefined fields
       const cleanBasicData = Object.fromEntries(
         Object.entries(basicProfileData).filter(([_, v]) => v !== undefined)
       );
 
       console.log("[API] PUT /users/profile with data:", cleanBasicData);
-
-      // Call API to update basic profile
       const basicResponse = await userAPI.updateProfile(cleanBasicData);
 
-      // If user is a contractor, also update contractor profile
       if (user?.role === "SUB" || user?.role === "TS" || user?.role === "GC") {
         const contractorData = {
           experience_years: experienceYears ? parseInt(experienceYears) : undefined,
@@ -261,7 +304,6 @@ export default function EditProfileScreen() {
       }
 
       if (basicResponse.success) {
-        // Also update local context
         if (updateUser) {
           await updateUser({
             fullName: name,
@@ -284,6 +326,8 @@ export default function EditProfileScreen() {
     }
   };
 
+  const styles = createStyles(colors);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -299,13 +343,13 @@ export default function EditProfileScreen() {
         options={{
           headerShown: true,
           headerTitle: "Edit Profile",
-          headerStyle: {
-            backgroundColor: colors.surface,
-          },
-          headerTitleStyle: {
-            color: colors.text,
-            fontWeight: "700" as const,
-          },
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text, fontWeight: "700" },
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 0 }}>
+              <ChevronLeft size={24} color={colors.text} />
+            </TouchableOpacity>
+          ),
           headerRight: () => (
             <TouchableOpacity onPress={handleSave} disabled={isSaving}>
               <Text style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}>
@@ -319,34 +363,91 @@ export default function EditProfileScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.mediaSection}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarLarge}>
-              <Text style={styles.avatarLargeText}>
-                {name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </Text>
-            </View>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatarImage}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : (
+              <View style={styles.avatarLarge}>
+                <Text style={styles.avatarLargeText}>
+                  {name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity style={styles.cameraButton} onPress={handleImageUpload}>
-              <Camera size={20} color={colors.surface} />
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Camera size={20} color={colors.surface} />
+              )}
             </TouchableOpacity>
           </View>
           <Text style={styles.avatarLabel}>Profile Photo</Text>
 
           <View style={styles.videoPlaceholder}>
-            <View style={styles.videoPlaceholderContent}>
-              <Video size={48} color={colors.textTertiary} />
-              <Text style={styles.videoPlaceholderTitle}>Introduction Video</Text>
-              <Text style={styles.videoPlaceholderSubtitle}>
-                Showcase your work or introduce your team
-              </Text>
-              <TouchableOpacity
-                style={styles.uploadVideoButton}
-                onPress={handleVideoUpload}
-              >
-                <Text style={styles.uploadVideoButtonText}>Upload Video</Text>
-              </TouchableOpacity>
-            </View>
+            {introVideoUrl ? (
+              <View style={styles.videoPlayerContainer}>
+                {showPlayer ? (
+                  <VideoPlayer
+                    ref={videoRef}
+                    source={{ uri: introVideoUrl }}
+                    style={styles.videoPlayer}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                    shouldPlay
+                  />
+                ) : (
+                  <View style={styles.videoPreview}>
+                    <Video size={48} color={colors.primary} />
+                    <Text style={styles.videoPreviewText}>Video is Ready</Text>
+                  </View>
+                )}
+
+                <View style={styles.videoActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setShowPlayer(!showPlayer)}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {showPlayer ? "Close Player" : "Play Video"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: colors.error }]}
+                    onPress={handleDeleteVideo}
+                  >
+                    <Text style={styles.actionButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.videoPlaceholderContent}>
+                <Video size={48} color={isUploadingVideo ? colors.primary : colors.textTertiary} />
+                <Text style={styles.videoPlaceholderTitle}>Introduction Video</Text>
+                <Text style={styles.videoPlaceholderSubtitle}>
+                  Showcase your work or introduce your team
+                </Text>
+                <TouchableOpacity
+                  style={styles.uploadVideoButton}
+                  onPress={handleVideoUpload}
+                  disabled={isUploadingVideo}
+                >
+                  {isUploadingVideo ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.uploadVideoButtonText}>Upload Video</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
@@ -373,14 +474,13 @@ export default function EditProfileScreen() {
               <Text style={styles.inputLabelText}>Email</Text>
             </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { opacity: 0.7 }]}
               value={email}
-              onChangeText={setEmail}
+              editable={false}
               placeholder="Enter your email"
               placeholderTextColor={colors.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
             />
+            <Text style={styles.inputHint}>Email cannot be changed</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -528,104 +628,150 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   saveButton: {
     fontSize: 16,
-    fontWeight: "600" as const,
-    color: staticColors.primary,
+    fontWeight: "600",
+    color: colors.primary,
     marginRight: 16,
   },
   saveButtonDisabled: {
-    color: staticColors.textTertiary,
+    color: colors.textTertiary,
   },
   mediaSection: {
-    alignItems: "center" as const,
+    alignItems: "center",
     paddingVertical: 32,
     paddingHorizontal: 16,
-    backgroundColor: staticColors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: staticColors.border,
+    borderBottomColor: colors.border,
   },
   avatarContainer: {
-    position: "relative" as const,
+    position: "relative",
     marginBottom: 8,
   },
   avatarLarge: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: staticColors.primary + "20",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    backgroundColor: colors.primary + "20",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 4,
-    borderColor: staticColors.surface,
+    borderColor: colors.surface,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: colors.surface,
+    backgroundColor: colors.border,
   },
   avatarLargeText: {
     fontSize: 40,
-    fontWeight: "700" as const,
-    color: staticColors.primary,
+    fontWeight: "700",
+    color: colors.primary,
   },
   cameraButton: {
-    position: "absolute" as const,
+    position: "absolute",
     right: 0,
     bottom: 0,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: staticColors.primary,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 3,
-    borderColor: staticColors.surface,
+    borderColor: colors.surface,
   },
   avatarLabel: {
     fontSize: 14,
-    color: staticColors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 24,
   },
   videoPlaceholder: {
-    width: "100%" as const,
-    backgroundColor: staticColors.background,
+    width: "100%",
+    backgroundColor: colors.background,
     borderRadius: 12,
     borderWidth: 2,
-    borderStyle: "dashed" as const,
-    borderColor: staticColors.border,
-    overflow: "hidden" as const,
+    borderStyle: "dashed",
+    borderColor: colors.border,
+    overflow: "hidden",
   },
   videoPlaceholderContent: {
     padding: 32,
-    alignItems: "center" as const,
+    alignItems: "center",
   },
   videoPlaceholderTitle: {
     fontSize: 16,
-    fontWeight: "600" as const,
-    color: staticColors.text,
+    fontWeight: "600",
+    color: colors.text,
     marginTop: 12,
     marginBottom: 4,
   },
   videoPlaceholderSubtitle: {
     fontSize: 14,
-    color: staticColors.textSecondary,
-    textAlign: "center" as const,
+    color: colors.textSecondary,
+    textAlign: "center",
     marginBottom: 16,
   },
   uploadVideoButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: staticColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 8,
   },
   uploadVideoButtonText: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: staticColors.surface,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  videoPlayerContainer: {
+    width: "100%",
+    backgroundColor: "#000",
+    minHeight: 250,
+  },
+  videoPlayer: {
+    width: "100%",
+    height: 200,
+  },
+  videoPreview: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary + '10',
+  },
+  videoPreviewText: {
+    marginTop: 8,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  videoActions: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 8,
+    backgroundColor: colors.surface,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
   formSection: {
     paddingHorizontal: 16,
@@ -633,33 +779,33 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700" as const,
-    color: staticColors.text,
+    fontWeight: "700",
+    color: colors.text,
     marginBottom: 16,
   },
   inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 8,
   },
   inputLabelText: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: staticColors.textSecondary,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
   input: {
-    backgroundColor: staticColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: staticColors.border,
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: staticColors.text,
+    color: colors.text,
   },
   textArea: {
     minHeight: 100,
@@ -667,7 +813,7 @@ const styles = StyleSheet.create({
   },
   inputHint: {
     fontSize: 12,
-    color: staticColors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 4,
   },
   bottomSpacer: {
@@ -677,11 +823,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: staticColors.background,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: staticColors.textSecondary,
+    color: colors.textSecondary,
   },
 });

@@ -8,16 +8,17 @@ import { Platform } from "react-native";
  * 2. EXPO_PUBLIC_API_IP + EXPO_PUBLIC_API_PORT (environment variables)
  * 3. Default hardcoded values (fallback)
  * 
- * To configure, create a .env file in root:
- * EXPO_PUBLIC_API_URL=http://192.168.2.10:5000/api/v1
- * OR
  * EXPO_PUBLIC_API_IP=192.168.2.10
  * EXPO_PUBLIC_API_PORT=5000
  */
 
+// CENTRAL DEVELOPMENT IP - Change this once to update everywhere
+export const DEV_MACHINE_IP = '192.168.0.106';
+export const DEV_PORT = '5000';
+
 // Get base URL with environment variable priority
 const baseURL = getBaseURL();
-            
+
 export const API_CONFIG = {
   BASE_URL: baseURL,
   TIMEOUT: 30000,
@@ -33,58 +34,52 @@ if (__DEV__) {
 }
 
 function getBaseURL(): string {
-  // WEB PLATFORM - Dynamic detection
+  // 1. Priority 1: Full URL from environment variable (Highest Priority - works on all platforms)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    const url = process.env.EXPO_PUBLIC_API_URL.trim();
+    if (__DEV__) console.log(`📡 [API Config] Using EXPO_PUBLIC_API_URL: ${url}`);
+    return url;
+  }
+
+  // 2. WEB PLATFORM - Dynamic detection for development
   if (Platform.OS === "web") {
-    // Check if we are in a browser environment
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
 
-      // If we are accessing via a tunnel (ngrok, expo, etc) or local IP
-      // we still want to hit the backend at 192.168.1.113 OR the current hostname
+      // If we are accessing via a tunnel or local IP
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        // If it looks like a tunnel URL, it's safer to use the hardcoded LAN IP 
-        // because the backend is likely NOT tunneled on the same URL
-        if (hostname.includes('.') && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-          return "http://192.168.1.113:5000/api/v1";
+        // If it's a local network IP we are accessing from, try to use that
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+          return `http://${hostname}:${DEV_PORT}/api/v1`;
         }
-        return `http://${hostname}:5000/api/v1`;
+        // Fallback for tunnels: assuming backend is at the current hostname
+        return `http://${hostname}:${DEV_PORT}/api/v1`;
       }
     }
     // Default for local web development
     return "http://localhost:5000/api/v1";
   }
 
-  // MOBILE PLATFORMS - Use env variables or default IP
-  let url = "";
-  let source = "";
+  // 3. MOBILE PLATFORMS - Fallback logic
+  let url = "https://800-phi.vercel.app/api/v1"; // Production Default
+  let source = "Production Fallback";
 
-  // Priority 1: Full URL from environment variable
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    url = process.env.EXPO_PUBLIC_API_URL.trim();
-    source = "EXPO_PUBLIC_API_URL";
-  } else {
-    // Priority 2: Fallback to Production Vercel URL
-    url = "https://800-phi.vercel.app/api/v1";
-    source = "Production Fallback";
-  }
-
-  // Final cleanup: Ensure /api/v1
-  if (!url.includes('/api/v1')) {
-    url = url.replace(/\/$/, '') + '/api/v1';
+  // Check for IP components if specifically provided
+  if (process.env.EXPO_PUBLIC_API_IP) {
+    const ip = process.env.EXPO_PUBLIC_API_IP.trim();
+    const port = process.env.EXPO_PUBLIC_API_PORT?.trim() || DEV_PORT;
+    url = `http://${ip}:${port}/api/v1`;
+    source = "EXPO_PUBLIC_API_IP";
   }
 
   // MOBILE OVERRIDE: If URL is localhost but we are on Mobile, replace with target IP
-  // This helps when Expo caches old environment variables
   if ((Platform.OS as string) !== 'web' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
-    const oldUrl = url;
-    url = url.replace('localhost', '192.168.1.113').replace('127.0.0.1', '192.168.1.113');
-    if (__DEV__) {
-      console.log(`⚠️  [API Config] Mobile detected - Overriding ${oldUrl} with ${url}`);
-    }
+    url = url.replace('localhost', DEV_MACHINE_IP).replace('127.0.0.1', DEV_MACHINE_IP);
+    source += " + Mobile IP Override";
   }
 
   if (__DEV__) {
-    console.log(`📡 [API Config] Using URL: ${url} (from ${source})`);
+    console.log(`📡 [API Config] Final URL: ${url} (Source: ${source}, Platform: ${Platform.OS})`);
   }
 
   return url;

@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Filter,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -37,7 +36,8 @@ interface Notification {
 type FilterType = "all" | "system" | "dispute" | "payment" | "project";
 
 export default function NotificationsScreen() {
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
     try {
       setLoading(true);
       const response = await adminAPI.getAllNotifications();
-      const notificationsData = response?.data || response || [];
+      const notificationsData = response?.data?.notifications || response?.notifications || [];
       setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
     } catch (error: any) {
       console.error("Failed to fetch notifications:", error);
@@ -164,12 +164,12 @@ export default function NotificationsScreen() {
   const renderNotificationItem = ({ item }: { item: Notification }) => (
     <View style={styles.notificationCard}>
       <View style={styles.notificationHeader}>
-        <Bell size={20} color={Colors.primary} />
+        <Bell size={20} color={colors.primary} />
         <Text style={styles.notificationTitle} numberOfLines={1}>
           {item.title}
         </Text>
         <TouchableOpacity onPress={() => handleDelete(item.id)}>
-          <Trash2 size={18} color={Colors.error} />
+          <Trash2 size={18} color={colors.error} />
         </TouchableOpacity>
       </View>
       <Text style={styles.notificationMessage}>{item.message}</Text>
@@ -194,7 +194,7 @@ export default function NotificationsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -206,7 +206,7 @@ export default function NotificationsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Notifications Center" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading notifications...</Text>
         </View>
       </View>
@@ -223,18 +223,18 @@ export default function NotificationsScreen() {
               onPress={() => setShowSendModal(true)}
               style={styles.sendButton}
             >
-              <Send size={20} color={Colors.primary} />
+              <Send size={20} color={colors.primary} />
             </TouchableOpacity>
           ),
         }}
       />
 
       <View style={styles.searchContainer}>
-        <Search size={20} color={Colors.textSecondary} />
+        <Search size={20} color={colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search notifications..."
-          placeholderTextColor={Colors.textSecondary}
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -275,7 +275,7 @@ export default function NotificationsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Bell size={48} color={Colors.textTertiary} />
+            <Bell size={48} color={colors.textTertiary} />
             <Text style={styles.emptyText}>No notifications found</Text>
           </View>
         }
@@ -294,14 +294,14 @@ export default function NotificationsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Title"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={notificationTitle}
               onChangeText={setNotificationTitle}
             />
             <TextInput
               style={[styles.modalInput, styles.modalTextArea]}
               placeholder="Message"
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={notificationMessage}
               onChangeText={setNotificationMessage}
               multiline
@@ -330,10 +330,10 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   sendButton: {
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
@@ -373,12 +373,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   filtersContainer: {
     maxHeight: 50,
@@ -392,33 +392,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   listContent: {
     padding: 16,
     paddingBottom: 32,
   },
   notificationCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   notificationHeader: {
     flexDirection: "row",
@@ -429,18 +429,18 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   notificationMessage: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
     lineHeight: 20,
   },
   notificationDate: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   emptyContainer: {
     padding: 32,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   modalOverlay: {
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: "100%",
@@ -469,17 +469,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
   },
   modalTextArea: {
@@ -497,22 +497,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalButtonCancel: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   modalButtonConfirm: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
 });
-

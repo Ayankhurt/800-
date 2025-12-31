@@ -12,9 +12,7 @@ const BASE_URL = API_CONFIG.BASE_URL;
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // No default Content-Type so Axios can auto-detect (especially for FormData)
 });
 
 // Log base URL in development for debugging
@@ -540,16 +538,28 @@ export const authAPI = {
  */
 export const adminAPI = {
   // User Management
-  getAllUsers: async (page: number = 1, limit: number = 20, cursor?: string | null) => {
+  getAllUsers: async (page: number = 1, limit: number = 20, filters?: any) => {
     try {
       // Backend endpoint: GET /admin/users
-      const params: any = { page, limit };
-      if (cursor) params.cursor = cursor;
+      // If filters is passed as a string (legacy cursor), treat it as an empty filter or handle accordingly.
+      // The backend currently uses 'page' and 'limit'.
+      const params: any = {
+        page: page || 1,
+        limit: limit || 20
+      };
+
+      if (filters && typeof filters === 'object') {
+        Object.assign(params, filters);
+      } else if (filters && typeof filters === 'string') {
+        // If it's a search query or cursor, map accordingly if known
+        params.search = filters;
+      }
 
       console.log("[API] GET /admin/users with params:", params);
       const response = await apiClient.get("/admin/users", { params });
       return response.data;
     } catch (error: any) {
+      console.error("[API] getAllUsers error:", error);
       if (error.response?.status === 404) {
         return { data: [], success: false, message: "Endpoint not available" };
       }
@@ -1080,8 +1090,8 @@ export const adminAPI = {
   // Notification Management (Admin Only)
   getAllNotifications: async () => {
     try {
-      // Backend endpoint: GET /notifications
-      const response = await apiClient.get("/notifications");
+      console.log("[API] GET /notifications/all");
+      const response = await apiClient.get("/notifications/all");
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -1100,6 +1110,29 @@ export const adminAPI = {
       return response.data;
     } catch (error: any) {
       console.error("[API] Delete notification error:", error);
+      throw error;
+    }
+  },
+
+  // System Settings
+  getSystemSettings: async () => {
+    try {
+      console.log("[API] GET /admin/settings");
+      const response = await apiClient.get("/admin/settings");
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Get system settings error:", error);
+      throw error;
+    }
+  },
+
+  updateSystemSetting: async (key: string, value: any) => {
+    try {
+      console.log("[API] POST /admin/settings", { [key]: value });
+      const response = await apiClient.post("/admin/settings", { [key]: value });
+      return response.data;
+    } catch (error: any) {
+      console.error("[API] Update system setting error:", error);
       throw error;
     }
   },
@@ -1226,9 +1259,33 @@ export const adminAPI = {
     broadcast?: boolean;
   }) => {
     try {
-      // Backend endpoint: POST /notifications
-      const response = await apiClient.post("/notifications", data);
-      return response.data;
+      // Backend endpoints: 
+      // broadcast: POST /admin/notifications/broadcast
+      // specific user: POST /admin/users/:id/notify
+
+      if (data.broadcast) {
+        console.log("[API] POST /admin/notifications/broadcast", data);
+        const response = await apiClient.post("/admin/notifications/broadcast", {
+          title: data.title,
+          message: data.message,
+          type: data.type || "system",
+          role: data.targetRole,
+        });
+        return response.data;
+      } else if (data.userId) {
+        console.log(`[API] POST /admin/users/${data.userId}/notify`, data);
+        const response = await apiClient.post(`/admin/users/${data.userId}/notify`, {
+          title: data.title,
+          message: data.message,
+          type: data.type || "system",
+        });
+        return response.data;
+      } else {
+        // Fallback to old endpoint if no specific target
+        console.log("[API] POST /notifications", data);
+        const response = await apiClient.post("/notifications", data);
+        return response.data;
+      }
     } catch (error: any) {
       if (error.response?.status === 404) {
         throw new Error("Send notification endpoint not available");
@@ -2156,17 +2213,70 @@ export const userAPI = {
   // Upload Avatar
   uploadAvatar: async (formData: FormData) => {
     try {
-      const response = await apiClient.post("/uploads/avatar", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data", // Let axios set boundary
-        },
-        transformRequest: (data, headers) => {
-          return data; // Prevent axios from stringifying FormData
-        },
+      console.log("[API] POST /upload/avatar (FormData)");
+
+      // On Mobile, use native fetch for better multipart reliability
+      if (Platform.OS !== 'web') {
+        const token = await getStoredToken();
+        const response = await fetch(`${BASE_URL}/upload/avatar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+        }
+
+        return await response.json();
+      }
+
+      // On Web, Axios works well
+      const response = await apiClient.post("/upload/avatar", formData, {
+        timeout: 120000,
       });
+      console.log("[API] POST /upload/avatar success:", response.data);
       return response.data;
     } catch (error: any) {
       console.error("Upload avatar API error:", error);
+      throw error;
+    }
+  },
+
+  // Upload Intro Video
+  uploadVideo: async (formData: FormData) => {
+    try {
+      console.log("[API] POST /upload/intro-video (FormData)");
+
+      // On Mobile, use native fetch for better multipart reliability (avoids common Axios Network Error)
+      if (Platform.OS !== 'web') {
+        const token = await getStoredToken();
+        const response = await fetch(`${BASE_URL}/upload/intro-video`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Video upload failed with status ${response.status}`);
+        }
+
+        return await response.json();
+      }
+
+      const response = await apiClient.post("/upload/intro-video", formData, {
+        timeout: 300000, // 5 minutes for videos
+      });
+      console.log("[API] POST /upload/intro-video success:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Upload video API error:", error);
       throw error;
     }
   },
@@ -2335,7 +2445,7 @@ export const uploadAPI = {
     try {
       console.log("[API] POST /upload/avatar");
       const response = await apiClient.post("/upload/avatar", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,
       });
       console.log("[API] POST /upload/avatar success:", response.data);
       return response.data;
@@ -2349,7 +2459,7 @@ export const uploadAPI = {
     try {
       console.log("[API] POST /upload/document");
       const response = await apiClient.post("/upload/document", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,
       });
       console.log("[API] POST /upload/document success:", response.data);
       return response.data;
@@ -2363,7 +2473,7 @@ export const uploadAPI = {
     try {
       console.log("[API] POST /upload/progress");
       const response = await apiClient.post("/upload/progress", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,
       });
       console.log("[API] POST /upload/progress success:", response.data);
       return response.data;
@@ -2377,7 +2487,7 @@ export const uploadAPI = {
     try {
       console.log("[API] POST /upload/portfolio");
       const response = await apiClient.post("/upload/portfolio", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 300000,
       });
       console.log("[API] POST /upload/portfolio success:", response.data);
       return response.data;
@@ -2390,9 +2500,7 @@ export const uploadAPI = {
   uploadChatAttachment: async (formData: any) => {
     try {
       console.log("[API] POST /upload/chat");
-      const response = await apiClient.post("/upload/chat", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await apiClient.post("/upload/chat", formData);
       console.log("[API] POST /upload/chat success:", response.data);
       return response.data;
     } catch (error: any) {

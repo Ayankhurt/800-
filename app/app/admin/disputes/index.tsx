@@ -20,7 +20,6 @@ import {
   User,
   AlertCircle,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -42,7 +41,8 @@ type FilterType = "all" | "open" | "under-review" | "resolved";
 
 export default function DisputesScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,7 +62,7 @@ export default function DisputesScreen() {
       setLoading(true);
       console.log("[API] GET /admin/disputes");
       const response = await adminAPI.getAllDisputes();
-      const disputesData = response?.data || response || [];
+      const disputesData = response?.data?.disputes || response?.disputes || [];
       setDisputes(Array.isArray(disputesData) ? disputesData : []);
     } catch (error: any) {
       console.log("[API ERROR]", error);
@@ -114,26 +114,26 @@ export default function DisputesScreen() {
   const getStatusBadge = (status?: string) => {
     const statusLower = status?.toLowerCase() || "";
     if (statusLower === "open" || statusLower === "pending") {
-      return { label: "Open", color: Colors.warning, icon: AlertTriangle };
+      return { label: "Open", color: colors.warning, icon: AlertTriangle };
     }
     if (statusLower === "under-review" || statusLower === "reviewing") {
-      return { label: "Under Review", color: Colors.info, icon: Clock };
+      return { label: "Under Review", color: colors.info, icon: Clock };
     }
     if (statusLower === "resolved" || statusLower === "closed") {
-      return { label: "Resolved", color: Colors.success, icon: CheckCircle };
+      return { label: "Resolved", color: colors.success, icon: CheckCircle };
     }
-    return { label: "Unknown", color: Colors.textSecondary, icon: AlertCircle };
+    return { label: "Unknown", color: colors.textSecondary, icon: AlertCircle };
   };
 
   const getPriorityBadge = (priority?: string) => {
     const priorityLower = priority?.toLowerCase() || "";
     if (priorityLower === "high" || priorityLower === "urgent") {
-      return { label: "High", color: Colors.error };
+      return { label: "High", color: colors.error };
     }
     if (priorityLower === "medium") {
-      return { label: "Medium", color: Colors.warning };
+      return { label: "Medium", color: colors.warning };
     }
-    return { label: "Low", color: Colors.success };
+    return { label: "Low", color: colors.success };
   };
 
   const handleDisputePress = (dispute: Dispute) => {
@@ -159,7 +159,7 @@ export default function DisputesScreen() {
       >
         <View style={styles.disputeHeader}>
           <View style={styles.disputeTitleRow}>
-            <AlertTriangle size={20} color={Colors.warning} />
+            <AlertTriangle size={20} color={colors.warning} />
             <Text style={styles.disputeTitle} numberOfLines={1}>
               {item.title || "Untitled Dispute"}
             </Text>
@@ -196,7 +196,7 @@ export default function DisputesScreen() {
           </View>
           {item.assigned_to && (
             <View style={styles.assignedRow}>
-              <User size={12} color={Colors.textSecondary} />
+              <User size={12} color={colors.textSecondary} />
               <Text style={styles.assignedText}>Assigned</Text>
             </View>
           )}
@@ -217,7 +217,7 @@ export default function DisputesScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -229,7 +229,7 @@ export default function DisputesScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Dispute Resolution" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading disputes...</Text>
         </View>
       </View>
@@ -241,11 +241,11 @@ export default function DisputesScreen() {
       <Stack.Screen options={{ headerTitle: "Dispute Resolution" }} />
 
       <View style={styles.searchContainer}>
-        <Search size={20} color={Colors.textSecondary} />
+        <Search size={20} color={colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search disputes..."
-          placeholderTextColor={Colors.textSecondary}
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -286,7 +286,7 @@ export default function DisputesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <AlertTriangle size={48} color={Colors.textTertiary} />
+            <AlertTriangle size={48} color={colors.textTertiary} />
             <Text style={styles.emptyText}>No disputes found</Text>
           </View>
         }
@@ -295,10 +295,10 @@ export default function DisputesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -319,13 +319,13 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   filtersContainer: {
     maxHeight: 50,
@@ -353,33 +353,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   listContent: {
     padding: 16,
     paddingBottom: 32,
   },
   disputeCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   disputeHeader: {
     flexDirection: "row",
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   disputeTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   priorityBadge: {
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   disputeDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   },
   assignedText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   emptyContainer: {
     padding: 32,
@@ -450,8 +450,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
 });
-

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -30,7 +30,6 @@ import {
   RefreshCw,
   UserCog,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -119,7 +118,8 @@ type TabType = "info" | "logs";
 export default function UserDetailsScreen() {
   const router = useRouter();
   const { id, userData } = useLocalSearchParams();
-  const { user, login } = useAuth();
+  const { user, login, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -617,15 +617,15 @@ export default function UserDetailsScreen() {
     if (isVerified) {
       return {
         label: "Verified",
-        color: Colors.success,
-        icon: <CheckCircle size={20} color={Colors.success} />,
+        color: colors.success,
+        icon: <CheckCircle size={20} color={colors.success} />,
       };
     }
 
     return {
       label: "Active",
-      color: Colors.primary,
-      icon: <User size={20} color={Colors.primary} />,
+      color: colors.primary,
+      icon: <User size={20} color={colors.primary} />,
     };
   };
 
@@ -633,7 +633,7 @@ export default function UserDetailsScreen() {
   const getRoleBadgeColor = (role: string) => {
     const roleLower = role.toLowerCase();
     if (roleLower === "admin" || roleLower === "super_admin") {
-      return { bg: Colors.error + "15", border: Colors.error, text: Colors.error };
+      return { bg: colors.error + "15", border: colors.error, text: colors.error };
     } else if (roleLower === "general_contractor") {
       return { bg: "#FF9500" + "15", border: "#FF9500", text: "#FF9500" };
     } else if (roleLower === "project_manager") {
@@ -643,7 +643,7 @@ export default function UserDetailsScreen() {
     } else if (roleLower === "viewer") {
       return { bg: "#5AC8FA" + "15", border: "#5AC8FA", text: "#5AC8FA" };
     }
-    return { bg: Colors.primaryLight, border: Colors.primary, text: Colors.primary };
+    return { bg: colors.primary + "15", border: colors.primary, text: colors.primary };
   };
 
   // Block non-admin access
@@ -652,7 +652,7 @@ export default function UserDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
           <Text style={styles.unauthorizedSubtext}>Only Admin users can access this screen.</Text>
         </View>
@@ -670,7 +670,7 @@ export default function UserDetailsScreen() {
           }}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading user details...</Text>
         </View>
       </View>
@@ -687,7 +687,7 @@ export default function UserDetailsScreen() {
           }}
         />
         <View style={styles.emptyContainer}>
-          <AlertCircle size={48} color={Colors.textTertiary} />
+          <AlertCircle size={48} color={colors.textTertiary} />
           <Text style={styles.emptyText}>User not found</Text>
         </View>
       </View>
@@ -709,10 +709,10 @@ export default function UserDetailsScreen() {
           headerShown: true,
           headerTitle: "User Details",
           headerStyle: {
-            backgroundColor: Colors.surface,
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            color: Colors.text,
+            color: colors.text,
             fontWeight: "700" as const,
           },
         }}
@@ -724,14 +724,14 @@ export default function UserDetailsScreen() {
           style={[styles.tab, activeTab === "info" && styles.tabActive]}
           onPress={() => setActiveTab("info")}
         >
-          <User size={18} color={activeTab === "info" ? Colors.primary : Colors.textSecondary} />
+          <User size={18} color={activeTab === "info" ? colors.primary : colors.textSecondary} />
           <Text style={[styles.tabText, activeTab === "info" && styles.tabTextActive]}>User Info</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === "logs" && styles.tabActive]}
           onPress={() => setActiveTab("logs")}
         >
-          <History size={18} color={activeTab === "logs" ? Colors.primary : Colors.textSecondary} />
+          <History size={18} color={activeTab === "logs" ? colors.primary : colors.textSecondary} />
           <Text style={[styles.tabText, activeTab === "logs" && styles.tabTextActive]}>Activity Logs</Text>
         </TouchableOpacity>
       </View>
@@ -770,7 +770,7 @@ export default function UserDetailsScreen() {
                 <Text style={styles.sectionTitle}>Last Actions</Text>
                 {actionHistory.map((action, index) => (
                   <View key={index} style={styles.historyItem}>
-                    <Clock size={16} color={Colors.textSecondary} />
+                    <Clock size={16} color={colors.textSecondary} />
                     <Text style={styles.historyText}>{action}</Text>
                   </View>
                 ))}
@@ -781,7 +781,7 @@ export default function UserDetailsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contact Information</Text>
               <View style={styles.infoRow}>
-                <Mail size={20} color={Colors.primary} />
+                <Mail size={20} color={colors.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
                   <Text style={styles.infoValue}>{userDetails.email}</Text>
@@ -789,7 +789,7 @@ export default function UserDetailsScreen() {
               </View>
               {userDetails.phone && (
                 <View style={styles.infoRow}>
-                  <Phone size={20} color={Colors.primary} />
+                  <Phone size={20} color={colors.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Phone</Text>
                     <Text style={styles.infoValue}>{userDetails.phone}</Text>
@@ -798,7 +798,7 @@ export default function UserDetailsScreen() {
               )}
               {(userDetails.company || userDetails.companyName || userDetails.company_name) && (
                 <View style={styles.infoRow}>
-                  <Shield size={20} color={Colors.primary} />
+                  <Shield size={20} color={colors.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Company</Text>
                     <Text style={styles.infoValue}>
@@ -814,7 +814,7 @@ export default function UserDetailsScreen() {
               <Text style={styles.sectionTitle}>Account Information</Text>
               {userDetails.created_at || userDetails.createdAt ? (
                 <View style={styles.infoRow}>
-                  <Calendar size={20} color={Colors.primary} />
+                  <Calendar size={20} color={colors.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Created</Text>
                     <Text style={styles.infoValue}>
@@ -825,7 +825,7 @@ export default function UserDetailsScreen() {
               ) : null}
               {(userDetails.last_login || userDetails.lastLogin) && (
                 <View style={styles.infoRow}>
-                  <Clock size={20} color={Colors.primary} />
+                  <Clock size={20} color={colors.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Last Login</Text>
                     <Text style={styles.infoValue}>
@@ -843,15 +843,15 @@ export default function UserDetailsScreen() {
               {/* Change Role Button - Only show if user can change role */}
               {canChangeRole(user?.role, userDetails?.role || userDetails?.role_code) && (
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: Colors.primaryLight, borderColor: Colors.primary }]}
+                  style={[styles.actionButton, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}
                   onPress={() => {
                     setSelectedRole(userDetails?.role || userDetails?.role_code || "");
                     setShowRoleModal(true);
                   }}
                   disabled={actionLoading}
                 >
-                  <UserCog size={20} color={Colors.primary} />
-                  <Text style={[styles.actionButtonText, { color: Colors.primary }]}>Change Role</Text>
+                  <UserCog size={20} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Change Role</Text>
                 </TouchableOpacity>
               )}
 
@@ -861,7 +861,7 @@ export default function UserDetailsScreen() {
                   onPress={() => handleAction("verify", "Verify")}
                   disabled={actionLoading}
                 >
-                  <CheckSquare size={20} color={Colors.success} />
+                  <CheckSquare size={20} color={colors.success} />
                   <Text style={styles.actionButtonText}>Verify User</Text>
                 </TouchableOpacity>
               )}
@@ -872,7 +872,7 @@ export default function UserDetailsScreen() {
                   onPress={() => handleAction("suspend", "Suspend")}
                   disabled={actionLoading}
                 >
-                  <Ban size={20} color={Colors.warning} />
+                  <Ban size={20} color={colors.warning} />
                   <Text style={styles.actionButtonText}>Suspend User</Text>
                 </TouchableOpacity>
               ) : (
@@ -881,7 +881,7 @@ export default function UserDetailsScreen() {
                   onPress={() => handleAction("unsuspend", "Unsuspend")}
                   disabled={actionLoading}
                 >
-                  <CheckCircle size={20} color={Colors.success} />
+                  <CheckCircle size={20} color={colors.success} />
                   <Text style={styles.actionButtonText}>Unsuspend User</Text>
                 </TouchableOpacity>
               )}
@@ -901,7 +901,7 @@ export default function UserDetailsScreen() {
                   onPress={() => handleAction("unlock", "Unlock")}
                   disabled={actionLoading}
                 >
-                  <Unlock size={20} color={Colors.success} />
+                  <Unlock size={20} color={colors.success} />
                   <Text style={styles.actionButtonText}>Unlock User</Text>
                 </TouchableOpacity>
               )}
@@ -911,7 +911,7 @@ export default function UserDetailsScreen() {
                 onPress={() => handleAction("delete", "Delete")}
                 disabled={actionLoading}
               >
-                <Trash2 size={20} color={Colors.error} />
+                <Trash2 size={20} color={colors.error} />
                 <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete User</Text>
               </TouchableOpacity>
             </View>
@@ -921,12 +921,12 @@ export default function UserDetailsScreen() {
           <View style={styles.logsContainer}>
             {logsLoading ? (
               <View style={styles.logsLoadingContainer}>
-                <ActivityIndicator size="large" color={Colors.primary} />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Loading activity logs...</Text>
               </View>
             ) : activityLogs.length === 0 ? (
               <View style={styles.emptyLogsContainer}>
-                <History size={48} color={Colors.textTertiary} />
+                <History size={48} color={colors.textTertiary} />
                 <Text style={styles.emptyText}>No activity logs found</Text>
                 <Text style={styles.emptySubtext}>Activity history will appear here</Text>
               </View>
@@ -934,11 +934,11 @@ export default function UserDetailsScreen() {
               activityLogs.map((log) => (
                 <View key={log.id} style={styles.logItem}>
                   <View style={styles.logIcon}>
-                    {log.type === "verify" && <UserCheck size={20} color={Colors.success} />}
-                    {log.type === "suspend" && <Ban size={20} color={Colors.warning} />}
-                    {log.type === "profile_update" && <RefreshCw size={20} color={Colors.primary} />}
+                    {log.type === "verify" && <UserCheck size={20} color={colors.success} />}
+                    {log.type === "suspend" && <Ban size={20} color={colors.warning} />}
+                    {log.type === "profile_update" && <RefreshCw size={20} color={colors.primary} />}
                     {!["verify", "suspend", "profile_update"].includes(log.type) && (
-                      <History size={20} color={Colors.textSecondary} />
+                      <History size={20} color={colors.textSecondary} />
                     )}
                   </View>
                   <View style={styles.logContent}>
@@ -955,7 +955,7 @@ export default function UserDetailsScreen() {
 
         {actionLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Processing...</Text>
           </View>
         )}
@@ -978,7 +978,7 @@ export default function UserDetailsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Enter reason..."
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={lockReason}
               onChangeText={setLockReason}
               multiline
@@ -1041,7 +1041,7 @@ export default function UserDetailsScreen() {
                     disabled={isCurrentRole}
                   >
                     <View style={styles.roleOptionContent}>
-                      <Shield size={18} color={isSelected ? Colors.primary : Colors.textSecondary} />
+                      <Shield size={18} color={isSelected ? colors.primary : colors.textSecondary} />
                       <View style={styles.roleOptionText}>
                         <Text style={[styles.roleOptionLabel, isSelected && styles.roleOptionLabelSelected]}>
                           {role.label}
@@ -1049,7 +1049,7 @@ export default function UserDetailsScreen() {
                         <Text style={styles.roleOptionCode}>{role.code}</Text>
                       </View>
                     </View>
-                    {isSelected && <CheckCircle size={20} color={Colors.primary} />}
+                    {isSelected && <CheckCircle size={20} color={colors.primary} />}
                     {isCurrentRole && (
                       <Text style={styles.currentRoleBadge}>Current</Text>
                     )}
@@ -1060,7 +1060,7 @@ export default function UserDetailsScreen() {
 
             {getAvailableRoles(user?.role).length === 0 && (
               <View style={styles.noRolesContainer}>
-                <AlertCircle size={24} color={Colors.textSecondary} />
+                <AlertCircle size={24} color={colors.textSecondary} />
                 <Text style={styles.noRolesText}>{"You don't have permission to change roles"}</Text>
               </View>
             )}
@@ -1094,19 +1094,19 @@ export default function UserDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   tab: {
     flex: 1,
@@ -1119,15 +1119,15 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: Colors.primary,
+    borderBottomColor: colors.primary,
   },
   tabText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   tabTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -1148,12 +1148,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
     marginTop: 8,
   },
@@ -1166,27 +1166,27 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
     marginBottom: 8,
   },
   unauthorizedSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
   headerSection: {
     alignItems: "center",
     padding: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   avatarLarge: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: colors.primary + "15",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -1194,12 +1194,12 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   userName: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 12,
   },
   roleContainer: {
@@ -1237,12 +1237,12 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   historyItem: {
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
   },
   historyText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   infoRow: {
     flexDirection: "row",
@@ -1268,14 +1268,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: "500" as const,
   },
   actionButton: {
@@ -1289,28 +1289,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   verifyButton: {
-    backgroundColor: Colors.success + "15",
-    borderColor: Colors.success,
+    backgroundColor: colors.success + "15",
+    borderColor: colors.success,
   },
   suspendButton: {
-    backgroundColor: Colors.warning + "15",
-    borderColor: Colors.warning,
+    backgroundColor: colors.warning + "15",
+    borderColor: colors.warning,
   },
   unsuspendButton: {
-    backgroundColor: Colors.success + "15",
-    borderColor: Colors.success,
+    backgroundColor: colors.success + "15",
+    borderColor: colors.success,
   },
   deleteButton: {
-    backgroundColor: Colors.error + "15",
-    borderColor: Colors.error,
+    backgroundColor: colors.error + "15",
+    borderColor: colors.error,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   deleteButtonText: {
-    color: Colors.error,
+    color: colors.error,
   },
   loadingOverlay: {
     position: "absolute",
@@ -1338,11 +1338,11 @@ const styles = StyleSheet.create({
   logItem: {
     flexDirection: "row",
     padding: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   logIcon: {
     marginRight: 12,
@@ -1353,12 +1353,12 @@ const styles = StyleSheet.create({
   logDescription: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   logTimestamp: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   modalOverlay: {
     flex: 1,
@@ -1368,7 +1368,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: "100%",
@@ -1377,22 +1377,22 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     minHeight: 100,
     marginBottom: 20,
   },
@@ -1407,22 +1407,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalButtonCancel: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   modalButtonConfirm: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
   modalButtonDisabled: {
     opacity: 0.5,
@@ -1438,13 +1438,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   roleOptionSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary + "15",
+    borderColor: colors.primary,
     borderWidth: 2,
   },
   roleOptionCurrent: {
@@ -1462,22 +1462,22 @@ const styles = StyleSheet.create({
   roleOptionLabel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   roleOptionLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   roleOptionCode: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: "500" as const,
   },
   currentRoleBadge: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    color: colors.primary,
+    backgroundColor: colors.primary + "15",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1493,7 +1493,7 @@ const styles = StyleSheet.create({
   },
   noRolesText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
 });

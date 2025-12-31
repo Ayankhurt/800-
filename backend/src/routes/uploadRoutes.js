@@ -5,6 +5,7 @@ import {
     uploadDocument,
     uploadAvatar,
     uploadChatAttachment,
+    uploadIntroVideo,
     deleteFile,
     upload
 } from '../controllers/uploadController.js';
@@ -21,6 +22,7 @@ router.post('/progress', upload.single('file'), uploadProgressPhoto);
 router.post('/document', upload.single('file'), uploadDocument);
 router.post('/avatar', upload.single('file'), uploadAvatar);
 router.post('/chat', upload.single('file'), uploadChatAttachment);
+router.post('/intro-video', upload.single('file'), uploadIntroVideo);
 
 // Delete endpoint
 router.delete('/:bucket/:filename', deleteFile);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI, projectsAPI, milestonesAPI } from "@/services/api";
 
@@ -49,7 +48,8 @@ interface Project {
 export default function ProjectDetailsScreen() {
   const router = useRouter();
   const { id, projectData } = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -91,16 +91,16 @@ export default function ProjectDetailsScreen() {
       setLoading(true);
       console.log("[API] GET /projects/:id", projectId);
       const response = await projectsAPI.getById(projectId);
-      
+
       if (response.success && response.data) {
         setProject(response.data);
       } else {
         // Fallback to getAllProjects if getById doesn't exist
         const allResponse = await adminAPI.getAllProjects();
-        const projects = allResponse?.data || allResponse || [];
-        const projectArray = Array.isArray(projects) ? projects : [];
+        const projectsData = allResponse?.data?.projects || allResponse?.projects || [];
+        const projectArray = Array.isArray(projectsData) ? projectsData : [];
         const foundProject = projectArray.find((p: Project) => p.id === projectId);
-        
+
         if (foundProject) {
           setProject(foundProject);
         } else if (projectDataParam) {
@@ -141,11 +141,11 @@ export default function ProjectDetailsScreen() {
     }
 
     const actionName = action === "approve" ? "Approve" : action === "decline" ? "Decline" : "Change Status";
-    const confirmMessage = action === "approve" 
+    const confirmMessage = action === "approve"
       ? "Are you sure you want to approve this project?"
       : action === "decline"
-      ? "Are you sure you want to decline this project?"
-      : `Change project status to ${status}?`;
+        ? "Are you sure you want to decline this project?"
+        : `Change project status to ${status}?`;
 
     Alert.alert(`Confirm ${actionName}`, confirmMessage, [
       { text: "Cancel", style: "cancel" },
@@ -189,21 +189,21 @@ export default function ProjectDetailsScreen() {
   const getStatusInfo = () => {
     const status = project?.status?.toLowerCase();
     if (status === "pending" || status === "draft") {
-      return { label: "Pending", color: Colors.warning, icon: Clock };
+      return { label: "Pending", color: colors.warning, icon: Clock };
     }
     if (status === "approved") {
-      return { label: "Approved", color: Colors.success, icon: CheckCircle };
+      return { label: "Approved", color: colors.success, icon: CheckCircle };
     }
     if (status === "in-progress" || status === "active") {
-      return { label: "In Progress", color: Colors.info, icon: RefreshCw };
+      return { label: "In Progress", color: colors.info, icon: RefreshCw };
     }
     if (status === "completed" || status === "done") {
-      return { label: "Completed", color: Colors.success, icon: CheckCircle };
+      return { label: "Completed", color: colors.success, icon: CheckCircle };
     }
     if (status === "declined" || status === "rejected") {
-      return { label: "Declined", color: Colors.error, icon: XCircle };
+      return { label: "Declined", color: colors.error, icon: XCircle };
     }
-    return { label: "Unknown", color: Colors.textSecondary, icon: AlertCircle };
+    return { label: "Unknown", color: colors.textSecondary, icon: AlertCircle };
   };
 
   // Block non-admin access
@@ -212,7 +212,7 @@ export default function ProjectDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -224,7 +224,7 @@ export default function ProjectDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Project Details" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading project details...</Text>
         </View>
       </View>
@@ -236,7 +236,7 @@ export default function ProjectDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Project Details" }} />
         <View style={styles.emptyContainer}>
-          <AlertCircle size={48} color={Colors.textTertiary} />
+          <AlertCircle size={48} color={colors.textTertiary} />
           <Text style={styles.emptyText}>Project not found</Text>
         </View>
       </View>
@@ -261,7 +261,7 @@ export default function ProjectDetailsScreen() {
         {/* Project Header */}
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
-            <FolderKanban size={24} color={Colors.primary} />
+            <FolderKanban size={24} color={colors.primary} />
             <Text style={styles.projectTitle}>{project.title || "Untitled Project"}</Text>
           </View>
           <View
@@ -288,7 +288,7 @@ export default function ProjectDetailsScreen() {
           <Text style={styles.sectionTitle}>Project Information</Text>
           {project.budget && (
             <View style={styles.infoRow}>
-              <DollarSign size={20} color={Colors.primary} />
+              <DollarSign size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Budget</Text>
                 <Text style={styles.infoValue}>${project.budget.toLocaleString()}</Text>
@@ -297,7 +297,7 @@ export default function ProjectDetailsScreen() {
           )}
           {project.created_at && (
             <View style={styles.infoRow}>
-              <Calendar size={20} color={Colors.primary} />
+              <Calendar size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Created</Text>
                 <Text style={styles.infoValue}>
@@ -313,7 +313,7 @@ export default function ProjectDetailsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Project Owner</Text>
             <View style={styles.infoRow}>
-              <User size={20} color={Colors.primary} />
+              <User size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Name</Text>
                 <Text style={styles.infoValue}>
@@ -323,7 +323,7 @@ export default function ProjectDetailsScreen() {
             </View>
             {project.owner.email && (
               <View style={styles.infoRow}>
-                <Mail size={20} color={Colors.primary} />
+                <Mail size={20} color={colors.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
                   <Text style={styles.infoValue}>{project.owner.email}</Text>
@@ -338,7 +338,7 @@ export default function ProjectDetailsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Contractor</Text>
             <View style={styles.infoRow}>
-              <User size={20} color={Colors.primary} />
+              <User size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Name</Text>
                 <Text style={styles.infoValue}>
@@ -348,7 +348,7 @@ export default function ProjectDetailsScreen() {
             </View>
             {project.contractor.email && (
               <View style={styles.infoRow}>
-                <Mail size={20} color={Colors.primary} />
+                <Mail size={20} color={colors.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
                   <Text style={styles.infoValue}>{project.contractor.email}</Text>
@@ -368,7 +368,7 @@ export default function ProjectDetailsScreen() {
               onPress={() => handleAction("approve")}
               disabled={actionLoading}
             >
-              <CheckCircle size={20} color={Colors.success} />
+              <CheckCircle size={20} color={colors.success} />
               <Text style={styles.actionButtonText}>Approve Project</Text>
             </TouchableOpacity>
           )}
@@ -379,35 +379,35 @@ export default function ProjectDetailsScreen() {
               onPress={() => handleAction("decline")}
               disabled={actionLoading}
             >
-              <XCircle size={20} color={Colors.error} />
+              <XCircle size={20} color={colors.error} />
               <Text style={styles.actionButtonText}>Decline Project</Text>
             </TouchableOpacity>
           )}
 
           {isApproved && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: Colors.info + "15", borderColor: Colors.info }]}
+              style={[styles.actionButton, { backgroundColor: colors.info + "15", borderColor: colors.info }]}
               onPress={() => handleAction("status", "in-progress")}
               disabled={actionLoading}
             >
-              <RefreshCw size={20} color={Colors.info} />
-              <Text style={[styles.actionButtonText, { color: Colors.info }]}>Mark In Progress</Text>
+              <RefreshCw size={20} color={colors.info} />
+              <Text style={[styles.actionButtonText, { color: colors.info }]}>Mark In Progress</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: Colors.info + "15", borderColor: Colors.info }]}
+            style={[styles.actionButton, { backgroundColor: colors.info + "15", borderColor: colors.info }]}
             onPress={() => handleAction("status", "completed")}
             disabled={actionLoading}
           >
-            <CheckCircle size={20} color={Colors.info} />
-            <Text style={[styles.actionButtonText, { color: Colors.info }]}>Mark Completed</Text>
+            <CheckCircle size={20} color={colors.info} />
+            <Text style={[styles.actionButtonText, { color: colors.info }]}>Mark Completed</Text>
           </TouchableOpacity>
         </View>
 
         {actionLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Processing...</Text>
           </View>
         )}
@@ -416,10 +416,10 @@ export default function ProjectDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   emptyContainer: {
@@ -455,14 +455,14 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   headerSection: {
     padding: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   titleRow: {
     flexDirection: "row",
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   statusBadge: {
@@ -493,17 +493,17 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   descriptionText: {
     fontSize: 15,
-    color: Colors.text,
+    color: colors.text,
     lineHeight: 22,
   },
   infoRow: {
@@ -518,14 +518,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: "500" as const,
   },
   actionButton: {
@@ -539,17 +539,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   approveButton: {
-    backgroundColor: Colors.success + "15",
-    borderColor: Colors.success,
+    backgroundColor: colors.success + "15",
+    borderColor: colors.success,
   },
   declineButton: {
-    backgroundColor: Colors.error + "15",
-    borderColor: Colors.error,
+    backgroundColor: colors.error + "15",
+    borderColor: colors.error,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   loadingOverlay: {
     padding: 32,
@@ -557,4 +557,3 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
-

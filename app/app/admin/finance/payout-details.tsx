@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,6 @@ import {
   Calendar,
   AlertCircle,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -32,7 +31,8 @@ interface Payout {
 export default function PayoutDetailsScreen() {
   const router = useRouter();
   const { id, payoutData } = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [payout, setPayout] = useState<Payout | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -63,9 +63,30 @@ export default function PayoutDetailsScreen() {
         }
       }
       // Try to fetch from API if available
-      setLoading(false);
+      fetchPayoutDetails();
     }
   }, [payoutId, user, payoutDataParam]);
+
+  const fetchPayoutDetails = async () => {
+    if (!payoutId) return;
+    try {
+      setLoading(true);
+      // Fallback to getAllPayouts since getById might not exist
+      console.log("[API] Fetching all payouts to find", payoutId);
+      const response = await adminAPI.getAllPayouts();
+      const payouts = response?.data?.payouts || response?.payouts || [];
+      const payoutArray = Array.isArray(payouts) ? payouts : [];
+      const foundPayout = payoutArray.find((p: Payout) => p.id === payoutId);
+
+      if (foundPayout) {
+        setPayout(foundPayout);
+      }
+    } catch (error) {
+      console.error("Failed to fetch payout details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAction = async (action: "approve" | "reject") => {
     if (!payoutId) {
@@ -124,7 +145,7 @@ export default function PayoutDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -136,7 +157,7 @@ export default function PayoutDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Payout Details" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading payout details...</Text>
         </View>
       </View>
@@ -148,7 +169,7 @@ export default function PayoutDetailsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Payout Details" }} />
         <View style={styles.emptyContainer}>
-          <AlertCircle size={48} color={Colors.textTertiary} />
+          <AlertCircle size={48} color={colors.textTertiary} />
           <Text style={styles.emptyText}>Payout not found</Text>
         </View>
       </View>
@@ -165,33 +186,33 @@ export default function PayoutDetailsScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.headerSection}>
-          <DollarSign size={32} color={Colors.primary} />
+          <DollarSign size={32} color={colors.primary} />
           <Text style={styles.amountText}>${payout.amount?.toLocaleString() || "0"}</Text>
           <View
             style={[
               styles.statusBadge,
               {
                 backgroundColor: isPending
-                  ? Colors.warning + "15"
+                  ? colors.warning + "15"
                   : isApproved
-                  ? Colors.success + "15"
-                  : Colors.error + "15",
-                borderColor: isPending ? Colors.warning : isApproved ? Colors.success : Colors.error,
+                    ? colors.success + "15"
+                    : colors.error + "15",
+                borderColor: isPending ? colors.warning : isApproved ? colors.success : colors.error,
               },
             ]}
           >
             {isPending ? (
-              <Clock size={16} color={Colors.warning} />
+              <Clock size={16} color={colors.warning} />
             ) : isApproved ? (
-              <CheckCircle size={16} color={Colors.success} />
+              <CheckCircle size={16} color={colors.success} />
             ) : (
-              <XCircle size={16} color={Colors.error} />
+              <XCircle size={16} color={colors.error} />
             )}
             <Text
               style={[
                 styles.statusText,
                 {
-                  color: isPending ? Colors.warning : isApproved ? Colors.success : Colors.error,
+                  color: isPending ? colors.warning : isApproved ? colors.success : colors.error,
                 },
               ]}
             >
@@ -204,7 +225,7 @@ export default function PayoutDetailsScreen() {
           <Text style={styles.sectionTitle}>Payout Information</Text>
           {payout.created_at && (
             <View style={styles.infoRow}>
-              <Calendar size={20} color={Colors.primary} />
+              <Calendar size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Created</Text>
                 <Text style={styles.infoValue}>
@@ -215,7 +236,7 @@ export default function PayoutDetailsScreen() {
           )}
           {payout.user_id && (
             <View style={styles.infoRow}>
-              <AlertCircle size={20} color={Colors.primary} />
+              <AlertCircle size={20} color={colors.primary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>User ID</Text>
                 <Text style={styles.infoValue}>{payout.user_id}</Text>
@@ -233,7 +254,7 @@ export default function PayoutDetailsScreen() {
               onPress={() => handleAction("approve")}
               disabled={actionLoading}
             >
-              <CheckCircle size={20} color={Colors.success} />
+              <CheckCircle size={20} color={colors.success} />
               <Text style={styles.actionButtonText}>Approve Payout</Text>
             </TouchableOpacity>
 
@@ -242,7 +263,7 @@ export default function PayoutDetailsScreen() {
               onPress={() => handleAction("reject")}
               disabled={actionLoading}
             >
-              <XCircle size={20} color={Colors.error} />
+              <XCircle size={20} color={colors.error} />
               <Text style={styles.actionButtonText}>Reject Payout</Text>
             </TouchableOpacity>
           </View>
@@ -250,7 +271,7 @@ export default function PayoutDetailsScreen() {
 
         {actionLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Processing...</Text>
           </View>
         )}
@@ -259,10 +280,10 @@ export default function PayoutDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -275,7 +296,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -286,7 +307,7 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   emptyContainer: {
@@ -298,20 +319,20 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   headerSection: {
     alignItems: "center",
     padding: 24,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   amountText: {
     fontSize: 32,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 12,
     marginBottom: 12,
   },
@@ -331,12 +352,12 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   infoRow: {
@@ -351,14 +372,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     fontWeight: "500" as const,
   },
   actionButton: {
@@ -372,17 +393,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   approveButton: {
-    backgroundColor: Colors.success + "15",
-    borderColor: Colors.success,
+    backgroundColor: colors.success + "15",
+    borderColor: colors.success,
   },
   rejectButton: {
-    backgroundColor: Colors.error + "15",
-    borderColor: Colors.error,
+    backgroundColor: colors.error + "15",
+    borderColor: colors.error,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   loadingOverlay: {
     padding: 32,
@@ -390,4 +411,3 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
-

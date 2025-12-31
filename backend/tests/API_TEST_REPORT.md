@@ -1,6 +1,6 @@
 # 📊 API TEST REPORT
 
-**Generated:** 12/18/2025, 5:07:08 PM
+**Generated:** 12/31/2025, 3:25:44 PM
 **Base URL:** http://localhost:5000
 **API Base:** http://localhost:5000/api/v1
 
@@ -134,7 +134,7 @@
 **Request Data:**
 ```json
 {
-  "email": "test1766059636206@bidroom.com",
+  "email": "test1767176751981@bidroom.com",
   "password": "Test123!@#",
   "full_name": "Test User",
   "role_code": "VIEWER"
@@ -145,7 +145,7 @@
 ```json
 {
   "success": false,
-  "message": "Missing required fields",
+  "message": "Missing required fields: email, password, first_name, last_name, and role are required",
   "data": null
 }
 ```
@@ -188,8 +188,8 @@
   "message": "Server is healthy",
   "data": {
     "status": "ok",
-    "timestamp": "2025-12-18T12:07:18.341Z",
-    "uptime": 275.7775065,
+    "timestamp": "2025-12-31T10:25:54.260Z",
+    "uptime": 1143.4808891,
     "environment": "development"
   }
 }

@@ -20,7 +20,6 @@ import {
   Search,
   AlertCircle,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -47,7 +46,8 @@ type FilterType = "all" | "pending" | "approved" | "in-progress" | "completed";
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,7 +69,7 @@ export default function ProjectsScreen() {
       setLoading(true);
       console.log("[API] GET /projects");
       const response = await adminAPI.getAllProjects();
-      const projectsData = response?.data || response || [];
+      const projectsData = response?.data?.projects || response?.projects || [];
       setProjects(Array.isArray(projectsData) ? projectsData : []);
     } catch (error: any) {
       console.log("[API ERROR]", error);
@@ -126,18 +126,18 @@ export default function ProjectsScreen() {
   const getStatusBadge = (status?: string) => {
     const statusLower = status?.toLowerCase() || "";
     if (statusLower === "pending" || statusLower === "draft") {
-      return { label: "Pending", color: Colors.warning, icon: Clock };
+      return { label: "Pending", color: colors.warning, icon: Clock };
     }
     if (statusLower === "approved") {
-      return { label: "Approved", color: Colors.success, icon: CheckCircle };
+      return { label: "Approved", color: colors.success, icon: CheckCircle };
     }
     if (statusLower === "in-progress" || statusLower === "active") {
-      return { label: "In Progress", color: Colors.info, icon: Clock };
+      return { label: "In Progress", color: colors.info, icon: Clock };
     }
     if (statusLower === "completed" || statusLower === "done") {
-      return { label: "Completed", color: Colors.success, icon: CheckCircle };
+      return { label: "Completed", color: colors.success, icon: CheckCircle };
     }
-    return { label: "Unknown", color: Colors.textSecondary, icon: AlertCircle };
+    return { label: "Unknown", color: colors.textSecondary, icon: AlertCircle };
   };
 
   const handleProjectPress = (project: Project) => {
@@ -162,7 +162,7 @@ export default function ProjectsScreen() {
       >
         <View style={styles.projectHeader}>
           <View style={styles.projectTitleRow}>
-            <FolderKanban size={20} color={Colors.primary} />
+            <FolderKanban size={20} color={colors.primary} />
             <Text style={styles.projectTitle} numberOfLines={1}>
               {item.title || "Untitled Project"}
             </Text>
@@ -214,7 +214,7 @@ export default function ProjectsScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
           <Text style={styles.unauthorizedSubtext}>Only Admin users can access this screen.</Text>
         </View>
@@ -232,7 +232,7 @@ export default function ProjectsScreen() {
           }}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading projects...</Text>
         </View>
       </View>
@@ -250,11 +250,11 @@ export default function ProjectsScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Search size={20} color={Colors.textSecondary} />
+        <Search size={20} color={colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search projects..."
-          placeholderTextColor={Colors.textSecondary}
+          placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -297,7 +297,7 @@ export default function ProjectsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <FolderKanban size={48} color={Colors.textTertiary} />
+            <FolderKanban size={48} color={colors.textTertiary} />
             <Text style={styles.emptyText}>No projects found</Text>
             <Text style={styles.emptySubtext}>
               {searchQuery || selectedFilter !== "all"
@@ -311,10 +311,10 @@ export default function ProjectsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -335,19 +335,19 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
     marginBottom: 8,
   },
   unauthorizedSubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
@@ -356,12 +356,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   filtersContainer: {
     maxHeight: 50,
@@ -375,33 +375,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   listContent: {
     padding: 16,
     paddingBottom: 32,
   },
   projectCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   projectHeader: {
     flexDirection: "row",
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   statusBadge: {
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   },
   projectDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -448,13 +448,13 @@ const styles = StyleSheet.create({
   },
   projectMeta: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     flex: 1,
   },
   projectBudget: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   emptyContainer: {
     padding: 32,
@@ -463,14 +463,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
     marginTop: 8,
   },
 });
-

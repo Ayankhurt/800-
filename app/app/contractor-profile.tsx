@@ -11,7 +11,9 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  Dimensions,
 } from "react-native";
+import { Video as VideoPlayer, ResizeMode } from 'expo-av';
 import {
   MapPin,
   Phone,
@@ -184,6 +186,7 @@ export default function ContractorProfileScreen() {
           insuranceAmount: contractorData.insurance_amount || "",
           yearsInBusiness: contractorData.experience_years || 0,
           specialties: contractorData.specialties || [],
+          introVideoUrl: contractorData.intro_video_url || contractorData.introVideoUrl || "",
         } as any);
       } else if (response.data) {
         const contractorData = response.data;
@@ -212,6 +215,7 @@ export default function ContractorProfileScreen() {
           insuranceAmount: contractorData.insurance_amount || contractorData.insurance_coverage_amount || "",
           yearsInBusiness: contractorData.experience_years || contractorData.years_in_business || 0,
           specialties: contractorData.specialties || [],
+          introVideoUrl: contractorData.intro_video_url || contractorData.introVideoUrl || "",
         } as any);
       }
     } catch (error: any) {
@@ -415,6 +419,23 @@ export default function ContractorProfileScreen() {
             <Text style={[styles.contactText, { color: colors.text }]}>{contractorLocation}</Text>
           </View>
         </View>
+
+        {contractor.introVideoUrl && (
+          <View style={[styles.section, { backgroundColor: colors.surface, padding: 0 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text, paddingHorizontal: 20, paddingTop: 20 }]}>
+              Introduction Video
+            </Text>
+            <View style={styles.videoCard}>
+              <VideoPlayer
+                source={{ uri: contractor.introVideoUrl }}
+                style={styles.profileVideo}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                isLooping={false}
+              />
+            </View>
+          </View>
+        )}
 
         {contractor.verifications && contractor.verifications.length > 0 && (
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -1258,6 +1279,16 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 15,
     color: staticColors.text,
+  },
+  videoCard: {
+    padding: 10,
+    backgroundColor: '#000',
+    marginTop: 12,
+  },
+  profileVideo: {
+    width: '100%',
+    height: 220,
+    borderRadius: 8,
   },
   statsGrid: {
     flexDirection: "row" as const,

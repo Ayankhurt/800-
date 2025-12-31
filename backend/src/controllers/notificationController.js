@@ -74,7 +74,7 @@ export const getUserNotifications = async (req, res) => {
             .range(parseInt(offset), parseInt(offset) + Math.max(1, parseInt(limit)) - 1);
 
         if (readStatus !== undefined && readStatus !== '') {
-            query = query.eq('is_reads', readStatus === 'true');
+            query = query.eq('is_read', readStatus === 'true');
         }
 
         const { data, count, error } = await query;
@@ -89,7 +89,7 @@ export const getUserNotifications = async (req, res) => {
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId)
-            .eq('is_reads', false);
+            .eq('is_read', false);
 
         logger.info(`[DEBUG] Found ${data?.length || 0} notifications for user ${userId}. Total: ${count}, Unread: ${unreadCount}`);
 
@@ -125,7 +125,7 @@ export const getAllNotifications = async (req, res) => {
         }
 
         if (is_read !== undefined) {
-            query = query.eq('is_reads', is_read === 'true');
+            query = query.eq('is_read', is_read === 'true');
         }
 
         if (type) {
@@ -158,7 +158,7 @@ export const markNotificationAsRead = async (req, res) => {
         const { data, error } = await supabase
             .from('notifications')
             .update({
-                is_reads: true,
+                is_read: true,
                 read_at: new Date().toISOString()
             })
             .eq('id', id)
@@ -186,11 +186,11 @@ export const markAllNotificationsAsRead = async (req, res) => {
         const { data, error } = await supabase
             .from('notifications')
             .update({
-                is_reads: true,
+                is_read: true,
                 read_at: new Date().toISOString()
             })
             .eq('user_id', userId)
-            .eq('is_reads', false)
+            .eq('is_read', false)
             .select();
 
         if (error) {
@@ -240,7 +240,7 @@ export const getUnreadCount = async (req, res) => {
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId)
-            .eq('is_reads', false);
+            .eq('is_read', false);
 
         if (error) {
             logger.error('Get unread count error:', error);
@@ -275,7 +275,7 @@ export const sendBulkNotifications = async (req, res) => {
             title: title || (type === 'warning' ? 'Warning' : type === 'info' ? 'Information' : 'Notification'),
             content: message,
             type,
-            is_reads: false
+            is_read: false
         }));
 
         const { data, error } = await supabase

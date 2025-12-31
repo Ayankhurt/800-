@@ -32,9 +32,11 @@ import { requirePermission } from "../middlewares/permission.js";
 import { loginLimiter, resetLimiter } from "../middlewares/rateLimit.js";
 /* CURSOR PATCH END */
 
+import { validate, signupSchema } from "../utils/validators.js";
+
 const router = express.Router();
 
-router.post("/signup", signup);
+router.post("/signup", validate(signupSchema), signup);
 /* CURSOR PATCH START */
 router.post("/login", loginLimiter, login);
 router.post("/admin/login", loginLimiter, adminLogin); // Admin login for admin_users table

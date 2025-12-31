@@ -42,6 +42,11 @@ setInterval(() => ddosMap.clear(), 1000);
 export async function ddosDetector(req, res, next) {
   const ip = getIp(req);
 
+  // Skip DDoS detection in development
+  if (process.env.NODE_ENV !== 'production') {
+    return next();
+  }
+
   const count = (ddosMap.get(ip) || 0) + 1;
   ddosMap.set(ip, count);
 
@@ -122,7 +127,7 @@ export function createRateLimiter(options = {}) {
         .json(formatResponse(false, "Too many requests. Slow down.", null)),
     ...options,
   };
-  
+
   return rateLimit(defaultOptions);
 }
 /* CURSOR PATCH END */

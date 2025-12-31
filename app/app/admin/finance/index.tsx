@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminAPI } from "@/services/api";
 
@@ -42,7 +41,8 @@ interface Payout {
 
 export default function FinanceScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, colors } = useAuth();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [financeData, setFinanceData] = useState<any>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -70,8 +70,8 @@ export default function FinanceScreen() {
         adminAPI.getAnalytics().catch(() => null),
       ]);
 
-      const paymentsData = Array.isArray(paymentsRes?.data || paymentsRes) ? (paymentsRes?.data || paymentsRes) : [];
-      const payoutsData = Array.isArray(payoutsRes?.data || payoutsRes) ? (payoutsRes?.data || payoutsRes) : [];
+      const paymentsData = paymentsRes?.data?.transactions || paymentsRes?.transactions || (Array.isArray(paymentsRes?.data) ? paymentsRes.data : []);
+      const payoutsData = payoutsRes?.data?.payouts || payoutsRes?.payouts || (Array.isArray(payoutsRes?.data) ? payoutsRes.data : []);
 
       setPayments(paymentsData);
       setPayouts(payoutsData);
@@ -136,24 +136,24 @@ export default function FinanceScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.payoutHeader}>
-          <DollarSign size={20} color={Colors.primary} />
+          <DollarSign size={20} color={colors.primary} />
           <Text style={styles.payoutAmount}>${item.amount?.toLocaleString() || "0"}</Text>
           {isPending && (
-            <View style={[styles.statusBadge, { backgroundColor: Colors.warning + "15", borderColor: Colors.warning }]}>
-              <Clock size={12} color={Colors.warning} />
-              <Text style={[styles.statusText, { color: Colors.warning }]}>Pending</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.warning + "15", borderColor: colors.warning }]}>
+              <Clock size={12} color={colors.warning} />
+              <Text style={[styles.statusText, { color: colors.warning }]}>Pending</Text>
             </View>
           )}
           {isApproved && (
-            <View style={[styles.statusBadge, { backgroundColor: Colors.success + "15", borderColor: Colors.success }]}>
-              <CheckCircle size={12} color={Colors.success} />
-              <Text style={[styles.statusText, { color: Colors.success }]}>Approved</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.success + "15", borderColor: colors.success }]}>
+              <CheckCircle size={12} color={colors.success} />
+              <Text style={[styles.statusText, { color: colors.success }]}>Approved</Text>
             </View>
           )}
           {isRejected && (
-            <View style={[styles.statusBadge, { backgroundColor: Colors.error + "15", borderColor: Colors.error }]}>
-              <XCircle size={12} color={Colors.error} />
-              <Text style={[styles.statusText, { color: Colors.error }]}>Rejected</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.error + "15", borderColor: colors.error }]}>
+              <XCircle size={12} color={colors.error} />
+              <Text style={[styles.statusText, { color: colors.error }]}>Rejected</Text>
             </View>
           )}
         </View>
@@ -171,7 +171,7 @@ export default function FinanceScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ title: "Unauthorized" }} />
         <View style={styles.unauthorizedContainer}>
-          <AlertCircle size={48} color={Colors.error} />
+          <AlertCircle size={48} color={colors.error} />
           <Text style={styles.unauthorizedText}>Access Denied</Text>
         </View>
       </View>
@@ -183,7 +183,7 @@ export default function FinanceScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerTitle: "Payments & Payouts" }} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading finance data...</Text>
         </View>
       </View>
@@ -209,19 +209,19 @@ export default function FinanceScreen() {
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
-            <TrendingUp size={24} color={Colors.success} />
+            <TrendingUp size={24} color={colors.success} />
             <Text style={styles.summaryLabel}>Total Payments</Text>
             <Text style={styles.summaryValue}>${totalPayments.toLocaleString()}</Text>
           </View>
 
           <View style={styles.summaryCard}>
-            <TrendingDown size={24} color={Colors.primary} />
+            <TrendingDown size={24} color={colors.primary} />
             <Text style={styles.summaryLabel}>Total Payouts</Text>
             <Text style={styles.summaryValue}>${totalPayouts.toLocaleString()}</Text>
           </View>
 
           <View style={styles.summaryCard}>
-            <Clock size={24} color={Colors.warning} />
+            <Clock size={24} color={colors.warning} />
             <Text style={styles.summaryLabel}>Pending Payouts</Text>
             <Text style={styles.summaryValue}>${pendingPayouts.toLocaleString()}</Text>
           </View>
@@ -270,10 +270,10 @@ export default function FinanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   unauthorizedContainer: {
     flex: 1,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   unauthorizedText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.error,
+    color: colors.error,
     marginTop: 16,
   },
   summaryContainer: {
@@ -307,42 +307,42 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   summaryLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 8,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   section: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   payoutCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   payoutHeader: {
     flexDirection: "row",
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   payoutAmount: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   statusBadge: {
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   payoutDate: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   emptyContainer: {
     padding: 16,
@@ -379,7 +379,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 });
-

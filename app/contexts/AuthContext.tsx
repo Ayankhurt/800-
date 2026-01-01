@@ -6,7 +6,8 @@ import { authAPI, setAuthToken, getStoredToken } from "@/services/api";
 import { DEV_MACHINE_IP } from "@/config/api";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabaseClient";
-import { Platform, useColorScheme, Linking } from "react-native";
+import { Platform, useColorScheme } from "react-native";
+import { createURL, canOpenURL, openURL } from "expo-linking";
 import { lightPalette, darkPalette } from "@/constants/colors";
 
 // App roles + ADMIN (for login only, not signup)
@@ -770,9 +771,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       console.log(`[OAuth] Starting ${provider} login...`);
 
       // Redirect to app root - Supabase stores session automatically
-      const redirectTo = Platform.OS === 'web'
-        ? `${window.location.origin}/`
-        : `exp://${DEV_MACHINE_IP}:8081/`;
+      const redirectTo = createURL('/');
 
       console.log(`[OAuth] Redirect URL: ${redirectTo}`);
 
@@ -794,9 +793,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthContextType => 
       // On mobile, we need to explicitly open the URL returned by Supabase
       if (Platform.OS !== 'web' && data?.url) {
         console.log(`[OAuth] Opening browser for ${provider}: ${data.url}`);
-        const supported = await Linking.canOpenURL(data.url);
+        const supported = await canOpenURL(data.url);
         if (supported) {
-          await Linking.openURL(data.url);
+          await openURL(data.url);
         } else {
           console.error(`[OAuth] Cannot open URL: ${data.url}`);
           return { success: false, error: "Cannot open browser for login" };
